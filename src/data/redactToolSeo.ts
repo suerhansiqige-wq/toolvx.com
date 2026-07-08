@@ -1,12 +1,18 @@
 /** English SEO source of truth for the standalone Image & PDF redaction tool page. */
 
-import { withFreeOnlineEn } from "@/utils/seo-free-online";
-
 export type RedactFAQItem = {
   qKey: string;
   aKey: string;
   question: string;
   answer: string;
+};
+
+export type RedactFeatureItem = {
+  titleKey: string;
+  bodyKey: string;
+  title: string;
+  body: string;
+  iconAlt: string;
 };
 
 export type RedactToolSEO = {
@@ -18,64 +24,90 @@ export type RedactToolSEO = {
   introduction: string;
   stepsHeading: string;
   steps: string[];
+  featuresHeading: string;
+  features: RedactFeatureItem[];
   faqHeading: string;
   faqs: RedactFAQItem[];
+  appSchemaName: string;
 };
 
 export const redactToolSeo = {
   id: "redact-image-pdf",
-  title: "Redact PDF & Images Online - Free Blur & Mask Sensitive Data",
+  title: "Free PDF & Image Redaction Tool | Securely Redact PDF - ToolVX",
   description:
-    "Free web-based tool to redact, blur, or mask faces, ID numbers, and credentials in PDFs and images (JPG, PNG). 100% private, processed locally in your browser.",
+    "Securely redact PDF documents and images online for free. Permanently black out sensitive information with our private, browser-based redaction tool.",
   keywords: [
+    "pdf redaction",
     "redact pdf online",
-    "blur face in image",
-    "mask sensitive data pdf",
-    "free pdf censor tool",
-    "online image redaction",
+    "image redaction",
+    "redact image online",
+    "secure redaction",
+    "redacted pdf",
+    "black out pdf",
+    "free pdf redaction tool",
   ],
-  h1: "Online Image & PDF Redaction Tool",
+  h1: "Online PDF and Image Redaction Tool",
   introduction:
-    "Protect your privacy before sharing documents. Securely blur, pixelate, or mask faces, credit card numbers, license plates, and IDs. All file processing runs 100% locally inside your web browser—your data never leaves your device.",
-  stepsHeading: "How to Redact PDF and Images Online",
+    "Protect your privacy before sharing documents. Use our free redaction tool to securely redact PDF pages and images—blur, pixelate, or black out faces, credit card numbers, license plates, and IDs. All redaction runs 100% locally in your browser; your files never leave your device.",
+  stepsHeading: "How to Redact a PDF Online",
   steps: [
-    "Drag and drop your PDF file or image (JPG, PNG, GIF, WebP) into the upload box.",
-    "Click and drag over the sensitive text, face, or ID card area to apply a blur, mosaic, or solid black mask.",
-    "Adjust the opacity or box size to ensure the private data is fully covered.",
-    "Click 'Download' to save your permanently redacted and secure file instantly.",
+    "Upload your PDF or image (JPG, PNG, GIF, WebP) by dragging it into the upload area or clicking to browse.",
+    "Select sensitive areas and redact them—draw over text, faces, or IDs to apply blur, mosaic, or solid blackout redaction.",
+    "Download your redacted PDF or image instantly. The exported file is permanently redacted and ready to share.",
   ],
-  faqHeading: "Frequently Asked Questions",
+  featuresHeading: "Why Choose Our Secure Redaction Tool",
+  features: [
+    {
+      titleKey: "feature-0-title",
+      bodyKey: "feature-0-body",
+      title: "100% Browser-Based Redaction",
+      body: "Every redaction runs inside your browser. No server uploads, no cloud storage—just private, secure image and PDF redaction on your device.",
+      iconAlt: "Shield icon representing secure local redaction",
+    },
+    {
+      titleKey: "feature-1-title",
+      bodyKey: "feature-1-body",
+      title: "Permanent PDF & Image Redaction",
+      body: "When you redact and download, sensitive pixels and text are flattened into the file. Redacted content cannot be reversed or recovered.",
+      iconAlt: "Lock icon representing permanent redaction",
+    },
+    {
+      titleKey: "feature-2-title",
+      bodyKey: "feature-2-body",
+      title: "Multi-Format Redaction Support",
+      body: "Redact multi-page PDFs and images in JPG, PNG, GIF, and WebP. One tool for secure document and photo redaction workflows.",
+      iconAlt: "Document icon representing PDF and image redaction formats",
+    },
+  ],
+  faqHeading: "Frequently Asked Questions about Redaction",
   faqs: [
     {
       qKey: "faq-q-1",
       aKey: "faq-a-1",
-      question: "Is it safe to upload my confidential documents here?",
+      question: "Is PDF redaction permanent?",
       answer:
-        "Yes, it is 100% secure. This tool utilizes client-side web technologies (HTML5/WebAssembly) to process files entirely inside your local browser. Your data is never uploaded to any external servers, ensuring absolute privacy.",
+        "Yes. When you redact a PDF and download the file, our tool permanently flattens the masked areas into the document. The original text and pixels underneath are destroyed, so the redaction cannot be undone or recovered.",
     },
     {
       qKey: "faq-q-2",
       aKey: "faq-a-2",
-      question: "What file formats does this online redaction tool support?",
+      question: "How do I redact an image online?",
       answer:
-        "We support a wide range of file types including PDF documents, as well as popular image formats like JPG, JPEG, PNG, GIF, and WebP.",
+        "Upload your JPG, PNG, GIF, or WebP image, then drag over faces, license plates, or any sensitive area. Choose blur, mosaic, or solid blackout, and download your redacted image—all without installing software.",
     },
     {
       qKey: "faq-q-3",
       aKey: "faq-a-3",
-      question: "Will the blurred or blacked-out content remain reversible?",
+      question: "Is this redaction tool private and secure?",
       answer:
-        "No. Once you apply the blur or solid mask and click download, our tool flattens the file layers permanently. The underlying original pixel data or text streams are permanently deleted, making it impossible for anyone to reverse-engineer or reveal the hidden information.",
+        "Absolutely. This is a browser-based redaction tool. Your PDFs and images are processed locally with client-side technology—nothing is uploaded to our servers, making it ideal for confidential contracts and personal documents.",
     },
   ],
+  appSchemaName: "PDF & Image Redaction Tool",
 } satisfies RedactToolSEO;
 
 export function getRedactToolSeo(): RedactToolSEO {
-  return {
-    ...redactToolSeo,
-    title: withFreeOnlineEn(redactToolSeo.title),
-    h1: withFreeOnlineEn(redactToolSeo.h1),
-  };
+  return redactToolSeo;
 }
 
 export function redactToolFaqsForSchema() {

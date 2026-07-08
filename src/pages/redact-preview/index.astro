@@ -14,7 +14,7 @@ const seo = getRedactToolSeo();
   title={seo.title}
   description={seo.description}
   keywords={seo.keywords.join(", ")}
-  appName={seo.h1}
+  appName={seo.appSchemaName}
   faqs={redactToolFaqsForSchema()}
   noIndex={false}
 >

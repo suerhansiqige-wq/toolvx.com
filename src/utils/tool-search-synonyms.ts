@@ -16,4 +16,4 @@ export function toolSearchSynonyms(i18nKey: string): string {
 }
 
 export const redactSearchSynonyms =
-  "图片打码 在线图片与 PDF 打码 免费在线图片与 PDF 打码工具 PDF打码 图片与 PDF 打码";
+  "redact pdf online pdf redaction tool image redaction secure redaction redacted pdf black out pdf free pdf redaction redact image online";

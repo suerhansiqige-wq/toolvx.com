@@ -32,17 +32,26 @@ const {
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: appName ?? title.split("|")[0]?.trim() ?? title,
+  name: appName ?? "PDF & Image Redaction Tool",
   description,
   url: canonicalURL,
-  applicationCategory: "UtilitiesApplication",
+  applicationCategory: "BusinessApplication",
   operatingSystem: "Any",
+  browserRequirements: "Requires JavaScript. Requires HTML5.",
+  featureList: [
+    "PDF redaction",
+    "Image redaction",
+    "Blur and mosaic redaction",
+    "Solid blackout redaction",
+    "Local browser-based processing",
+  ],
   offers: {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
   },
   inLanguage: "en",
+  isAccessibleForFree: true,
 };
 
 const faqStructuredData =

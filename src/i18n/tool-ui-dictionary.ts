@@ -159,31 +159,39 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_preview_lead:
       "Hide faces, IDs, and account numbers before sharing. Mosaic, blur, or solid fill — all in your browser.",
     "redact.seo.title":
-      "Redact PDF & Images Online - Free Blur & Mask Sensitive Data",
+      "Free PDF & Image Redaction Tool | Securely Redact PDF - ToolVX",
     "redact.seo.description":
-      "Free web-based tool to redact, blur, or mask faces, ID numbers, and credentials in PDFs and images (JPG, PNG). 100% private, processed locally in your browser.",
-    "redact.h1": "Free Online Image & PDF Redaction Tool",
+      "Securely redact PDF documents and images online for free. Permanently black out sensitive information with our private, browser-based redaction tool.",
+    "redact.h1": "Online PDF and Image Redaction Tool",
     "redact.introduction":
-      "Protect your privacy before sharing documents. Securely blur, pixelate, or mask faces, credit card numbers, license plates, and IDs. All file processing runs 100% locally inside your web browser—your data never leaves your device.",
-    "redact.stepsHeading": "How to Redact PDF and Images Online",
+      "Protect your privacy before sharing documents. Use our free redaction tool to securely redact PDF pages and images—blur, pixelate, or black out faces, credit card numbers, license plates, and IDs. All redaction runs 100% locally in your browser; your files never leave your device.",
+    "redact.stepsHeading": "How to Redact a PDF Online",
     "redact.step.0":
-      "Drag and drop your PDF file or image (JPG, PNG, GIF, WebP) into the upload box.",
+      "Upload your PDF or image (JPG, PNG, GIF, WebP) by dragging it into the upload area or clicking to browse.",
     "redact.step.1":
-      "Click and drag over the sensitive text, face, or ID card area to apply a blur, mosaic, or solid black mask.",
+      "Select sensitive areas and redact them—draw over text, faces, or IDs to apply blur, mosaic, or solid blackout redaction.",
     "redact.step.2":
-      "Adjust the opacity or box size to ensure the private data is fully covered.",
-    "redact.step.3":
-      "Click 'Download' to save your permanently redacted and secure file instantly.",
-    "redact.faqHeading": "Frequently Asked Questions",
-    "redact.faq-q-1": "Is it safe to upload my confidential documents here?",
+      "Download your redacted PDF or image instantly. The exported file is permanently redacted and ready to share.",
+    "redact.featuresHeading": "Why Choose Our Secure Redaction Tool",
+    "redact.feature-0-title": "100% Browser-Based Redaction",
+    "redact.feature-0-body":
+      "Every redaction runs inside your browser. No server uploads, no cloud storage—just private, secure image and PDF redaction on your device.",
+    "redact.feature-1-title": "Permanent PDF & Image Redaction",
+    "redact.feature-1-body":
+      "When you redact and download, sensitive pixels and text are flattened into the file. Redacted content cannot be reversed or recovered.",
+    "redact.feature-2-title": "Multi-Format Redaction Support",
+    "redact.feature-2-body":
+      "Redact multi-page PDFs and images in JPG, PNG, GIF, and WebP. One tool for secure document and photo redaction workflows.",
+    "redact.faqHeading": "Frequently Asked Questions about Redaction",
+    "redact.faq-q-1": "Is PDF redaction permanent?",
     "redact.faq-a-1":
-      "Yes, it is 100% secure. This tool utilizes client-side web technologies (HTML5/WebAssembly) to process files entirely inside your local browser. Your data is never uploaded to any external servers, ensuring absolute privacy.",
-    "redact.faq-q-2": "What file formats does this online redaction tool support?",
+      "Yes. When you redact a PDF and download the file, our tool permanently flattens the masked areas into the document. The original text and pixels underneath are destroyed, so the redaction cannot be undone or recovered.",
+    "redact.faq-q-2": "How do I redact an image online?",
     "redact.faq-a-2":
-      "We support a wide range of file types including PDF documents, as well as popular image formats like JPG, JPEG, PNG, GIF, and WebP.",
-    "redact.faq-q-3": "Will the blurred or blacked-out content remain reversible?",
+      "Upload your JPG, PNG, GIF, or WebP image, then drag over faces, license plates, or any sensitive area. Choose blur, mosaic, or solid blackout, and download your redacted image—all without installing software.",
+    "redact.faq-q-3": "Is this redaction tool private and secure?",
     "redact.faq-a-3":
-      "No. Once you apply the blur or solid mask and click download, our tool flattens the file layers permanently. The underlying original pixel data or text streams are permanently deleted, making it impossible for anyone to reverse-engineer or reveal the hidden information.",
+      "Absolutely. This is a browser-based redaction tool. Your PDFs and images are processed locally with client-side technology—nothing is uploaded to our servers, making it ideal for confidential contracts and personal documents.",
   },
   zh: {
     trust_title: "100% 本地隐私保护 — 浏览器纯前端处理",
@@ -344,10 +352,19 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     "redact.stepsHeading": "如何在线对 PDF 与图片打码",
     "redact.step.0": "将 PDF 或图片（JPG、PNG、GIF、WebP）拖入上传区域。",
     "redact.step.1":
-      "在敏感文字、人脸或证件区域拖动框选，应用模糊、马赛克或纯色遮盖。",
-    "redact.step.2": "调整不透明度或选框大小，确保隐私信息被完全覆盖。",
-    "redact.step.3": "点击「下载」即可立即保存已永久打码的安全文件。",
-    "redact.faqHeading": "常见问题",
+      "框选敏感区域并打码——在文字、人脸或证件上拖动，应用模糊、马赛克或纯色遮盖。",
+    "redact.step.2": "点击「下载」即可立即保存已永久打码的安全文件。",
+    "redact.featuresHeading": "为什么选择我们的安全打码工具",
+    "redact.feature-0-title": "100% 浏览器本地打码",
+    "redact.feature-0-body":
+      "所有打码均在浏览器内完成，不上传服务器、不使用云存储，在您的设备上私密安全地处理图片与 PDF。",
+    "redact.feature-1-title": "永久性 PDF 与图片打码",
+    "redact.feature-1-body":
+      "打码并下载后，敏感像素与文字会永久写入文件，打码内容无法还原或恢复。",
+    "redact.feature-2-title": "多格式打码支持",
+    "redact.feature-2-body":
+      "支持多页 PDF 及 JPG、PNG、GIF、WebP 图片，一套工具满足文档与照片打码需求。",
+    "redact.faqHeading": "打码常见问题",
     "redact.faq-q-1": "在此上传机密文件是否安全？",
     "redact.faq-a-1":
       "完全安全。本工具使用 HTML5/WebAssembly 等客户端技术在您本地浏览器中处理文件，数据不会上传到任何外部服务器，隐私有保障。",
