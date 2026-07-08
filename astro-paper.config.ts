@@ -1,15 +1,18 @@
 import { defineAstroPaperConfig } from "./src/types/config";
 
+/** GitHub Pages project site: https://suerhansiqige-wq.github.io/toolvx.com/ */
+const GITHUB_PAGES_SITE = "https://suerhansiqige-wq.github.io/toolvx.com/";
+
 export default defineAstroPaperConfig({
   site: {
-    url: "https://astro-paper.pages.dev/",
-    title: "AstroPaper",
-    description: "A minimal, responsive and SEO-friendly Astro blog theme.",
-    author: "Sat Naing",
-    profile: "https://satna.ing",
+    url: GITHUB_PAGES_SITE,
+    title: "ToolVX",
+    description: "Free online PDF tools — compress, merge, split, and more in your browser.",
+    author: "ToolVX",
+    profile: GITHUB_PAGES_SITE,
     ogImage: "default-og.jpg",
     lang: "en",
-    timezone: "Asia/Bangkok",
+    timezone: "Asia/Shanghai",
     dir: "ltr",
   },
   posts: {
