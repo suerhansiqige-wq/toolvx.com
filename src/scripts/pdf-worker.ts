@@ -131,7 +131,35 @@ export async function loadPdfBytes(
   const wasm = supportsWebAssembly();
   const localAssets = await probeLocalPdfAssets();
 
-  const cdnFirst: LoadPdfOptions[] = [
+  const preferred: LoadPdfOptions[] = [
+    {
+      ...options,
+      useWasm: true,
+      useCdn: false,
+      isOffscreenCanvasSupported: false,
+      isImageDecoderSupported: false,
+    },
+    {
+      ...options,
+      useWasm: true,
+      useCdn: true,
+      isOffscreenCanvasSupported: false,
+      isImageDecoderSupported: false,
+    },
+    { ...options, useWasm: true, useCdn: false },
+    { ...options, useWasm: true, useCdn: true },
+    { ...options, useWasm: wasm, useCdn: true },
+    { ...options, useWasm: false, useCdn: false, isOffscreenCanvasSupported: false },
+    {
+      ...options,
+      useWasm: false,
+      useCdn: true,
+      isOffscreenCanvasSupported: false,
+      isImageDecoderSupported: false,
+    },
+  ];
+
+  const cdnOnly: LoadPdfOptions[] = [
     {
       ...options,
       useWasm: true,
@@ -140,7 +168,6 @@ export async function loadPdfBytes(
       isImageDecoderSupported: false,
     },
     { ...options, useWasm: true, useCdn: true },
-    { ...options, useWasm: wasm, useCdn: true },
     {
       ...options,
       useWasm: false,
@@ -150,25 +177,7 @@ export async function loadPdfBytes(
     },
   ];
 
-  const localFallback: LoadPdfOptions[] = [
-    { ...options, useWasm: options?.useWasm ?? wasm },
-    { ...options, useWasm: true },
-    { ...options, useWasm: wasm, useCdn: true },
-    { ...options, useWasm: false },
-    {
-      ...options,
-      useWasm: false,
-      isOffscreenCanvasSupported: false,
-      isImageDecoderSupported: false,
-    },
-  ];
-
-  const modern = !isLegacyPdfEnvironment();
-  const attempts = modern
-    ? [...cdnFirst, ...localFallback]
-    : localAssets
-      ? [...localFallback, ...cdnFirst]
-      : [...cdnFirst, ...localFallback];
+  const attempts = localAssets ? preferred : cdnOnly;
 
   let lastError: unknown;
   for (const attempt of attempts) {

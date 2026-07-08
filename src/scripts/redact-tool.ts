@@ -340,17 +340,17 @@ type PdfLoadStrategy = {
 const PDF_RENDER_RETRY_STRATEGIES: PdfLoadStrategy[] = [
   {
     useWasm: true,
-    useCdn: true,
+    useCdn: false,
     isOffscreenCanvasSupported: false,
     isImageDecoderSupported: false,
   },
   {
     useWasm: true,
-    useCdn: false,
+    useCdn: true,
     isOffscreenCanvasSupported: false,
     isImageDecoderSupported: false,
   },
-  { useWasm: true, useCdn: true },
+  { useWasm: true, useCdn: false },
   {
     useWasm: false,
     useCdn: true,
@@ -372,8 +372,12 @@ async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement)
       pdfDoc = await loadPdfBytes(pdfSourceBytes, strategy);
 
       const page = await pdfDoc.getPage(pageNum);
-      const rendered = await renderPdfPageToCanvas(page, PDF_RENDER_SCALE);
-      if (isCanvasMostlyBlank(rendered)) {
+      const lastAttemptIndex = PDF_RENDER_RETRY_STRATEGIES.length - 1;
+      const throwOnBlank = attempt < lastAttemptIndex;
+      const rendered = await renderPdfPageToCanvas(page, PDF_RENDER_SCALE, {
+        throwOnBlank,
+      });
+      if (throwOnBlank && isCanvasMostlyBlank(rendered)) {
         throw new Error("PDF render blank");
       }
 
@@ -678,7 +682,7 @@ async function openPdfDocument(bytes: Uint8Array, password?: string) {
     return await loadPdfBytes(bytes, {
       password,
       useWasm: true,
-      useCdn: true,
+      useCdn: false,
       isOffscreenCanvasSupported: false,
       isImageDecoderSupported: false,
     });

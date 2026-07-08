@@ -106,8 +106,10 @@ function promiseWithTimeout<T>(
 
 export async function renderPdfPageToCanvas(
   page: pdfjsLib.PDFPageProxy,
-  scale: number
+  scale: number,
+  opts?: { throwOnBlank?: boolean }
 ): Promise<HTMLCanvasElement> {
+  const throwOnBlank = opts?.throwOnBlank ?? true;
   const baseScale = clampPdfRenderScale(page, scale);
   const scaleSteps = LEGACY
     ? [baseScale, baseScale * 0.9, 0.72, 0.6, 0.5]
@@ -119,7 +121,7 @@ export async function renderPdfPageToCanvas(
   let lastError: unknown;
   for (const attemptScale of scales) {
     try {
-      return await renderPdfPageToCanvasOnce(page, attemptScale);
+      return await renderPdfPageToCanvasOnce(page, attemptScale, throwOnBlank);
     } catch (err) {
       lastError = err;
     }
@@ -129,7 +131,8 @@ export async function renderPdfPageToCanvas(
 
 async function renderPdfPageToCanvasOnce(
   page: pdfjsLib.PDFPageProxy,
-  scale: number
+  scale: number,
+  throwOnBlank: boolean
 ): Promise<HTMLCanvasElement> {
   const viewport = page.getViewport({ scale });
   const canvas = document.createElement("canvas");
@@ -155,7 +158,8 @@ async function renderPdfPageToCanvasOnce(
   await promiseWithTimeout(renderTask.promise, timeoutMs, "PDF render timeout");
 
   if (isCanvasMostlyBlank(canvas)) {
-    throw new Error("PDF render blank");
+    if (throwOnBlank) throw new Error("PDF render blank");
+    return canvas;
   }
 
   return canvas;
