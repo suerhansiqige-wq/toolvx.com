@@ -338,15 +338,15 @@ type PdfLoadStrategy = {
 };
 
 const PDF_RENDER_RETRY_STRATEGIES: PdfLoadStrategy[] = [
-  {},
-  { useWasm: true },
   { useWasm: true, useCdn: true },
+  { useWasm: true },
   {
     useWasm: false,
     useCdn: true,
     isOffscreenCanvasSupported: false,
     isImageDecoderSupported: false,
   },
+  {},
 ];
 
 async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement) {
@@ -359,13 +359,9 @@ async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement)
   for (let attempt = 0; attempt < PDF_RENDER_RETRY_STRATEGIES.length; attempt++) {
     try {
       const strategy = PDF_RENDER_RETRY_STRATEGIES[attempt];
-      if (attempt === 0 && pdfDoc) {
-        /* reuse document opened in loadPdfFile */
-      } else {
-        pdfDoc = await loadPdfBytes(pdfSourceBytes, strategy);
-      }
+      pdfDoc = await loadPdfBytes(pdfSourceBytes, strategy);
 
-      const page = await pdfDoc!.getPage(pageNum);
+      const page = await pdfDoc.getPage(pageNum);
       const rendered = await renderPdfPageToCanvas(page, PDF_RENDER_SCALE);
       if (isCanvasMostlyBlank(rendered)) {
         throw new Error("PDF render blank");
@@ -669,7 +665,7 @@ async function upsertThumbForPage(pageNum: number) {
 
 async function openPdfDocument(bytes: Uint8Array, password?: string) {
   try {
-    return await loadPdfBytes(bytes, { password });
+    return await loadPdfBytes(bytes, { password, useWasm: true, useCdn: true });
   } catch (err) {
     if (password && isIncorrectPasswordPdfError(err)) {
       throw err;

@@ -21,9 +21,16 @@ export function probeLocalPdfAssets(): Promise<boolean> {
   if (!localAssetsPromise) {
     localAssetsPromise = (async () => {
       try {
-        const url = pdfjsAssetUrl("cmaps/LICENSE", false);
-        const response = await fetch(url, { method: "GET", cache: "force-cache" });
-        return response.ok;
+        const urls = [
+          pdfjsAssetUrl("cmaps/LICENSE", false),
+          pdfjsAssetUrl("wasm/openjpeg.wasm", false),
+        ];
+        const results = await Promise.all(
+          urls.map(url =>
+            fetch(url, { method: "GET", cache: "force-cache" }).then(r => r.ok)
+          )
+        );
+        return results.every(Boolean);
       } catch {
         return false;
       }
@@ -139,11 +146,10 @@ export async function loadPdfBytes(
     },
   ];
 
-  const localFirst: LoadPdfOptions[] = [
+  const localFallback: LoadPdfOptions[] = [
     { ...options, useWasm: options?.useWasm ?? wasm },
     { ...options, useWasm: true },
     { ...options, useWasm: wasm, useCdn: true },
-    { ...options, useWasm: true, useCdn: true },
     { ...options, useWasm: false },
     {
       ...options,
@@ -151,16 +157,14 @@ export async function loadPdfBytes(
       isOffscreenCanvasSupported: false,
       isImageDecoderSupported: false,
     },
-    {
-      ...options,
-      useWasm: false,
-      isOffscreenCanvasSupported: false,
-      isImageDecoderSupported: false,
-      useCdn: true,
-    },
   ];
 
-  const attempts = localAssets ? localFirst : [...cdnFirst, ...localFirst];
+  const modern = !isLegacyPdfEnvironment();
+  const attempts = modern
+    ? [...cdnFirst, ...localFallback]
+    : localAssets
+      ? [...localFallback, ...cdnFirst]
+      : [...cdnFirst, ...localFallback];
 
   let lastError: unknown;
   for (const attempt of attempts) {

@@ -46,7 +46,7 @@ export function classifyPdfLoadError(err: unknown): PdfErrorKey {
     if (msg.includes("PDF empty") || msg === "Empty file") return "error_pdf_empty";
     if (msg.includes("Invalid PDF")) return "error_pdf_invalid";
     if (msg.includes("PDF render timeout")) return "error_pdf_render_timeout";
-    if (msg.includes("PDF render blank")) return "error_pdf_render_timeout";
+    if (msg.includes("PDF render blank")) return "error_pdf_assets";
     if (msg.includes("withResolvers")) return "error_browser_unsupported";
     if (msg.includes("Canvas")) return "error_pdf_render_timeout";
     if (/Invalid PDF|InvalidPDF|Missing PDF|MissingPDF|corrupt/i.test(msg)) {
