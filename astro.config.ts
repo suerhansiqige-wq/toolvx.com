@@ -56,8 +56,7 @@ export default defineConfig({
     },
   },
   vite: {
-    // Tailwind Vite plugin types target root Vite; cast keeps Astro + check happy.
-    plugins: [tailwindcss() as import("vite").PluginOption],
+    plugins: [tailwindcss()],
   },
   fonts: [
     {
