@@ -359,10 +359,21 @@ const PDF_RENDER_RETRY_STRATEGIES: PdfLoadStrategy[] = [
   },
 ];
 
+const LEGACY_RENDER_SCALES = [
+  PDF_RENDER_SCALE,
+  getPdfRenderScale(0.72),
+  getPdfRenderScale(0.6),
+  0.5,
+];
+
 async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement) {
   if (!pdfSourceBytes?.length) {
     throw new Error("PDF render blank");
   }
+
+  const scales = LEGACY_PDF
+    ? [...new Set(LEGACY_RENDER_SCALES.map(s => Math.round(s * 100) / 100))]
+    : [PDF_RENDER_SCALE];
 
   let lastError: unknown;
 
@@ -372,19 +383,27 @@ async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement)
       pdfDoc = await loadPdfBytes(pdfSourceBytes, strategy);
 
       const page = await pdfDoc.getPage(pageNum);
-      const lastAttemptIndex = PDF_RENDER_RETRY_STRATEGIES.length - 1;
-      const throwOnBlank = attempt < lastAttemptIndex;
-      const rendered = await renderPdfPageToCanvas(page, PDF_RENDER_SCALE, {
-        throwOnBlank,
-      });
-      if (throwOnBlank && isCanvasMostlyBlank(rendered)) {
-        throw new Error("PDF render blank");
+      let renderError: unknown;
+
+      for (const scale of scales) {
+        try {
+          const rendered = await renderPdfPageToCanvas(page, scale, {
+            throwOnBlank: true,
+          });
+          if (isCanvasMostlyBlank(rendered)) {
+            throw new Error("PDF render blank");
+          }
+
+          copyCanvasTo(rendered, target);
+          const base = page.getViewport({ scale: 1 });
+          pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
+          return;
+        } catch (err) {
+          renderError = err;
+        }
       }
 
-      copyCanvasTo(rendered, target);
-      const base = page.getViewport({ scale: 1 });
-      pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
-      return;
+      throw renderError ?? new Error("PDF render blank");
     } catch (err) {
       lastError = err;
     }

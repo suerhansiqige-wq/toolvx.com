@@ -94,6 +94,8 @@ function buildDocumentInit(
 
 function pdfjsWorkerSrc(): string {
   if (typeof window === "undefined") return workerUrl;
+  // Legacy browsers (Win7 / Chrome 109) need the bundled shim worker with polyfills.
+  if (isLegacyPdfEnvironment()) return workerUrl;
   const rel = getAssetPath("pdfjs/pdf.worker.min.mjs");
   return new URL(rel, window.location.origin).href;
 }
