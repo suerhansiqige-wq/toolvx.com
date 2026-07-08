@@ -51,7 +51,7 @@ export const zh: Messages = {
       archives: "归档",
       search: "搜索",
       tools: "PDF工具",
-      redact: "图片打码",
+      redact: "脱敏",
     },
     footer: {
       copyright: "版权",
@@ -101,7 +101,7 @@ export const zh: Messages = {
       signPdf: "签署 PDF",
       unlockPdf: "解锁 PDF",
       protectPdf: "保护 PDF",
-      redactImagePdf: "图片与 PDF 打码",
+      redactImagePdf: "图片与 PDF 脱敏",
     },
   },
   common: {
@@ -506,18 +506,18 @@ export const zh: Messages = {
       ]
     ),
     redactImagePdf: tool(
-      "图片与 PDF 打码",
+      "图片与 PDF 脱敏",
       "在浏览器中模糊、马赛克或纯色遮盖图片与 PDF 中的敏感区域，数据不离开本机。",
-      "下载打码文件",
-      "下载打码文件",
+      "下载脱敏文件",
+      "下载脱敏文件",
       redactUpload,
       redactSubhint,
-      "免费在线图片与 PDF 打码 | 模糊与马赛克",
-      "在浏览器本地对图片和 PDF 敏感内容进行打码处理。",
-      "pdf 打码, 图片打码, 模糊 pdf, 马赛克",
+      "免费在线图片与 PDF 脱敏 | 模糊与马赛克",
+      "在浏览器本地对图片和 PDF 敏感内容进行脱敏处理。",
+      "pdf 脱敏, 图片脱敏, 模糊 pdf, 马赛克",
       [
         {
-          heading: "本地打码",
+          heading: "本地脱敏",
           blocks: [
             {
               type: "paragraph",

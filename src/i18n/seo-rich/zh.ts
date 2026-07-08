@@ -333,14 +333,14 @@ export const seoRichZh: Record<string, SeoRichMessages> = {
     ],
   },
   redactImagePdf: {
-    h1: "在线图片与 PDF 打码",
+    h1: "在线图片与 PDF 脱敏",
     introduction:
       "分享前隐藏人脸、证件号、账号等敏感内容。在任意页面上框选区域，即可应用马赛克、高斯模糊或纯色遮盖，全部在您的设备本地完成。",
     steps: [
       "上传 JPG、PNG、GIF、WebP 图片或多页 PDF。",
       "选择效果：马赛克、模糊或纯色填充（遮盖需先选颜色）。",
-      "在预览上拖动框选需要打码的区域。",
-      "按页撤销/重做后，下载打码后的图片或 PDF。",
+      "在预览上拖动框选需要脱敏的区域。",
+      "按页撤销/重做后，下载脱敏后的图片或 PDF。",
     ],
     faqs: [
       {
@@ -350,7 +350,7 @@ export const seoRichZh: Record<string, SeoRichMessages> = {
       {
         question: "支持多页 PDF 吗？",
         answer:
-          "支持。每一页可单独编辑并保留各自的撤销记录，导出时会根据打码后的页面重新生成 PDF。",
+          "支持。每一页可单独编辑并保留各自的撤销记录，导出时会根据脱敏后的页面重新生成 PDF。",
       },
       {
         question: "马赛克和模糊有什么区别？",
