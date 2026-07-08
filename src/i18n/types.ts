@@ -70,6 +70,20 @@ export type UIStrings = {
     featured: string;
     recentPosts: string;
     allPosts: string;
+    toolQuick: {
+      ariaLabel: string;
+      redact: string;
+      redactDesc: string;
+      pdf: string;
+      pdfDesc: string;
+      image: string;
+      imageDesc: string;
+      audio: string;
+      audioDesc: string;
+      ofd: string;
+      ofdDesc: string;
+      comingSoon: string;
+    };
   };
   footer: {
     copyright: string;
@@ -158,6 +172,20 @@ export type Messages = {
       featured: string;
       recentPosts: string;
       allPosts: string;
+      toolQuick: {
+        ariaLabel: string;
+        redact: string;
+        redactDesc: string;
+        pdf: string;
+        pdfDesc: string;
+        image: string;
+        imageDesc: string;
+        audio: string;
+        audioDesc: string;
+        ofd: string;
+        ofdDesc: string;
+        comingSoon: string;
+      };
     };
     pages: {
       tagTitle: string;

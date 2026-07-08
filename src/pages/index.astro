@@ -9,6 +9,7 @@ import Footer from "@/components/Footer.astro";
 import Socials from "@/components/Socials.astro";
 import Card from "@/components/Card.astro";
 import LinkButton from "@/components/LinkButton.astro";
+import HomeToolQuickNav from "@/components/HomeToolQuickNav.astro";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
@@ -59,6 +60,8 @@ const homePath = getRelativeLocaleUrl(locale, "");
           <span class="sr-only" data-i18n="blog.hero.rssFeed">RSS Feed</span>
         </a>
       </div>
+
+      <HomeToolQuickNav locale={locale} />
 
       <p
         class="text-muted-foreground mt-8 max-w-3xl text-base leading-relaxed sm:text-lg"
