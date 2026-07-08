@@ -19,11 +19,11 @@ export function clampPdfRenderScale(
   page: pdfjsLib.PDFPageProxy,
   scale: number
 ): number {
-  if (!LEGACY) return scale;
+  const maxDim = LEGACY ? LEGACY_MAX_CANVAS_DIM : 8192;
   let s = scale;
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 16; i++) {
     const { width, height } = page.getViewport({ scale: s });
-    if (width <= LEGACY_MAX_CANVAS_DIM && height <= LEGACY_MAX_CANVAS_DIM) {
+    if (width <= maxDim && height <= maxDim) {
       return Math.round(s * 100) / 100;
     }
     s *= 0.85;
@@ -47,21 +47,30 @@ export function isCanvasMostlyBlank(canvas: HTMLCanvasElement): boolean {
   const ctx = canvas.getContext("2d");
   if (!ctx || canvas.width < 2 || canvas.height < 2) return true;
 
-  const w = Math.min(64, canvas.width);
-  const h = Math.min(64, canvas.height);
-  const { data } = ctx.getImageData(0, 0, w, h);
+  const grid = 8;
   let contentPixels = 0;
+  const cellW = Math.max(1, Math.floor(canvas.width / grid));
+  const cellH = Math.max(1, Math.floor(canvas.height / grid));
+  const sampleW = Math.min(24, cellW);
+  const sampleH = Math.min(24, cellH);
 
-  for (let i = 0; i < data.length; i += 4) {
-    const alpha = data[i + 3];
-    if (alpha < 8) continue;
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    if (r < 248 || g < 248 || b < 248) contentPixels++;
+  for (let gy = 0; gy < grid; gy++) {
+    for (let gx = 0; gx < grid; gx++) {
+      const x = Math.min(gx * cellW, Math.max(0, canvas.width - sampleW));
+      const y = Math.min(gy * cellH, Math.max(0, canvas.height - sampleH));
+      const { data } = ctx.getImageData(x, y, sampleW, sampleH);
+      for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3];
+        if (alpha < 8) continue;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (r < 248 || g < 248 || b < 248) contentPixels++;
+      }
+    }
   }
 
-  return contentPixels < 8;
+  return contentPixels < 12;
 }
 
 export function copyCanvasTo(
@@ -100,9 +109,12 @@ export async function renderPdfPageToCanvas(
   scale: number
 ): Promise<HTMLCanvasElement> {
   const baseScale = clampPdfRenderScale(page, scale);
-  const scales = LEGACY
-    ? [...new Set([baseScale, baseScale * 0.9, 0.72, 0.6, 0.5].map(s => Math.round(s * 100) / 100))]
-    : [baseScale];
+  const scaleSteps = LEGACY
+    ? [baseScale, baseScale * 0.9, 0.72, 0.6, 0.5]
+    : [baseScale, baseScale * 0.85, 1.0, 0.75, 0.6];
+  const scales = [
+    ...new Set(scaleSteps.map(s => Math.round(s * 100) / 100)),
+  ].filter(s => s >= 0.25);
 
   let lastError: unknown;
   for (const attemptScale of scales) {
@@ -142,7 +154,7 @@ async function renderPdfPageToCanvasOnce(
   const timeoutMs = LEGACY ? 240_000 : 180_000;
   await promiseWithTimeout(renderTask.promise, timeoutMs, "PDF render timeout");
 
-  if (LEGACY && isCanvasMostlyBlank(canvas)) {
+  if (isCanvasMostlyBlank(canvas)) {
     throw new Error("PDF render blank");
   }
 

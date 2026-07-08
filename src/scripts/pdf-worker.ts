@@ -2,11 +2,35 @@ import "@/scripts/legacy-polyfills";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import workerUrl from "@/scripts/pdf-worker-shim?worker&url";
 import { getAssetPath } from "@/utils/withBase";
+import { isPasswordPdfError } from "@/scripts/pdf-errors";
 
 const PDFJS_VERSION = "6.1.200";
 const PDFJS_CDN = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}`;
 
 let configured = false;
+let localAssetsPromise: Promise<boolean> | null = null;
+
+/** Keep a detached-safe copy of PDF bytes for retries and re-open. */
+export function clonePdfBytes(data: Uint8Array): Uint8Array {
+  return data.slice();
+}
+
+/** Check whether self-hosted pdf.js assets are reachable (cmaps/wasm/fonts). */
+export function probeLocalPdfAssets(): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(true);
+  if (!localAssetsPromise) {
+    localAssetsPromise = (async () => {
+      try {
+        const url = pdfjsAssetUrl("cmaps/LICENSE", false);
+        const response = await fetch(url, { method: "GET", cache: "force-cache" });
+        return response.ok;
+      } catch {
+        return false;
+      }
+    })();
+  }
+  return localAssetsPromise;
+}
 
 /** Win7 Chrome 109+ still supports WebAssembly — required for many PDF image codecs. */
 export function supportsWebAssembly(): boolean {
@@ -99,8 +123,23 @@ export async function loadPdfBytes(
   options?: LoadPdfOptions
 ): Promise<PdfDocumentProxy> {
   const pdfjs = ensurePdfWorker();
+  const payload = clonePdfBytes(data);
   const wasm = supportsWebAssembly();
-  const attempts: LoadPdfOptions[] = [
+  const localAssets = await probeLocalPdfAssets();
+
+  const cdnFirst: LoadPdfOptions[] = [
+    { ...options, useWasm: true, useCdn: true },
+    { ...options, useWasm: wasm, useCdn: true },
+    {
+      ...options,
+      useWasm: false,
+      useCdn: true,
+      isOffscreenCanvasSupported: false,
+      isImageDecoderSupported: false,
+    },
+  ];
+
+  const localFirst: LoadPdfOptions[] = [
     { ...options, useWasm: options?.useWasm ?? wasm },
     { ...options, useWasm: true },
     { ...options, useWasm: wasm, useCdn: true },
@@ -121,12 +160,15 @@ export async function loadPdfBytes(
     },
   ];
 
+  const attempts = localAssets ? localFirst : [...cdnFirst, ...localFirst];
+
   let lastError: unknown;
   for (const attempt of attempts) {
     try {
-      return await pdfjs.getDocument(buildDocumentInit(data, attempt)).promise;
+      return await pdfjs.getDocument(buildDocumentInit(payload, attempt)).promise;
     } catch (err) {
       lastError = err;
+      if (isPasswordPdfError(err)) break;
     }
   }
 

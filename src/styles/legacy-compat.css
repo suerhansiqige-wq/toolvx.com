@@ -351,6 +351,47 @@
   cursor: pointer;
 }
 
+.app-alert-dialog__input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: inherit;
+  background: #ffffff;
+}
+
+[data-theme="dark"] .app-alert-dialog__input,
+.dark .app-alert-dialog__input {
+  border-color: #4b5563;
+  background: #1f2937;
+  color: #e5e7eb;
+}
+
+.app-alert-dialog__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.app-alert-dialog__actions .app-alert-dialog__btn {
+  flex: 1 1 0;
+}
+
+.app-alert-dialog__btn--secondary {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+[data-theme="dark"] .app-alert-dialog__btn--secondary,
+.dark .app-alert-dialog__btn--secondary {
+  color: #e5e7eb;
+  background: #374151;
+}
+
 [data-theme="dark"] .app-alert-dialog__btn,
 .dark .app-alert-dialog__btn {
   color: #042f2e;

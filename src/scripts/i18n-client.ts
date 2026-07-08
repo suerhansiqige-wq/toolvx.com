@@ -217,6 +217,77 @@ export function showAppAlert(message: string): void {
   btn.focus();
 }
 
+/** Modal prompt with a single-line input (e.g. PDF password). Returns null when cancelled. */
+export function showAppPrompt(
+  message: string,
+  options?: { inputType?: string; placeholder?: string }
+): Promise<string | null> {
+  document.getElementById("app-alert-overlay")?.remove();
+
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.id = "app-alert-overlay";
+    overlay.className = "app-alert-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "app-prompt-message");
+
+    const dialog = document.createElement("div");
+    dialog.className = "app-alert-dialog";
+
+    const msg = document.createElement("p");
+    msg.id = "app-prompt-message";
+    msg.className = "app-alert-dialog__message";
+    msg.textContent = message;
+
+    const input = document.createElement("input");
+    input.type = options?.inputType ?? "text";
+    input.className = "app-alert-dialog__input";
+    input.placeholder = options?.placeholder ?? "";
+    input.autocomplete = "off";
+
+    const actions = document.createElement("div");
+    actions.className = "app-alert-dialog__actions";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "app-alert-dialog__btn app-alert-dialog__btn--secondary interactive";
+    cancelBtn.textContent = t("dialog_cancel");
+
+    const okBtn = document.createElement("button");
+    okBtn.type = "button";
+    okBtn.className = "app-alert-dialog__btn interactive";
+    okBtn.textContent = t("dialog_ok");
+
+    const finish = (value: string | null) => {
+      overlay.remove();
+      resolve(value);
+    };
+
+    cancelBtn.addEventListener("click", () => finish(null));
+    okBtn.addEventListener("click", () => finish(input.value));
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        finish(input.value);
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        finish(null);
+      }
+    });
+    overlay.addEventListener("click", e => {
+      if (e.target === overlay) finish(null);
+    });
+
+    actions.append(cancelBtn, okBtn);
+    dialog.append(msg, input, actions);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    input.focus();
+  });
+}
+
 export function applyI18n(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>("[data-i18n]").forEach(el => {
     const key = el.getAttribute("data-i18n");

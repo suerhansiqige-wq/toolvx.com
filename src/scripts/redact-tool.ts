@@ -1,5 +1,5 @@
 import "@/scripts/legacy-polyfills";
-import { loadPdfBytes, pdfjsLib, ensurePdfWorker, isLegacyPdfEnvironment } from "@/scripts/pdf-worker";
+import { loadPdfBytes, pdfjsLib, ensurePdfWorker, isLegacyPdfEnvironment, clonePdfBytes, probeLocalPdfAssets } from "@/scripts/pdf-worker";
 import {
   canvasToJpegBlob,
   copyCanvasTo,
@@ -9,8 +9,14 @@ import {
 } from "@/scripts/pdf-render";
 import { PDFDocument } from "pdf-lib";
 import { REDACT_PALETTE } from "@/scripts/redact-colors";
-import { onI18nReady, showAppAlert, t } from "@/scripts/i18n-client";
-import { openFileInput } from "@/scripts/file-input";
+import {
+  classifyPdfLoadError,
+  isIncorrectPasswordPdfError,
+  isPasswordPdfError,
+  isPdfFileBytes,
+} from "@/scripts/pdf-errors";
+import { onI18nReady, showAppAlert, showAppPrompt, t } from "@/scripts/i18n-client";
+import { openFileInput, prepareLegacyFileInput } from "@/scripts/file-input";
 
 ensurePdfWorker();
 
@@ -324,34 +330,57 @@ function saveCurrentPageToStore() {
   store.canvas = newCanvas;
 }
 
+type PdfLoadStrategy = {
+  useWasm?: boolean;
+  useCdn?: boolean;
+  isOffscreenCanvasSupported?: boolean;
+  isImageDecoderSupported?: boolean;
+};
+
+const PDF_RENDER_RETRY_STRATEGIES: PdfLoadStrategy[] = [
+  {},
+  { useWasm: true },
+  { useWasm: true, useCdn: true },
+  {
+    useWasm: false,
+    useCdn: true,
+    isOffscreenCanvasSupported: false,
+    isImageDecoderSupported: false,
+  },
+];
+
 async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement) {
-  if (!pdfDoc) return;
-
-  const drawPage = async () => {
-    const page = await pdfDoc!.getPage(pageNum);
-    const rendered = await renderPdfPageToCanvas(page, PDF_RENDER_SCALE);
-    copyCanvasTo(rendered, target);
-    const base = page.getViewport({ scale: 1 });
-    pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
-    return rendered;
-  };
-
-  try {
-    const rendered = await drawPage();
-    if (!LEGACY_PDF || !isCanvasMostlyBlank(rendered)) return;
-  } catch {
-    /* retry below with wasm-enabled document */
-  }
-
-  if (!pdfSourceBytes) {
+  if (!pdfSourceBytes?.length) {
     throw new Error("PDF render blank");
   }
 
-  pdfDoc = await loadPdfBytes(pdfSourceBytes, { useWasm: true });
-  const rendered = await drawPage();
-  if (isCanvasMostlyBlank(rendered)) {
-    throw new Error("PDF render blank");
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < PDF_RENDER_RETRY_STRATEGIES.length; attempt++) {
+    try {
+      const strategy = PDF_RENDER_RETRY_STRATEGIES[attempt];
+      if (attempt === 0 && pdfDoc) {
+        /* reuse document opened in loadPdfFile */
+      } else {
+        pdfDoc = await loadPdfBytes(pdfSourceBytes, strategy);
+      }
+
+      const page = await pdfDoc!.getPage(pageNum);
+      const rendered = await renderPdfPageToCanvas(page, PDF_RENDER_SCALE);
+      if (isCanvasMostlyBlank(rendered)) {
+        throw new Error("PDF render blank");
+      }
+
+      copyCanvasTo(rendered, target);
+      const base = page.getViewport({ scale: 1 });
+      pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
+      return;
+    } catch (err) {
+      lastError = err;
+    }
   }
+
+  throw lastError ?? new Error("PDF render blank");
 }
 
 function canvasToThumbUrl(canvas: HTMLCanvasElement, quality = 0.5): string {
@@ -638,6 +667,37 @@ async function upsertThumbForPage(pageNum: number) {
   btn.append(img, label);
 }
 
+async function openPdfDocument(bytes: Uint8Array, password?: string) {
+  try {
+    return await loadPdfBytes(bytes, { password });
+  } catch (err) {
+    if (password && isIncorrectPasswordPdfError(err)) {
+      throw err;
+    }
+    if (!password && isPasswordPdfError(err)) {
+      const entered = await showAppPrompt(t("error_pdf_password_prompt"), {
+        inputType: "password",
+        placeholder: t("password"),
+      });
+      if (!entered) throw err;
+      return openPdfDocument(bytes, entered);
+    }
+    throw err;
+  }
+}
+
+function resetRedactState() {
+  isPdf = false;
+  pdfDoc = null;
+  pdfSourceBytes = null;
+  pdfPageSizePts = [];
+  pageStores = [];
+  totalPages = 1;
+  currentPage = 1;
+  originalImageSnapshot = null;
+  thumbViewStart = 0;
+}
+
 async function loadPdfFile(file: File) {
   isPdf = true;
   originalFileName = file.name.replace(/\.pdf$/i, "") || "document";
@@ -645,10 +705,21 @@ async function loadPdfFile(file: File) {
 
   setRedactLoading(true);
   try {
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    const bytes = clonePdfBytes(new Uint8Array(await file.arrayBuffer()));
+    if (bytes.byteLength === 0) {
+      throw new Error("PDF empty");
+    }
+    if (!isPdfFileBytes(bytes)) {
+      throw new Error("Invalid PDF");
+    }
+
     pdfSourceBytes = bytes;
-    pdfDoc = await loadPdfBytes(bytes);
+    pdfDoc = await openPdfDocument(bytes);
     totalPages = pdfDoc.numPages;
+    if (totalPages < 1) {
+      throw new Error("Invalid PDF");
+    }
+
     pdfPageSizePts = new Array(totalPages);
     pageStores = Array.from({ length: totalPages }, () => ({
       canvas: document.createElement("canvas"),
@@ -683,16 +754,16 @@ async function loadPdfFile(file: File) {
 }
 
 function mapRedactLoadError(err: unknown): string {
-  if (err instanceof Error && err.message) {
-    if (err.message.includes("PDF render timeout")) return t("error_pdf_render_timeout");
-    if (err.message.includes("PDF render blank")) return t("error_pdf_render_timeout");
-    if (err.message.includes("withResolvers")) return t("error_browser_unsupported");
-    if (err.message.includes("Canvas")) return t("error_pdf_render_timeout");
-  }
-  return t("redact_file_error");
+  return t(classifyPdfLoadError(err));
 }
 
 async function handleFile(file: File) {
+  if (!file.size) {
+    showAppAlert(t("error_pdf_empty"));
+    return;
+  }
+
+  setRedactLoading(true);
   const isPdfFile =
     file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   try {
@@ -709,8 +780,11 @@ async function handleFile(file: File) {
     }
   } catch (err) {
     console.error(err);
+    resetRedactState();
+    showWorkspace(false);
     showAppAlert(mapRedactLoadError(err));
   } finally {
+    setRedactLoading(false);
     const input = $("redact-file-input") as HTMLInputElement | null;
     if (input) input.value = "";
   }
@@ -1081,8 +1155,7 @@ function downloadBytes(data: Blob | Uint8Array, filename: string, mime: string) 
 
 function buildColorPalette() {
   const grid = $("redact-color-palette");
-  if (!grid) return;
-  grid.innerHTML = "";
+  if (!grid || grid.childElementCount > 0) return;
   REDACT_PALETTE.forEach(color => {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -1124,6 +1197,9 @@ function clearFillColor() {
 }
 
 function bindPointerEvents() {
+  if (canvas.dataset.redactPointerBound === "1") return;
+  canvas.dataset.redactPointerBound = "1";
+
   canvas.addEventListener("pointerdown", e => {
     if (!hasFillColor && effectType === "blackout") return;
     canvas.setPointerCapture(e.pointerId);
@@ -1156,42 +1232,103 @@ function bindPointerEvents() {
 }
 
 function bindFileInput(input: HTMLInputElement) {
+  prepareLegacyFileInput(input);
+
+  if (document.documentElement.dataset.redactFileDelegated === "1") return;
+  document.documentElement.dataset.redactFileDelegated = "1";
+
   const onFiles = (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
     void handleFile(file);
   };
 
-  input.addEventListener("change", () => onFiles(input.files));
+  document.addEventListener("change", e => {
+    const target = e.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    if (target.id !== "redact-file-input") return;
+    onFiles(target.files);
+  });
 
-  const bindDrop = (el: HTMLElement) => {
-    el.addEventListener("dragover", e => {
+  document.addEventListener(
+    "dragover",
+    e => {
+      const zone = (e.target as HTMLElement | null)?.closest?.(".redact-dropzone");
+      if (!zone?.closest("#redact-root")) return;
       e.preventDefault();
-      el.classList.add("dragover");
-    });
-    el.addEventListener("dragleave", () => el.classList.remove("dragover"));
-    el.addEventListener("drop", e => {
+      zone.classList.add("dragover");
+    },
+    true
+  );
+
+  document.addEventListener(
+    "dragleave",
+    e => {
+      const zone = (e.target as HTMLElement | null)?.closest?.(".redact-dropzone");
+      if (!zone?.closest("#redact-root")) return;
+      zone.classList.remove("dragover");
+    },
+    true
+  );
+
+  document.addEventListener(
+    "drop",
+    e => {
+      const zone = (e.target as HTMLElement | null)?.closest?.(".redact-dropzone");
+      if (!zone?.closest("#redact-root")) return;
       e.preventDefault();
-      el.classList.remove("dragover");
+      zone.classList.remove("dragover");
       onFiles(e.dataTransfer?.files ?? null);
-    });
-    el.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openFileInput(input);
-      }
-    });
-  };
+    },
+    true
+  );
 
-  const empty = $("redact-empty");
-  const floating = $("redact-floating-upload");
-  if (empty) bindDrop(empty);
-  if (floating) bindDrop(floating);
+  document.addEventListener("keydown", e => {
+    const zone = (e.target as HTMLElement | null)?.closest?.(".redact-dropzone");
+    if (!zone?.closest("#redact-root")) return;
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    const input = $("redact-file-input") as HTMLInputElement | null;
+    if (input) openFileInput(input);
+  });
 }
 
-let initialized = false;
+function bindRedactButton(id: string, handler: () => void) {
+  const btn = $(id);
+  if (!btn || btn.dataset.redactBound === "1") return;
+  btn.dataset.redactBound = "1";
+  btn.addEventListener("click", handler);
+}
+
+function bindGlobalRedactListeners() {
+  if (document.documentElement.dataset.redactGlobalBound === "1") return;
+  document.documentElement.dataset.redactGlobalBound = "1";
+
+  document.addEventListener("keydown", e => {
+    if (!$("redact-page")?.classList.contains("redact-page--editing")) return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
+      return;
+    if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
+      e.preventDefault();
+      redo();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (!$("redact-page")) return;
+    syncCanvasAreaHeight();
+    fitCanvasToContainer();
+    syncThumbSidebarHeight();
+  });
+}
 
 function initRedactTool() {
+  if (!$("redact-root")) return;
+
   const canvasEl = $("redact-canvas") as HTMLCanvasElement | null;
   const overlayEl = $("redact-overlay") as HTMLCanvasElement | null;
   const fileInput = $("redact-file-input") as HTMLInputElement | null;
@@ -1205,93 +1342,82 @@ function initRedactTool() {
   ctx = c;
   overlayCtx = o;
 
-  if (!initialized) {
-    initialized = true;
-    buildColorPalette();
-    bindPointerEvents();
-    bindFileInput(fileInput);
+  buildColorPalette();
+  bindPointerEvents();
+  bindFileInput(fileInput);
+  bindGlobalRedactListeners();
 
-    $("redact-undo")?.addEventListener("click", undo);
-    $("redact-redo")?.addEventListener("click", redo);
-    $("redact-reset")?.addEventListener("click", resetToOriginal);
-    $("redact-export-btn")?.addEventListener("click", () => {
-      void exportFile().catch(reportExportError);
-    });
-    $("redact-clear-color")?.addEventListener("click", clearFillColor);
-    $("redact-prev-page")?.addEventListener("click", () => void switchPage(-1));
-    $("redact-next-page")?.addEventListener("click", () => void switchPage(1));
+  bindRedactButton("redact-undo", undo);
+  bindRedactButton("redact-redo", redo);
+  bindRedactButton("redact-reset", resetToOriginal);
+  bindRedactButton("redact-export-btn", () => {
+    void exportFile().catch(reportExportError);
+  });
+  bindRedactButton("redact-clear-color", clearFillColor);
+  bindRedactButton("redact-prev-page", () => void switchPage(-1));
+  bindRedactButton("redact-next-page", () => void switchPage(1));
+  bindRedactButton("redact-thumb-prev", () => {
+    thumbViewStart = Math.max(0, thumbViewStart - THUMBS_PER_VIEW);
+    renderThumbWindow();
+  });
+  bindRedactButton("redact-thumb-next", () => {
+    thumbViewStart = Math.min(
+      Math.max(0, totalPages - 1),
+      thumbViewStart + THUMBS_PER_VIEW
+    );
+    renderThumbWindow();
+  });
 
-    $("redact-thumb-prev")?.addEventListener("click", () => {
-      thumbViewStart = Math.max(0, thumbViewStart - THUMBS_PER_VIEW);
-      renderThumbWindow();
-    });
-    $("redact-thumb-next")?.addEventListener("click", () => {
-      thumbViewStart = Math.min(
-        Math.max(0, totalPages - 1),
-        thumbViewStart + THUMBS_PER_VIEW
-      );
-      renderThumbWindow();
-    });
-
-    const effectSelect = $("redact-effect-type") as HTMLSelectElement | null;
-    effectSelect?.addEventListener("change", () => {
+  const effectSelect = $("redact-effect-type") as HTMLSelectElement | null;
+  if (effectSelect && effectSelect.dataset.redactBound !== "1") {
+    effectSelect.dataset.redactBound = "1";
+    effectSelect.addEventListener("change", () => {
       setEffectType(effectSelect.value as EffectType);
     });
+  }
 
-    const mosaicRange = $("redact-mosaic-size") as HTMLInputElement | null;
-    mosaicRange?.addEventListener("input", () => {
+  const mosaicRange = $("redact-mosaic-size") as HTMLInputElement | null;
+  if (mosaicRange && mosaicRange.dataset.redactBound !== "1") {
+    mosaicRange.dataset.redactBound = "1";
+    mosaicRange.addEventListener("input", () => {
       mosaicSize = Number(mosaicRange.value) || DEFAULT_MOSAIC;
       const label = $("redact-mosaic-value");
       if (label) label.textContent = String(mosaicSize);
     });
+  }
 
-    const blurRange = $("redact-blur-radius") as HTMLInputElement | null;
-    blurRange?.addEventListener("input", () => {
+  const blurRange = $("redact-blur-radius") as HTMLInputElement | null;
+  if (blurRange && blurRange.dataset.redactBound !== "1") {
+    blurRange.dataset.redactBound = "1";
+    blurRange.addEventListener("input", () => {
       blurRadius = Number(blurRange.value) || DEFAULT_BLUR;
       const label = $("redact-blur-value");
       if (label) label.textContent = String(blurRadius);
     });
+  }
 
-    document.addEventListener("keydown", e => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
-        return;
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      }
-      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
-        e.preventDefault();
-        redo();
-      }
-    });
-
-    window.addEventListener("resize", () => {
+  const controlPanel = $("redact-control-panel");
+  if (
+    controlPanel &&
+    controlPanel.dataset.redactObserved !== "1" &&
+    typeof ResizeObserver !== "undefined"
+  ) {
+    controlPanel.dataset.redactObserved = "1";
+    const observer = new ResizeObserver(() => {
       syncCanvasAreaHeight();
       fitCanvasToContainer();
       syncThumbSidebarHeight();
     });
-
-    const controlPanel = $("redact-control-panel");
-    if (controlPanel && typeof ResizeObserver !== "undefined") {
-      const observer = new ResizeObserver(() => {
-        syncCanvasAreaHeight();
-        fitCanvasToContainer();
-        syncThumbSidebarHeight();
-      });
-      observer.observe(controlPanel);
-    }
+    observer.observe(controlPanel);
   }
 
   if (pageStores.length === 0) {
     showWorkspace(false);
   }
   applyRedactDocumentMeta();
+  void probeLocalPdfAssets();
 }
 
 onI18nReady(() => {
-  initRedactTool();
-});
-
-document.addEventListener("astro:page-load", () => {
   initRedactTool();
 });

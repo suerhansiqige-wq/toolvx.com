@@ -94,7 +94,17 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "Your browser is too old for this tool. Please use Chrome 49+ or Firefox 52+ on Windows 7.",
     error_pdf_render_timeout:
       "PDF rendering timed out or failed. Try a smaller file, or use a newer browser.",
+    error_pdf_invalid:
+      "This file is not a valid PDF or may be corrupted. Try another file.",
+    error_pdf_empty: "The selected file is empty.",
+    error_pdf_password_required:
+      "This PDF is password-protected. Enter the password to open it.",
+    error_pdf_password_incorrect: "Incorrect PDF password. Please try again.",
+    error_pdf_password_prompt: "Enter the PDF password to open this document.",
+    error_pdf_assets:
+      "PDF viewer components failed to load. Refresh the page or check your network connection.",
     dialog_ok: "OK",
+    dialog_cancel: "Cancel",
     seo_how_to_heading: "How to use this tool",
     seo_faq_heading: "Frequently asked questions",
     redact_badge: "Local Image & PDF Redaction",
@@ -264,7 +274,14 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "当前浏览器版本过旧，无法运行此工具。Win7 请使用 Chrome 49+ 或 Firefox 52+。",
     error_pdf_render_timeout:
       "PDF 渲染超时或失败，请尝试较小文件，或换用较新浏览器。",
+    error_pdf_invalid: "该文件不是有效的 PDF，或文件已损坏，请尝试其他文件。",
+    error_pdf_empty: "所选文件为空。",
+    error_pdf_password_required: "此 PDF 已加密，请输入密码后打开。",
+    error_pdf_password_incorrect: "PDF 密码不正确，请重试。",
+    error_pdf_password_prompt: "请输入 PDF 密码以打开此文档。",
+    error_pdf_assets: "PDF 组件加载失败，请刷新页面或检查网络连接。",
     dialog_ok: "确定",
+    dialog_cancel: "取消",
     redact_badge: "本地图片与 PDF 打码",
     redact_intro_title: "100% 本地数据打码",
     redact_intro_lead:
@@ -430,7 +447,17 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "Tu navegador es demasiado antiguo. En Windows 7 usa Chrome 49+ o Firefox 52+.",
     error_pdf_render_timeout:
       "La renderización del PDF falló o expiró. Prueba un archivo más pequeño o un navegador más nuevo.",
+    error_pdf_invalid:
+      "Este archivo no es un PDF válido o está dañado. Pruebe otro archivo.",
+    error_pdf_empty: "El archivo seleccionado está vacío.",
+    error_pdf_password_required:
+      "Este PDF está protegido con contraseña. Introduzca la contraseña para abrirlo.",
+    error_pdf_password_incorrect: "Contraseña incorrecta. Inténtelo de nuevo.",
+    error_pdf_password_prompt: "Introduzca la contraseña del PDF para abrir este documento.",
+    error_pdf_assets:
+      "No se pudieron cargar los componentes del visor PDF. Actualice la página o compruebe su conexión.",
     dialog_ok: "Aceptar",
+    dialog_cancel: "Cancelar",
     redact_badge: "Redacción local de imagen y PDF",
     redact_intro_title: "Redacción 100% local",
     redact_intro_lead:
@@ -598,7 +625,17 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "お使いのブラウザは古すぎます。Windows 7 では Chrome 49+ または Firefox 52+ をご利用ください。",
     error_pdf_render_timeout:
       "PDF の描画がタイムアウトまたは失敗しました。ファイルを小さくするか、新しいブラウザをお試しください。",
+    error_pdf_invalid:
+      "有効な PDF ファイルではないか、ファイルが破損しています。別のファイルをお試しください。",
+    error_pdf_empty: "選択したファイルが空です。",
+    error_pdf_password_required:
+      "この PDF はパスワードで保護されています。パスワードを入力して開いてください。",
+    error_pdf_password_incorrect: "PDF のパスワードが正しくありません。もう一度お試しください。",
+    error_pdf_password_prompt: "この PDF を開くにはパスワードを入力してください。",
+    error_pdf_assets:
+      "PDF ビューアのコンポーネントを読み込めませんでした。ページを更新するか、ネットワーク接続を確認してください。",
     dialog_ok: "OK",
+    dialog_cancel: "キャンセル",
     redact_badge: "ローカル画像・PDF 墨消し",
     redact_intro_title: "100% ローカル墨消し",
     redact_intro_lead:
