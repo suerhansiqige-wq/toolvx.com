@@ -1,0 +1,121 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import IconSearch from "@/assets/icons/IconSearch.svg";
+import { useTranslations } from "@/i18n";
+
+type Props = {
+  locale?: string;
+  class?: string;
+  variant?: "inline" | "menu";
+};
+
+const { locale = "en", class: className, variant = "inline" } = Astro.props;
+const t = useTranslations(locale);
+const searchHref = getRelativeLocaleUrl(locale, "search");
+---
+
+<form
+  action={searchHref}
+  method="get"
+  role="search"
+  class:list={[
+    "header-search",
+    variant === "menu" && "header-search--menu",
+    className,
+  ]}
+>
+  <label class="sr-only" for={`header-search-input-${variant}`} data-i18n="site.nav.search">
+    {t.nav.search}
+  </label>
+  <span class="header-search__icon" aria-hidden="true">
+    <IconSearch class="size-4" />
+  </span>
+  <input
+    id={`header-search-input-${variant}`}
+    type="search"
+    name="q"
+    class="header-search__input"
+    placeholder={t.nav.search}
+    autocomplete="off"
+    enterkeyhint="search"
+    data-i18n-placeholder="blog.a11y.searchPlaceholder"
+  />
+</form>
+
+<style>
+  .header-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+    background: color-mix(in oklab, var(--muted) 42%, var(--background));
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 55%, transparent),
+      0 1px 2px color-mix(in oklab, black 4%, transparent);
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .header-search:focus-within {
+    border-color: color-mix(in oklab, var(--accent) 42%, transparent);
+    background: var(--background);
+    box-shadow:
+      0 0 0 3px color-mix(in oklab, var(--accent) 14%, transparent),
+      0 4px 14px color-mix(in oklab, var(--accent) 10%, transparent);
+  }
+
+  .header-search__icon {
+    pointer-events: none;
+    position: absolute;
+    inset-inline-start: 0.95rem;
+    display: inline-flex;
+    color: color-mix(in oklab, var(--muted-foreground) 88%, transparent);
+    transition: color 0.2s ease;
+  }
+
+  .header-search:focus-within .header-search__icon {
+    color: var(--accent);
+  }
+
+  .header-search__input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    padding: 0.65rem 1rem 0.65rem 2.65rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--foreground);
+    outline: none;
+  }
+
+  .header-search__input::placeholder {
+    color: color-mix(in oklab, var(--muted-foreground) 78%, transparent);
+  }
+
+  .header-search__input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    height: 1rem;
+    width: 1rem;
+    margin-inline-end: 0.15rem;
+    cursor: pointer;
+    opacity: 0.55;
+    background:
+      linear-gradient(45deg, transparent 44%, var(--muted-foreground) 44%, var(--muted-foreground) 56%, transparent 56%),
+      linear-gradient(-45deg, transparent 44%, var(--muted-foreground) 44%, var(--muted-foreground) 56%, transparent 56%);
+  }
+
+  .header-search--menu {
+    border-radius: 1rem;
+  }
+
+  :global(.dark) .header-search {
+    background: color-mix(in oklab, var(--muted) 28%, var(--background));
+    box-shadow: inset 0 1px 0 color-mix(in oklab, white 6%, transparent);
+  }
+</style>
