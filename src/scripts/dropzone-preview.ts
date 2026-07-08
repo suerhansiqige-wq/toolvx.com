@@ -1,4 +1,5 @@
 import { loadPdfBytes, pdfjsLib } from "@/scripts/pdf-worker";
+import { canvasToJpegBlob, renderPdfPageToCanvas } from "@/scripts/pdf-render";
 import { t } from "@/scripts/i18n-client";
 import { openImageLightbox } from "@/scripts/image-lightbox";
 import {
@@ -64,16 +65,13 @@ async function renderPdfPageThumbnail(
   scale = 0.35
 ): Promise<string> {
   const page = await pdf.getPage(pageNum);
-  const viewport = page.getViewport({ scale });
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.floor(viewport.width);
-  canvas.height = Math.floor(viewport.height);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas unsupported");
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-  return canvas.toDataURL("image/jpeg", 0.85);
+  const canvas = await renderPdfPageToCanvas(page, scale);
+  try {
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    const blob = await canvasToJpegBlob(canvas, 0.85);
+    return URL.createObjectURL(blob);
+  }
 }
 
 function shouldShowMergePreview(zone: HTMLElement): boolean {
@@ -587,16 +585,19 @@ async function renderSplitPdfPreview(
 
     for (let i = 1; i <= pageCount; i++) {
       const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 0.28 });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas unsupported");
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-      const src = canvas.toDataURL("image/jpeg", 0.75);
+      let src = "";
+      try {
+        const canvas = await renderPdfPageToCanvas(page, 0.28);
+        try {
+          src = canvas.toDataURL("image/jpeg", 0.75);
+        } catch {
+          const blob = await canvasToJpegBlob(canvas, 0.75);
+          src = URL.createObjectURL(blob);
+          trackUrl(zone, src);
+        }
+      } catch {
+        src = "";
+      }
       const placeholder = thumbs.children[i];
       if (placeholder) {
         thumbs.replaceChild(

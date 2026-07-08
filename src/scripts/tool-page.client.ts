@@ -371,6 +371,8 @@ const PROCESS_ERROR_KEYS: Record<string, string> = {
   "No valid pages specified": "error_no_valid_pages",
   "Cannot delete all pages": "error_delete_all_pages",
   "Promise.withResolvers is not a function": "error_browser_unsupported",
+  "PDF render timeout": "error_pdf_render_timeout",
+  "JPEG encode failed": "error_pdf_render_timeout",
 };
 
 function mapProcessError(err: unknown): string {
