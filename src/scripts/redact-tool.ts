@@ -338,15 +338,25 @@ type PdfLoadStrategy = {
 };
 
 const PDF_RENDER_RETRY_STRATEGIES: PdfLoadStrategy[] = [
+  {
+    useWasm: true,
+    useCdn: true,
+    isOffscreenCanvasSupported: false,
+    isImageDecoderSupported: false,
+  },
+  {
+    useWasm: true,
+    useCdn: false,
+    isOffscreenCanvasSupported: false,
+    isImageDecoderSupported: false,
+  },
   { useWasm: true, useCdn: true },
-  { useWasm: true },
   {
     useWasm: false,
     useCdn: true,
     isOffscreenCanvasSupported: false,
     isImageDecoderSupported: false,
   },
-  {},
 ];
 
 async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement) {
@@ -665,7 +675,13 @@ async function upsertThumbForPage(pageNum: number) {
 
 async function openPdfDocument(bytes: Uint8Array, password?: string) {
   try {
-    return await loadPdfBytes(bytes, { password, useWasm: true, useCdn: true });
+    return await loadPdfBytes(bytes, {
+      password,
+      useWasm: true,
+      useCdn: true,
+      isOffscreenCanvasSupported: false,
+      isImageDecoderSupported: false,
+    });
   } catch (err) {
     if (password && isIncorrectPasswordPdfError(err)) {
       throw err;

@@ -87,18 +87,15 @@ function buildDocumentInit(
     standardFontDataUrl: pdfjsAssetUrl("standard_fonts", useCdn),
     wasmUrl: pdfjsAssetUrl("wasm", useCdn),
     useSystemFonts: true,
-    isOffscreenCanvasSupported: options?.isOffscreenCanvasSupported ?? !legacy,
+    isOffscreenCanvasSupported: options?.isOffscreenCanvasSupported ?? false,
     isImageDecoderSupported: options?.isImageDecoderSupported ?? false,
   };
 }
 
 function pdfjsWorkerSrc(): string {
   if (typeof window === "undefined") return workerUrl;
-  if (isLegacyPdfEnvironment()) {
-    const rel = getAssetPath("pdfjs/pdf.worker.min.mjs");
-    return new URL(rel, window.location.origin).href;
-  }
-  return workerUrl;
+  const rel = getAssetPath("pdfjs/pdf.worker.min.mjs");
+  return new URL(rel, window.location.origin).href;
 }
 
 /** Configure pdf.js worker once (legacy build + polyfilled worker for older browsers). */
@@ -135,6 +132,13 @@ export async function loadPdfBytes(
   const localAssets = await probeLocalPdfAssets();
 
   const cdnFirst: LoadPdfOptions[] = [
+    {
+      ...options,
+      useWasm: true,
+      useCdn: true,
+      isOffscreenCanvasSupported: false,
+      isImageDecoderSupported: false,
+    },
     { ...options, useWasm: true, useCdn: true },
     { ...options, useWasm: wasm, useCdn: true },
     {
