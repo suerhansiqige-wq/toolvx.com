@@ -11,7 +11,7 @@ export const HD_JPG_RENDER = {
 export const ZIP_JPG_RENDER = HD_JPG_RENDER;
 
 export function getPdfRenderScale(modernScale = 1.5): number {
-  return LEGACY ? Math.min(modernScale, 1.2) : modernScale;
+  return LEGACY ? Math.min(modernScale, 1) : modernScale;
 }
 
 export function copyCanvasTo(
@@ -49,6 +49,25 @@ export async function renderPdfPageToCanvas(
   page: pdfjsLib.PDFPageProxy,
   scale: number
 ): Promise<HTMLCanvasElement> {
+  const scales = LEGACY
+    ? [...new Set([scale, scale * 0.9, 1, 0.85, 0.72].map(s => Math.round(s * 100) / 100))]
+    : [scale];
+
+  let lastError: unknown;
+  for (const attemptScale of scales) {
+    try {
+      return await renderPdfPageToCanvasOnce(page, attemptScale);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
+async function renderPdfPageToCanvasOnce(
+  page: pdfjsLib.PDFPageProxy,
+  scale: number
+): Promise<HTMLCanvasElement> {
   const viewport = page.getViewport({ scale });
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.floor(viewport.width));
@@ -69,7 +88,7 @@ export async function renderPdfPageToCanvas(
     canvas,
   });
 
-  const timeoutMs = LEGACY ? 90_000 : 180_000;
+  const timeoutMs = LEGACY ? 240_000 : 180_000;
   await promiseWithTimeout(renderTask.promise, timeoutMs, "PDF render timeout");
   return canvas;
 }

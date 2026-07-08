@@ -8,7 +8,7 @@ import {
 } from "@/scripts/pdf-render";
 import { PDFDocument } from "pdf-lib";
 import { REDACT_PALETTE } from "@/scripts/redact-colors";
-import { onI18nReady, t } from "@/scripts/i18n-client";
+import { onI18nReady, showAppAlert, t } from "@/scripts/i18n-client";
 
 ensurePdfWorker();
 
@@ -580,7 +580,7 @@ async function handleFile(file: File) {
     }
   } catch (err) {
     console.error(err);
-    alert(mapRedactLoadError(err));
+    showAppAlert(mapRedactLoadError(err));
   } finally {
     const input = $("redact-file-input") as HTMLInputElement | null;
     if (input) input.value = "";
@@ -909,10 +909,10 @@ function applyRedactDocumentMeta() {
 function reportExportError(err: unknown) {
   console.error(err);
   if (err instanceof Error && err.message === "REDACT_EXPORT_SIZE") {
-    alert(t("redact_export_error_size"));
+    showAppAlert(t("redact_export_error_size"));
     return;
   }
-  alert(t("redact_export_error_generic"));
+  showAppAlert(t("redact_export_error_generic"));
 }
 
 async function exportFile() {

@@ -249,6 +249,64 @@
   background: #164e63;
 }
 
+/* --- App alert dialog (replaces native alert for i18n) --- */
+.app-alert-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.55);
+}
+
+.app-alert-dialog {
+  width: 100%;
+  max-width: 24rem;
+  border-radius: 0.875rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 1.25rem 1.25rem 1rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+}
+
+[data-theme="dark"] .app-alert-dialog,
+.dark .app-alert-dialog {
+  border-color: #374151;
+  background: #111827;
+  color: #e5e7eb;
+}
+
+.app-alert-dialog__message {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: inherit;
+}
+
+.app-alert-dialog__btn {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 0.625rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
+  cursor: pointer;
+}
+
+[data-theme="dark"] .app-alert-dialog__btn,
+.dark .app-alert-dialog__btn {
+  color: #042f2e;
+  background: linear-gradient(180deg, #67e8f9 0%, #22d3ee 100%);
+}
+
 /* --- Sidebar scroll height --- */
 .tool-sidebar-scroll {
   max-height: calc(100vh - 4.5rem);

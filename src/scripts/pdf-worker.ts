@@ -1,6 +1,7 @@
 import "@/scripts/legacy-polyfills";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import workerUrl from "@/scripts/pdf-worker-shim?worker&url";
+import { getAssetPath } from "@/utils/withBase";
 
 const PDFJS_VERSION = "6.1.200";
 const PDFJS_CDN = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}`;
@@ -21,20 +22,28 @@ export function isLegacyPdfEnvironment(): boolean {
   return false;
 }
 
+function pdfjsAssetUrl(folder: string, useCdn: boolean): string {
+  if (useCdn) return `${PDFJS_CDN}/${folder}/`;
+  const rel = getAssetPath(`pdfjs/${folder}/`);
+  if (typeof window === "undefined") return rel;
+  return new URL(rel, window.location.origin).href;
+}
+
 function buildDocumentInit(
   data: Uint8Array,
-  options?: LoadPdfOptions
+  options?: LoadPdfOptions & { useCdn?: boolean }
 ): Parameters<typeof pdfjsLib.getDocument>[0] {
   const legacy = isLegacyPdfEnvironment();
+  const useCdn = options?.useCdn ?? false;
   return {
     data,
     disableAutoFetch: true,
     password: options?.password,
     useWasm: options?.useWasm ?? !legacy,
-    cMapUrl: `${PDFJS_CDN}/cmaps/`,
+    cMapUrl: pdfjsAssetUrl("cmaps", useCdn),
     cMapPacked: true,
-    standardFontDataUrl: `${PDFJS_CDN}/standard_fonts/`,
-    wasmUrl: `${PDFJS_CDN}/wasm/`,
+    standardFontDataUrl: pdfjsAssetUrl("standard_fonts", useCdn),
+    wasmUrl: pdfjsAssetUrl("wasm", useCdn),
     useSystemFonts: true,
     isOffscreenCanvasSupported: options?.isOffscreenCanvasSupported ?? !legacy,
     isImageDecoderSupported: options?.isImageDecoderSupported ?? !legacy,
@@ -61,6 +70,7 @@ type LoadPdfOptions = {
   useWasm?: boolean;
   isOffscreenCanvasSupported?: boolean;
   isImageDecoderSupported?: boolean;
+  useCdn?: boolean;
 };
 
 /** Load a PDF from bytes with settings suited to local file previews. */
@@ -77,6 +87,13 @@ export async function loadPdfBytes(
       useWasm: false,
       isOffscreenCanvasSupported: false,
       isImageDecoderSupported: false,
+    },
+    {
+      ...options,
+      useWasm: false,
+      isOffscreenCanvasSupported: false,
+      isImageDecoderSupported: false,
+      useCdn: true,
     },
   ];
 

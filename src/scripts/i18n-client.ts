@@ -5,6 +5,7 @@ import {
   type LocaleCode,
 } from "@/i18n/messages";
 import {
+  detectToolUiLocale,
   getToolUiMessage,
   isFlatUiKey,
   type ToolUiLocale,
@@ -86,6 +87,7 @@ const FLAT_ALIASES: Record<string, string> = {
   "common.seoHowToHeading": "seo_how_to_heading",
   "common.seoFaqHeading": "seo_faq_heading",
   "close_preview": "close_preview",
+  "common.dialogOk": "dialog_ok",
 };
 
 let currentLocale: LocaleCode = "en";
@@ -144,9 +146,75 @@ export function setLocale(locale: LocaleCode, persist = true): void {
     }
   }
   document.documentElement.lang = HTML_LANG[currentLocale] ?? "en";
+  document.documentElement.setAttribute("data-locale", currentLocale);
   if (typeof window !== "undefined") {
     window.__siteT = t;
   }
+}
+
+export function detectBrowserLocale(): LocaleCode {
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  if (stored) return resolveLocale(stored);
+
+  const userLang =
+    typeof navigator !== "undefined"
+      ? navigator.language ||
+        (navigator as Navigator & { userLanguage?: string }).userLanguage ||
+        "en"
+      : "en";
+
+  const flat = detectToolUiLocale();
+  if (flat !== "en") return resolveLocale(flat);
+  return resolveLocale(userLang);
+}
+
+export function showAppAlert(message: string): void {
+  document.getElementById("app-alert-overlay")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "app-alert-overlay";
+  overlay.className = "app-alert-overlay";
+  overlay.setAttribute("role", "alertdialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-labelledby", "app-alert-message");
+
+  const dialog = document.createElement("div");
+  dialog.className = "app-alert-dialog";
+
+  const msg = document.createElement("p");
+  msg.id = "app-alert-message";
+  msg.className = "app-alert-dialog__message";
+  msg.textContent = message;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "app-alert-dialog__btn interactive";
+  btn.textContent = t("dialog_ok");
+  const close = () => overlay.remove();
+  btn.addEventListener("click", close);
+  overlay.addEventListener("click", e => {
+    if (e.target === overlay) close();
+  });
+  document.addEventListener(
+    "keydown",
+    function onKey(e) {
+      if (e.key === "Escape") {
+        close();
+        document.removeEventListener("keydown", onKey);
+      }
+    },
+    { once: true }
+  );
+
+  dialog.append(msg, btn);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  btn.focus();
 }
 
 export function applyI18n(root: ParentNode = document): void {
@@ -163,6 +231,11 @@ export function applyI18n(root: ParentNode = document): void {
       }
     }
     el.textContent = t(key, vars);
+  });
+
+  root.querySelectorAll<HTMLOptionElement>("option[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    if (key) el.textContent = t(key);
   });
 
   root.querySelectorAll<HTMLElement>("[data-i18n-html]").forEach(el => {
@@ -246,17 +319,20 @@ export function initI18n(): void {
     /* ignore */
   }
 
-  const detected = stored ? resolveLocale(stored) : "en";
+  const detected = detectBrowserLocale();
 
   setLocale(detected, Boolean(stored));
   applyI18n();
+  document.documentElement.setAttribute("data-locale", currentLocale);
 }
 
 export function onI18nReady(init: () => void): void {
   initI18n();
   init();
-  document.addEventListener("astro:page-load", () => {
+  const rerun = () => {
     initI18n();
     init();
-  });
+  };
+  document.addEventListener("astro:page-load", rerun);
+  document.addEventListener("astro:after-swap", rerun);
 }

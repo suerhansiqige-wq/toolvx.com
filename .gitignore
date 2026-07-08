@@ -25,6 +25,7 @@ pnpm-debug.log*
 
 # pagefind
 public/pagefind
+public/pdfjs
 
 # pnpm
 .pnpm-store

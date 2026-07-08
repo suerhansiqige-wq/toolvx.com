@@ -6,8 +6,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro check && astro build && pagefind --site dist && node scripts/copy-pagefind.mjs",
+    "dev": "node scripts/copy-pdfjs.mjs && astro dev",
+    "build": "astro check && node scripts/copy-pdfjs.mjs && astro build && pagefind --site dist && node scripts/copy-pagefind.mjs",
     "build:site": "astro build",
     "build:search": "pagefind --site dist && node scripts/copy-pagefind.mjs",
     "preview": "astro preview",

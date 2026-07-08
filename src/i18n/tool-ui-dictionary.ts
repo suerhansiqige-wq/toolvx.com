@@ -94,6 +94,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "Your browser is too old for this tool. Please use Chrome 49+ or Firefox 52+ on Windows 7.",
     error_pdf_render_timeout:
       "PDF rendering timed out or failed. Try a smaller file, or use a newer browser.",
+    dialog_ok: "OK",
     seo_how_to_heading: "How to use this tool",
     seo_faq_heading: "Frequently asked questions",
     redact_badge: "Local Image & PDF Redaction",
@@ -263,6 +264,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "当前浏览器版本过旧，无法运行此工具。Win7 请使用 Chrome 49+ 或 Firefox 52+。",
     error_pdf_render_timeout:
       "PDF 渲染超时或失败，请尝试较小文件，或换用较新浏览器。",
+    dialog_ok: "确定",
     redact_badge: "本地图片与 PDF 打码",
     redact_intro_title: "100% 本地数据打码",
     redact_intro_lead:
@@ -428,6 +430,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "Tu navegador es demasiado antiguo. En Windows 7 usa Chrome 49+ o Firefox 52+.",
     error_pdf_render_timeout:
       "La renderización del PDF falló o expiró. Prueba un archivo más pequeño o un navegador más nuevo.",
+    dialog_ok: "Aceptar",
     redact_badge: "Redacción local de imagen y PDF",
     redact_intro_title: "Redacción 100% local",
     redact_intro_lead:
@@ -595,6 +598,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "お使いのブラウザは古すぎます。Windows 7 では Chrome 49+ または Firefox 52+ をご利用ください。",
     error_pdf_render_timeout:
       "PDF の描画がタイムアウトまたは失敗しました。ファイルを小さくするか、新しいブラウザをお試しください。",
+    dialog_ok: "OK",
     redact_badge: "ローカル画像・PDF 墨消し",
     redact_intro_title: "100% ローカル墨消し",
     redact_intro_lead:
