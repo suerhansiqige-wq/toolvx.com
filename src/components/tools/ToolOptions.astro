@@ -18,30 +18,37 @@ const labelClass = "text-foreground mb-1.5 block text-sm font-medium";
       <legend class="text-foreground mb-3 text-sm font-semibold" data-i18n="common.compressSizeLimit">
         Output size limit (optional)
       </legend>
-      <div class="flex flex-wrap items-center gap-3">
-        <input
-          type="number"
-          id="compress-max-mb"
-          min="0.1"
-          step="0.1"
-          inputmode="decimal"
-          placeholder="2"
-          class={inputClass + " max-w-[10rem]"}
-          aria-describedby="compress-size-hint"
-        />
-        <span class="text-muted-foreground text-sm font-medium" data-i18n="common.compressSizeUnit">MB</span>
+      <div class="flex flex-row items-stretch gap-3">
+        <div class="flex w-[9.5rem] shrink-0 items-center gap-2 sm:w-[11rem]">
+          <input
+            type="number"
+            id="compress-max-mb"
+            min="0.1"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="2"
+            class={inputClass + " min-w-0 flex-1"}
+            aria-describedby="compress-size-hint"
+          />
+          <span
+            class="text-muted-foreground shrink-0 text-sm font-medium"
+            data-i18n="common.compressSizeUnit"
+          >
+            MB
+          </span>
+        </div>
+        <button
+          type="button"
+          id="tool-compress-limit-btn"
+          class="tool-action-btn interactive flex h-14 min-w-0 flex-1 items-center justify-center rounded-[1rem] border-2 px-3 text-sm font-bold tracking-tight disabled:cursor-not-allowed sm:px-4 sm:text-base"
+          disabled
+        >
+          <span class="truncate" data-i18n="common.compressToLimit">Compress to limit</span>
+        </button>
       </div>
       <p id="compress-size-hint" class="text-muted-foreground mt-2 text-xs" data-i18n="common.compressSizeHint">
-        Set a target max size, then use &quot;Compress to limit&quot; below.
+        Set a target max size, then use &quot;Compress to limit&quot;.
       </p>
-      <button
-        type="button"
-        id="tool-compress-limit-btn"
-        class="tool-action-btn interactive mt-4 flex h-14 w-full items-center justify-center rounded-[1rem] border-2 px-4 text-base font-bold tracking-tight disabled:cursor-not-allowed sm:max-w-md"
-        disabled
-      >
-        <span data-i18n="common.compressToLimit">Compress to limit</span>
-      </button>
       <div
         id="compress-multi-actions"
         class="mt-4 hidden grid gap-3 sm:grid-cols-2"
