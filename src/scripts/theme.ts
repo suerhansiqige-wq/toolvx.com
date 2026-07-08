@@ -5,7 +5,7 @@ const DARK = "dark";
 function getPreferredTheme(): string {
   const stored = localStorage.getItem(THEME_KEY);
   if (stored) return stored;
-  return DARK;
+  return LIGHT;
 }
 
 // Reuse the value already set by the inline FOUC-prevention script if available.

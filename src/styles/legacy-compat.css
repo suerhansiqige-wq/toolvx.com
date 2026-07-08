@@ -138,6 +138,60 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
+/* --- Tool action bar (Win7 / no color-mix) --- */
+.tool-action-segment {
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+}
+
+[data-theme="dark"] .tool-action-segment,
+.dark .tool-action-segment {
+  border-color: #4b5563;
+  background: #1f2937;
+}
+
+.tool-action-btn {
+  border-width: 2px;
+  border-style: solid;
+  font-weight: 700;
+}
+
+.tool-action-btn__icon {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.tool-download-btn {
+  border-width: 2px;
+  border-style: solid;
+  font-weight: 700;
+}
+
+.tool-download-btn__icon {
+  background: #e5e7eb;
+}
+
+[data-theme="dark"] .tool-download-btn__icon,
+.dark .tool-download-btn__icon {
+  background: #6b7280;
+  color: #f3f4f6;
+}
+
+.tool-download-btn.is-ready .tool-download-btn__icon {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+/* --- Redact upload zone (Win7 / no color-mix) --- */
+.redact-empty-zone {
+  border-width: 3px;
+  border-style: dashed;
+}
+
+.redact-open-file {
+  border-width: 3px;
+  border-style: dashed;
+}
+
 /* --- Sidebar scroll height --- */
 .tool-sidebar-scroll {
   max-height: calc(100vh - 4.5rem);

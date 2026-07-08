@@ -144,7 +144,7 @@ function enableMultiDownload(
   multi.innerHTML = items
     .map(item => {
       downloadUrls.push(item.url);
-      return `<a href="${item.url}" download="${item.filename}" class="tool-download-btn is-ready interactive flex h-12 w-full min-w-0 items-center justify-center gap-2 rounded-[1rem] px-3 text-sm font-semibold tracking-tight transition-all duration-300">${item.label}</a>`;
+      return `<a href="${item.url}" download="${item.filename}" class="tool-download-btn is-ready interactive flex h-14 w-full min-w-0 items-center justify-center gap-2.5 rounded-[1rem] border-2 px-4 text-base font-bold tracking-tight transition-all duration-300">${item.label}</a>`;
     })
     .join("");
   multi.className =
