@@ -192,6 +192,63 @@
   border-style: dashed;
 }
 
+/* --- File dropzone (Win7 / no color-mix) --- */
+[data-dropzone] {
+  border-color: #9ca3af;
+  background-color: #f3f4f6;
+}
+
+[data-dropzone].has-files {
+  border-color: #4f46e5;
+  background-color: #ffffff;
+}
+
+[data-theme="dark"] [data-dropzone],
+.dark [data-dropzone] {
+  border-color: #6b7280;
+  background-color: #1f2937;
+}
+
+[data-theme="dark"] [data-dropzone].has-files,
+.dark [data-dropzone].has-files {
+  border-color: #22d3ee;
+  background-color: #111827;
+}
+
+.card-surface {
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .card-surface,
+.dark .card-surface {
+  background: #111827;
+  color: #e5e7eb;
+  border-color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.redact-canvas-wrap {
+  min-height: 280px;
+}
+
+.redact-canvas-inner {
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
+}
+
+.redact-icon-btn:hover:not(:disabled) {
+  border-color: #4f46e5;
+  background: #eef2ff;
+}
+
+[data-theme="dark"] .redact-icon-btn:hover:not(:disabled),
+.dark .redact-icon-btn:hover:not(:disabled) {
+  border-color: #22d3ee;
+  background: #164e63;
+}
+
 /* --- Sidebar scroll height --- */
 .tool-sidebar-scroll {
   max-height: calc(100vh - 4.5rem);

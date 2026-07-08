@@ -5,7 +5,6 @@ import {
   type LocaleCode,
 } from "@/i18n/messages";
 import {
-  detectToolUiLocale,
   getToolUiMessage,
   isFlatUiKey,
   type ToolUiLocale,
@@ -247,21 +246,7 @@ export function initI18n(): void {
     /* ignore */
   }
 
-  const userLang =
-    typeof navigator !== "undefined"
-      ? navigator.language ||
-        (navigator as Navigator & { userLanguage?: string }).userLanguage ||
-        "en"
-      : "en";
-
-  const browserFlat = detectToolUiLocale();
-  const browserResolved = resolveLocale(userLang);
-
-  const detected = stored
-    ? resolveLocale(stored)
-    : browserFlat !== "en"
-      ? browserFlat
-      : browserResolved;
+  const detected = stored ? resolveLocale(stored) : "en";
 
   setLocale(detected, Boolean(stored));
   applyI18n();

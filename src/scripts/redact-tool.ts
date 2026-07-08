@@ -1,5 +1,11 @@
 import "@/scripts/legacy-polyfills";
 import { loadPdfBytes, pdfjsLib, ensurePdfWorker } from "@/scripts/pdf-worker";
+import {
+  canvasToJpegBlob,
+  copyCanvasTo,
+  getPdfRenderScale,
+  renderPdfPageToCanvas,
+} from "@/scripts/pdf-render";
 import { PDFDocument } from "pdf-lib";
 import { REDACT_PALETTE } from "@/scripts/redact-colors";
 import { onI18nReady, t } from "@/scripts/i18n-client";
@@ -18,7 +24,8 @@ type Point = { x: number; y: number };
 
 const DEFAULT_MOSAIC = 12;
 const DEFAULT_BLUR = 14;
-const PDF_RENDER_SCALE = 1.5;
+const PDF_RENDER_SCALE = getPdfRenderScale(1.5);
+const CANVAS_MIN_HEIGHT = 320;
 const THUMBS_PER_VIEW = 5;
 const EXPORT_MAX_BYTES = 2 * 1024 * 1024;
 const MIN_JPEG_QUALITY = 0.22;
@@ -127,6 +134,12 @@ function syncThumbSidebarHeight() {
   thumb.style.height = `${Math.round(controls.getBoundingClientRect().height)}px`;
 }
 
+function scheduleEditorLayoutRefresh() {
+  [0, 50, 150, 400, 800].forEach(delay => {
+    window.setTimeout(() => refreshEditorLayout(), delay);
+  });
+}
+
 function syncCanvasAreaHeight() {
   const wrap = $("redact-canvas-wrap");
   const controls = $("redact-control-panel");
@@ -140,7 +153,8 @@ function syncCanvasAreaHeight() {
     return;
   }
 
-  wrap.style.height = `${Math.round(controls.getBoundingClientRect().height)}px`;
+  const panelHeight = Math.round(controls.getBoundingClientRect().height);
+  wrap.style.height = `${Math.max(CANVAS_MIN_HEIGHT, panelHeight)}px`;
 }
 
 function refreshEditorLayout() {
@@ -165,9 +179,7 @@ function showWorkspace(active: boolean) {
   $("redact-page-controls")?.classList.toggle("hidden", !active || !isPdf);
   $("redact-thumb-sidebar")?.classList.toggle("redact-thumb-active", active && isPdf);
   if (active) {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => refreshEditorLayout());
-    });
+    scheduleEditorLayoutRefresh();
   }
 }
 
@@ -299,19 +311,23 @@ function saveCurrentPageToStore() {
   store.canvas = newCanvas;
 }
 
-async function renderPdfPageToCanvas(pageNum: number, target: HTMLCanvasElement) {
+async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement) {
   if (!pdfDoc) return;
   const page = await pdfDoc.getPage(pageNum);
-  const viewport = page.getViewport({ scale: PDF_RENDER_SCALE });
-  target.width = Math.floor(viewport.width);
-  target.height = Math.floor(viewport.height);
-  const c = target.getContext("2d");
-  if (!c) return;
-  c.fillStyle = "#ffffff";
-  c.fillRect(0, 0, target.width, target.height);
-  await page.render({ canvasContext: c, viewport, canvas: target }).promise;
+  const rendered = await renderPdfPageToCanvas(page, PDF_RENDER_SCALE);
+  copyCanvasTo(rendered, target);
   const base = page.getViewport({ scale: 1 });
   pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
+}
+
+function canvasToThumbUrl(canvas: HTMLCanvasElement, quality = 0.5): string {
+  try {
+    const dataUrl = canvas.toDataURL("image/jpeg", quality);
+    if (dataUrl.length > 128) return dataUrl;
+  } catch {
+    /* fall through */
+  }
+  return "";
 }
 
 function fitCanvasToContainer() {
@@ -325,9 +341,16 @@ function fitCanvasToContainer() {
   const styles = getComputedStyle(wrap);
   const padX = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
   const padY = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
-  const availW = Math.max(1, wrap.clientWidth - padX);
-  const availH = Math.max(1, wrap.clientHeight - padY);
+  const controls = $("redact-control-panel");
+  let availW = Math.max(1, wrap.clientWidth - padX);
+  let availH = Math.max(1, wrap.clientHeight - padY);
   const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+  if (availH <= 1 && isDesktop) {
+    availH = Math.max(
+      CANVAS_MIN_HEIGHT,
+      controls?.getBoundingClientRect().height ?? CANVAS_MIN_HEIGHT
+    );
+  }
   const aspect = canvas.height / canvas.width;
 
   let cssW = availW;
@@ -391,8 +414,17 @@ async function refreshThumbForCurrentPage() {
   const thumb = document.querySelector<HTMLImageElement>(
     `[data-redact-thumb="${currentPage}"]`
   );
-  if (store && thumb) {
-    thumb.src = store.canvas.toDataURL("image/jpeg", 0.55);
+  if (!store || !thumb) return;
+  const src = canvasToThumbUrl(store.canvas, 0.55);
+  if (src) {
+    thumb.src = src;
+    return;
+  }
+  try {
+    const blob = await canvasToJpegBlob(store.canvas, 0.55);
+    thumb.src = URL.createObjectURL(blob);
+  } catch {
+    /* ignore */
   }
 }
 
@@ -407,7 +439,17 @@ async function buildThumbnails() {
     btn.className = "redact-thumb-item";
     btn.dataset.page = String(i);
     const img = document.createElement("img");
-    img.src = store.canvas.toDataURL("image/jpeg", 0.5);
+    const thumbSrc = canvasToThumbUrl(store.canvas, 0.5);
+    if (thumbSrc) {
+      img.src = thumbSrc;
+    } else {
+      try {
+        const blob = await canvasToJpegBlob(store.canvas, 0.5);
+        img.src = URL.createObjectURL(blob);
+      } catch {
+        img.src = "";
+      }
+    }
     img.alt = t("page_label", { n: String(i) });
     img.className = "block w-full";
     img.dataset.redactThumb = String(i);
@@ -488,6 +530,7 @@ async function loadImageFile(file: File) {
   fitCanvasToContainer();
   updatePageLabel();
   updateHistoryButtons();
+  scheduleEditorLayoutRefresh();
 }
 
 async function loadPdfFile(file: File) {
@@ -503,13 +546,23 @@ async function loadPdfFile(file: File) {
 
   for (let i = 1; i <= totalPages; i++) {
     const pageCanvas = document.createElement("canvas");
-    await renderPdfPageToCanvas(i, pageCanvas);
+    await renderPdfPageToTarget(i, pageCanvas);
     pageStores.push({ canvas: pageCanvas, undoStack: [], redoStack: [] });
   }
 
   currentPage = 1;
   loadPageToMain(1);
   await buildThumbnails();
+  scheduleEditorLayoutRefresh();
+}
+
+function mapRedactLoadError(err: unknown): string {
+  if (err instanceof Error && err.message) {
+    if (err.message.includes("PDF render timeout")) return t("error_pdf_render_timeout");
+    if (err.message.includes("withResolvers")) return t("error_browser_unsupported");
+    if (err.message.includes("Canvas")) return t("error_pdf_render_timeout");
+  }
+  return t("redact_file_error");
 }
 
 async function handleFile(file: File) {
@@ -527,7 +580,7 @@ async function handleFile(file: File) {
     }
   } catch (err) {
     console.error(err);
-    alert(t("redact_file_error"));
+    alert(mapRedactLoadError(err));
   } finally {
     const input = $("redact-file-input") as HTMLInputElement | null;
     if (input) input.value = "";
@@ -560,7 +613,7 @@ function resetToOriginal() {
   if (isPdf) {
     void (async () => {
       for (let i = 1; i <= totalPages; i++) {
-        await renderPdfPageToCanvas(i, pageStores[i - 1].canvas);
+        await renderPdfPageToTarget(i, pageStores[i - 1].canvas);
         pageStores[i - 1].undoStack = [];
         pageStores[i - 1].redoStack = [];
       }
@@ -580,12 +633,49 @@ async function canvasToBlob(
   mime: string,
   quality?: number
 ): Promise<Blob> {
+  if (mime === "image/jpeg" && quality !== undefined) {
+    return canvasToJpegBlob(source, quality);
+  }
   return new Promise((resolve, reject) => {
-    source.toBlob(
-      blob => (blob ? resolve(blob) : reject(new Error("Encode failed"))),
-      mime,
-      quality
-    );
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        if (mime === "image/jpeg") {
+          try {
+            const dataUrl = source.toDataURL(mime, quality);
+            fetch(dataUrl)
+              .then(r => r.blob())
+              .then(resolve)
+              .catch(reject);
+          } catch (err) {
+            reject(err);
+          }
+        } else {
+          reject(new Error("Encode failed"));
+        }
+      }
+    }, 45_000);
+
+    try {
+      source.toBlob(
+        blob => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timer);
+          if (blob) resolve(blob);
+          else reject(new Error("Encode failed"));
+        },
+        mime,
+        quality
+      );
+    } catch (err) {
+      if (!settled) {
+        settled = true;
+        window.clearTimeout(timer);
+        reject(err);
+      }
+    }
   });
 }
 

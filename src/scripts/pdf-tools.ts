@@ -717,13 +717,16 @@ export async function pdfPagesToImages(
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const canvas = await renderPdfPageToCanvas(page, scale);
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        b => (b ? resolve(b) : reject(new Error("Render failed"))),
-        mime,
-        quality
-      );
-    });
+    const blob =
+      format === "jpeg"
+        ? await canvasToJpegBlob(canvas, quality)
+        : await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob(
+              b => (b ? resolve(b) : reject(new Error("Render failed"))),
+              mime,
+              quality
+            );
+          });
     zip.file(zipImageFilename(file.name, i, ext), blob);
   }
   return zip;
@@ -778,19 +781,10 @@ export async function renderReaderPage(
     canvas.style.height = "";
   }
 
-  const viewport = page.getViewport({ scale: renderScale });
-  canvas.width = Math.floor(viewport.width);
-  canvas.height = Math.floor(viewport.height);
+  const rendered = await renderPdfPageToCanvas(page, renderScale);
+  canvas.width = rendered.width;
+  canvas.height = rendered.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  await page.render({
-    canvasContext: ctx,
-    viewport,
-    canvas,
-    intent: options?.hd ? "print" : "display",
-  }).promise;
+  ctx.drawImage(rendered, 0, 0);
 }

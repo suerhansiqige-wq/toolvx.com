@@ -15,6 +15,7 @@ import {
   zipFilenameFromPdf,
   zipPageFilename,
 } from "@/scripts/export-filename";
+import { canvasToJpegBlob } from "@/scripts/pdf-render";
 import {
   compressPdfBytes,
   compressPdfFile,
@@ -324,10 +325,9 @@ async function imageFileToJpegBytes(file: File): Promise<Uint8Array> {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas unsupported");
     ctx.drawImage(img, 0, 0);
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(b => (b ? resolve(b) : reject()), "image/jpeg", 0.92);
-    });
-    return new Uint8Array(await blob.arrayBuffer());
+    return await canvasToJpegBlob(canvas, 0.92).then(blob =>
+      blob.arrayBuffer().then(buf => new Uint8Array(buf))
+    );
   } finally {
     URL.revokeObjectURL(url);
   }

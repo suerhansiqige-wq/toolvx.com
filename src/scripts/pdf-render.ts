@@ -10,6 +10,21 @@ export const HD_JPG_RENDER = {
 
 export const ZIP_JPG_RENDER = HD_JPG_RENDER;
 
+export function getPdfRenderScale(modernScale = 1.5): number {
+  return LEGACY ? Math.min(modernScale, 1.2) : modernScale;
+}
+
+export function copyCanvasTo(
+  source: HTMLCanvasElement,
+  target: HTMLCanvasElement
+): void {
+  target.width = source.width;
+  target.height = source.height;
+  const ctx = target.getContext("2d");
+  if (!ctx) throw new Error("Canvas not supported");
+  ctx.drawImage(source, 0, 0);
+}
+
 function promiseWithTimeout<T>(
   promise: Promise<T>,
   ms: number,
