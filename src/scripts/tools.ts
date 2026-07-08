@@ -1,4 +1,5 @@
 import { resetDropzoneScrollbar } from "@/scripts/dropzone-scrollbar";
+import { openFileInput } from "@/scripts/file-input";
 
 /** Run callback on first paint and after every Astro client navigation. */
 export function onToolPageReady(init: () => void): void {
@@ -61,13 +62,18 @@ export function bindDropZones(): void {
       "click",
       event => {
         const target = event.target as HTMLElement;
-        if (target === input || target.closest("a, button")) return;
+        if (
+          target === input ||
+          target.closest("a, button, label, .file-input-overlay")
+        ) {
+          return;
+        }
 
         if (zone.classList.contains("has-files")) {
           return;
         }
 
-        input.click();
+        openFileInput(input);
       },
       { signal: ac.signal }
     );

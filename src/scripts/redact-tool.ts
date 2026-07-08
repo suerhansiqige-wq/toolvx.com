@@ -1,5 +1,5 @@
 import "@/scripts/legacy-polyfills";
-import { loadPdfBytes, pdfjsLib, ensurePdfWorker } from "@/scripts/pdf-worker";
+import { loadPdfBytes, pdfjsLib, ensurePdfWorker, isLegacyPdfEnvironment } from "@/scripts/pdf-worker";
 import {
   canvasToJpegBlob,
   copyCanvasTo,
@@ -9,6 +9,7 @@ import {
 import { PDFDocument } from "pdf-lib";
 import { REDACT_PALETTE } from "@/scripts/redact-colors";
 import { onI18nReady, showAppAlert, t } from "@/scripts/i18n-client";
+import { openFileInput } from "@/scripts/file-input";
 
 ensurePdfWorker();
 
@@ -25,6 +26,7 @@ type Point = { x: number; y: number };
 const DEFAULT_MOSAIC = 12;
 const DEFAULT_BLUR = 14;
 const PDF_RENDER_SCALE = getPdfRenderScale(1.5);
+const LEGACY_PDF = isLegacyPdfEnvironment();
 const CANVAS_MIN_HEIGHT = 320;
 const THUMBS_PER_VIEW = 5;
 const EXPORT_MAX_BYTES = 2 * 1024 * 1024;
@@ -111,11 +113,20 @@ function enterEditor() {
 
   window.setTimeout(() => {
     showWorkspace(true);
+    scheduleEditorLayoutRefresh();
     home?.classList.remove("redact-home--leaving");
     requestAnimationFrame(() => {
       editor?.scrollIntoView({ behavior: "smooth", block: "start" });
+      scheduleEditorLayoutRefresh();
     });
   }, 280);
+}
+
+function setRedactLoading(loading: boolean) {
+  $("redact-empty")?.classList.toggle("redact-empty-zone--loading", loading);
+  $("redact-loading-hint")?.classList.toggle("hidden", !loading);
+  const input = $("redact-file-input") as HTMLInputElement | null;
+  if (input) input.disabled = loading;
 }
 
 function syncThumbSidebarHeight() {
@@ -393,11 +404,29 @@ function saveMainToCurrentPage() {
   saveCurrentPageToStore();
 }
 
+async function goToRedactPage(pageNum: number) {
+  const store = pageStores[pageNum - 1];
+  if (
+    LEGACY_PDF &&
+    store &&
+    (store.canvas.width < 2 || store.canvas.height < 2)
+  ) {
+    setRedactLoading(true);
+    try {
+      await renderPdfPageToTarget(pageNum, store.canvas);
+      await upsertThumbForPage(pageNum);
+    } finally {
+      setRedactLoading(false);
+    }
+  }
+  saveMainToCurrentPage();
+  loadPageToMain(pageNum);
+}
+
 async function switchPage(delta: number) {
   const next = currentPage + delta;
   if (next < 1 || next > totalPages) return;
-  saveMainToCurrentPage();
-  loadPageToMain(next);
+  await goToRedactPage(next);
 }
 
 function updatePageLabel() {
@@ -457,8 +486,7 @@ async function buildThumbnails() {
     label.textContent = t("page_label", { n: String(i) });
     btn.append(img, label);
     btn.addEventListener("click", () => {
-      saveMainToCurrentPage();
-      loadPageToMain(i);
+      void goToRedactPage(i);
     });
     list.appendChild(btn);
   }
@@ -533,27 +561,101 @@ async function loadImageFile(file: File) {
   scheduleEditorLayoutRefresh();
 }
 
+async function renderPdfPagesInBackground(fromPage: number) {
+  for (let i = fromPage; i <= totalPages; i++) {
+    try {
+      await renderPdfPageToTarget(i, pageStores[i - 1].canvas);
+      await upsertThumbForPage(i);
+    } catch (err) {
+      console.error(`Redact PDF page ${i} failed`, err);
+    }
+    await new Promise<void>(resolve => window.setTimeout(resolve, LEGACY_PDF ? 32 : 0));
+  }
+  renderThumbWindow();
+  highlightThumb(currentPage);
+}
+
+async function upsertThumbForPage(pageNum: number) {
+  const store = pageStores[pageNum - 1];
+  const list = $("redact-thumb-list");
+  if (!store || !list) return;
+
+  let btn = list.querySelector<HTMLButtonElement>(
+    `.redact-thumb-item[data-page="${pageNum}"]`
+  );
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "redact-thumb-item";
+    btn.dataset.page = String(pageNum);
+    btn.addEventListener("click", () => {
+      void goToRedactPage(pageNum);
+    });
+    list.appendChild(btn);
+  }
+
+  btn.innerHTML = "";
+  const img = document.createElement("img");
+  const thumbSrc = canvasToThumbUrl(store.canvas, 0.5);
+  if (thumbSrc) {
+    img.src = thumbSrc;
+  } else {
+    try {
+      const blob = await canvasToJpegBlob(store.canvas, 0.5);
+      img.src = URL.createObjectURL(blob);
+    } catch {
+      img.src = "";
+    }
+  }
+  img.alt = t("page_label", { n: String(pageNum) });
+  img.className = "block w-full";
+  img.dataset.redactThumb = String(pageNum);
+  const label = document.createElement("span");
+  label.textContent = t("page_label", { n: String(pageNum) });
+  btn.append(img, label);
+}
+
 async function loadPdfFile(file: File) {
   isPdf = true;
   originalFileName = file.name.replace(/\.pdf$/i, "") || "document";
   originalMime = "application/pdf";
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  pdfDoc = await loadPdfBytes(bytes);
-  totalPages = pdfDoc.numPages;
-  pdfPageSizePts = new Array(totalPages);
-  pageStores = [];
+  setRedactLoading(true);
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    pdfDoc = await loadPdfBytes(bytes);
+    totalPages = pdfDoc.numPages;
+    pdfPageSizePts = new Array(totalPages);
+    pageStores = Array.from({ length: totalPages }, () => ({
+      canvas: document.createElement("canvas"),
+      undoStack: [],
+      redoStack: [],
+    }));
 
-  for (let i = 1; i <= totalPages; i++) {
-    const pageCanvas = document.createElement("canvas");
-    await renderPdfPageToTarget(i, pageCanvas);
-    pageStores.push({ canvas: pageCanvas, undoStack: [], redoStack: [] });
+    await renderPdfPageToTarget(1, pageStores[0].canvas);
+    currentPage = 1;
+    loadPageToMain(1);
+
+    const list = $("redact-thumb-list");
+    if (list) list.innerHTML = "";
+    await upsertThumbForPage(1);
+    renderThumbWindow();
+    highlightThumb(1);
+    syncThumbSidebarHeight();
+
+    if (totalPages > 1) {
+      if (LEGACY_PDF) {
+        void renderPdfPagesInBackground(2);
+      } else {
+        for (let i = 2; i <= totalPages; i++) {
+          await renderPdfPageToTarget(i, pageStores[i - 1].canvas);
+        }
+        await buildThumbnails();
+      }
+    }
+  } finally {
+    setRedactLoading(false);
   }
-
-  currentPage = 1;
-  loadPageToMain(1);
-  await buildThumbnails();
-  scheduleEditorLayoutRefresh();
 }
 
 function mapRedactLoadError(err: unknown): string {
@@ -573,8 +675,10 @@ async function handleFile(file: File) {
     currentPage = 1;
     if (isPdfFile) await loadPdfFile(file);
     else await loadImageFile(file);
+    scheduleEditorLayoutRefresh();
     if ($("redact-page")?.classList.contains("redact-page--editing")) {
       showWorkspace(true);
+      scheduleEditorLayoutRefresh();
     } else {
       enterEditor();
     }
@@ -1046,11 +1150,10 @@ function bindFileInput(input: HTMLInputElement) {
       el.classList.remove("dragover");
       onFiles(e.dataTransfer?.files ?? null);
     });
-    el.addEventListener("click", () => input.click());
     el.addEventListener("keydown", e => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        input.click();
+        openFileInput(input);
       }
     });
   };

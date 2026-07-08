@@ -1,3 +1,8 @@
+import {
+  createLegacyFilePicker,
+  openFileInput,
+} from "@/scripts/file-input";
+
 export type MergeFileEntry = {
   id: string;
   name: string;
@@ -97,22 +102,17 @@ export function notifyMergeFilesUpdated(): void {
 }
 
 export function promptAddMergeFiles(onAdded: () => void): void {
-  const picker = document.createElement("input");
-  picker.type = "file";
-  picker.accept = ".pdf,application/pdf";
-  picker.multiple = true;
-  picker.className = "hidden";
-  picker.addEventListener("change", () => {
-    void (async () => {
-      if (picker.files?.length) {
-        await appendMergeFiles([...picker.files]);
+  const picker = createLegacyFilePicker({
+    accept: ".pdf,application/pdf",
+    multiple: true,
+    onChange: files => {
+      void (async () => {
+        await appendMergeFiles(files);
         onAdded();
-      }
-      picker.remove();
-    })();
+      })();
+    },
   });
-  document.body.appendChild(picker);
-  picker.click();
+  openFileInput(picker);
 }
 
 /** Handle native file-input change for merge tool. */

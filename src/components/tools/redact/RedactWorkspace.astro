@@ -7,12 +7,16 @@
     type="file"
     id="redact-file-input"
     accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp,.pdf,application/pdf"
-    class="hidden"
+    class="file-input-native-hidden"
   />
 
   <!-- Homepage: centered upload (Fig.1 → Fig.3) -->
   <section id="redact-home" class="redact-home" data-i18n-aria-label="redact_home_aria">
-    <div id="redact-empty" class="redact-empty-zone redact-dropzone interactive" role="button" tabindex="0">
+    <label
+      id="redact-empty"
+      for="redact-file-input"
+      class="redact-empty-zone redact-dropzone interactive"
+    >
       <div class="redact-empty-zone__glow" aria-hidden="true"></div>
       <div class="redact-empty-zone__icon" aria-hidden="true">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,6 +32,9 @@
       <p class="redact-empty-zone__subtitle" data-i18n="redact_drop_subtitle">
         or click to browse files
       </p>
+      <p id="redact-loading-hint" class="redact-empty-zone__loading hidden" data-i18n="processing">
+        Processing…
+      </p>
       <div class="redact-format-tags" aria-hidden="true">
         <span data-i18n="redact_format_jpg">JPG</span>
         <span data-i18n="redact_format_png">PNG</span>
@@ -36,7 +43,7 @@
         <span data-i18n="redact_format_pdf">PDF</span>
       </div>
       <p class="sr-only" data-i18n="redact_drop_formats">Supports JPG, PNG, GIF, WebP, PDF</p>
-    </div>
+    </label>
   </section>
 
   <!-- Editor: shown after file is loaded -->
@@ -44,11 +51,10 @@
   <div class="redact-grid grid gap-5 lg:grid-cols-12 lg:gap-6">
     <!-- Left: open file + PDF thumbnails -->
     <div class="redact-left-column flex min-w-0 flex-col gap-3 lg:col-span-2">
-      <div
+      <label
         id="redact-floating-upload"
+        for="redact-file-input"
         class="redact-open-file redact-dropzone hidden"
-        role="button"
-        tabindex="0"
       >
         <span class="redact-open-file__icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -56,7 +62,7 @@
           </svg>
         </span>
         <span class="redact-open-file__text" data-i18n="redact_float_title">Open another file</span>
-      </div>
+      </label>
 
       <aside id="redact-thumb-sidebar" class="redact-thumb-panel card-surface hidden w-full lg:block">
         <div class="redact-panel-head">

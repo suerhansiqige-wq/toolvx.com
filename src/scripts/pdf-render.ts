@@ -2,6 +2,7 @@ import { isLegacyPdfEnvironment } from "@/scripts/pdf-worker";
 import type { pdfjsLib } from "@/scripts/pdf-worker";
 
 const LEGACY = isLegacyPdfEnvironment();
+const LEGACY_MAX_CANVAS_DIM = 4096;
 
 export const HD_JPG_RENDER = {
   scale: LEGACY ? 2 : 4,
@@ -11,7 +12,34 @@ export const HD_JPG_RENDER = {
 export const ZIP_JPG_RENDER = HD_JPG_RENDER;
 
 export function getPdfRenderScale(modernScale = 1.5): number {
-  return LEGACY ? Math.min(modernScale, 1) : modernScale;
+  return LEGACY ? Math.min(modernScale, 0.85) : modernScale;
+}
+
+export function clampPdfRenderScale(
+  page: pdfjsLib.PDFPageProxy,
+  scale: number
+): number {
+  if (!LEGACY) return scale;
+  let s = scale;
+  for (let i = 0; i < 12; i++) {
+    const { width, height } = page.getViewport({ scale: s });
+    if (width <= LEGACY_MAX_CANVAS_DIM && height <= LEGACY_MAX_CANVAS_DIM) {
+      return Math.round(s * 100) / 100;
+    }
+    s *= 0.85;
+  }
+  return 0.25;
+}
+
+function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(",");
+  const header = dataUrl.slice(0, comma);
+  const body = dataUrl.slice(comma + 1);
+  const mime = /data:([^;]+)/.exec(header)?.[1] ?? "image/jpeg";
+  const binary = atob(body);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
 }
 
 export function copyCanvasTo(
@@ -49,9 +77,10 @@ export async function renderPdfPageToCanvas(
   page: pdfjsLib.PDFPageProxy,
   scale: number
 ): Promise<HTMLCanvasElement> {
+  const baseScale = clampPdfRenderScale(page, scale);
   const scales = LEGACY
-    ? [...new Set([scale, scale * 0.9, 1, 0.85, 0.72].map(s => Math.round(s * 100) / 100))]
-    : [scale];
+    ? [...new Set([baseScale, baseScale * 0.9, 0.72, 0.6, 0.5].map(s => Math.round(s * 100) / 100))]
+    : [baseScale];
 
   let lastError: unknown;
   for (const attemptScale of scales) {
@@ -137,8 +166,7 @@ export async function canvasToJpegBlob(
 
   try {
     const dataUrl = canvas.toDataURL("image/jpeg", quality);
-    const response = await fetch(dataUrl);
-    return await response.blob();
+    return dataUrlToBlob(dataUrl);
   } catch {
     throw new Error("JPEG encode failed");
   }

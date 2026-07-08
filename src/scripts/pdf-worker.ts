@@ -38,6 +38,7 @@ function buildDocumentInit(
   return {
     data,
     disableAutoFetch: true,
+    disableStream: legacy,
     password: options?.password,
     useWasm: options?.useWasm ?? !legacy,
     cMapUrl: pdfjsAssetUrl("cmaps", useCdn),
@@ -50,10 +51,19 @@ function buildDocumentInit(
   };
 }
 
+function pdfjsWorkerSrc(): string {
+  if (typeof window === "undefined") return workerUrl;
+  if (isLegacyPdfEnvironment()) {
+    const rel = getAssetPath("pdfjs/pdf.worker.min.mjs");
+    return new URL(rel, window.location.origin).href;
+  }
+  return workerUrl;
+}
+
 /** Configure pdf.js worker once (legacy build + polyfilled worker for older browsers). */
 export function ensurePdfWorker(): typeof pdfjsLib {
   if (!configured) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc();
     configured = true;
   }
   return pdfjsLib;

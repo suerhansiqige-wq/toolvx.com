@@ -1,3 +1,8 @@
+import {
+  createLegacyFilePicker,
+  openFileInput,
+} from "@/scripts/file-input";
+
 export function getInputFileList(input: HTMLInputElement): File[] {
   return input.files?.length ? [...input.files] : [];
 }
@@ -63,27 +68,19 @@ export function promptAddInputFiles(
   input: HTMLInputElement,
   onAdded: () => void
 ): void {
-  const picker = document.createElement("input");
-  picker.type = "file";
-  picker.accept = input.accept;
-  picker.multiple = input.multiple;
-  picker.className = "hidden";
-  picker.addEventListener("change", () => {
-    void (async () => {
-      if (picker.files?.length) {
-        const picked = [...picker.files];
-        if (getInputFileList(input).length === 0) {
-          replaceInputFiles(input, picked);
-        } else {
-          appendInputFiles(input, picked);
-        }
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-        notifyInputFilesUpdated();
-        onAdded();
+  const picker = createLegacyFilePicker({
+    accept: input.accept,
+    multiple: input.multiple,
+    onChange: files => {
+      if (getInputFileList(input).length === 0) {
+        replaceInputFiles(input, files);
+      } else {
+        appendInputFiles(input, files);
       }
-      picker.remove();
-    })();
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      notifyInputFilesUpdated();
+      onAdded();
+    },
   });
-  document.body.appendChild(picker);
-  picker.click();
+  openFileInput(picker);
 }
