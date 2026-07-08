@@ -3,14 +3,14 @@
  * Vite bundles this file as the worker script URL passed to pdf.js.
  */
 if (typeof Promise.withResolvers !== "function") {
-  Promise.withResolvers = function withResolvers() {
-    let resolve: (value: unknown) => void;
-    let reject: (reason?: unknown) => void;
-    const promise = new Promise((res, rej) => {
+  Promise.withResolvers = function withResolvers<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
       resolve = res;
       reject = rej;
     });
-    return { promise, resolve: resolve!, reject: reject! };
+    return { promise, resolve, reject };
   };
 }
 
