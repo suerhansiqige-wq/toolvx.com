@@ -370,6 +370,7 @@ const PROCESS_ERROR_KEYS: Record<string, string> = {
   "Need at least 2 PDF files to merge": "error_merge_min_files",
   "No valid pages specified": "error_no_valid_pages",
   "Cannot delete all pages": "error_delete_all_pages",
+  "Promise.withResolvers is not a function": "error_browser_unsupported",
 };
 
 function mapProcessError(err: unknown): string {

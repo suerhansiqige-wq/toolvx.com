@@ -1,3 +1,4 @@
+import "@/scripts/legacy-polyfills";
 import { loadPdfBytes, pdfjsLib, ensurePdfWorker } from "@/scripts/pdf-worker";
 import { PDFDocument } from "pdf-lib";
 import { REDACT_PALETTE } from "@/scripts/redact-colors";
@@ -665,7 +666,7 @@ async function encodeCanvasToBudget(
     if (blob) return new Uint8Array(await blob.arrayBuffer());
   }
 
-  let scale = EXPORT_SCALE_STEPS.at(-1)!;
+  let scale = EXPORT_SCALE_STEPS[EXPORT_SCALE_STEPS.length - 1]!;
   while (scale >= 0.12) {
     const canvasSource = scaledCanvas(source, scale);
     const blob = await canvasToBlob(canvasSource, "image/jpeg", MIN_JPEG_QUALITY);
@@ -701,7 +702,7 @@ async function encodeImageUnderLimit(
     if (jpeg) return jpeg;
   }
 
-  let scale = EXPORT_SCALE_STEPS.at(-1)!;
+  let scale = EXPORT_SCALE_STEPS[EXPORT_SCALE_STEPS.length - 1]!;
   while (scale >= 0.12) {
     const canvasSource = scaledCanvas(source, scale);
     const jpeg = await binarySearchBlob(canvasSource, "image/jpeg", EXPORT_MAX_BYTES);

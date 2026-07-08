@@ -104,6 +104,21 @@ const rssHref = getRelativeLocaleUrl("en", "rss.xml");
       })();
     </script>
 
+    <!-- Win7 / Chrome < 119: pdf.js requires Promise.withResolvers -->
+    <script is:inline>
+      (function () {
+        if (typeof Promise.withResolvers === "function") return;
+        Promise.withResolvers = function withResolvers() {
+          var resolve, reject;
+          var promise = new Promise(function (res, rej) {
+            resolve = res;
+            reject = rej;
+          });
+          return { promise: promise, resolve: resolve, reject: reject };
+        };
+      })();
+    </script>
+
     <ClientRouter />
   </head>
   <body
@@ -111,6 +126,7 @@ const rssHref = getRelativeLocaleUrl("en", "rss.xml");
   >
     <slot />
     <script>
+      import "@/scripts/legacy-polyfills";
       import "@/scripts/theme";
       import "@/scripts/layout-width";
       import { onI18nReady } from "@/scripts/i18n-client";

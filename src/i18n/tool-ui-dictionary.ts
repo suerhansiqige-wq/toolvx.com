@@ -90,6 +90,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     error_read_file: "Failed to read file.",
     error_no_valid_pages: "No valid pages specified.",
     error_delete_all_pages: "Cannot delete all pages.",
+    error_browser_unsupported:
+      "Your browser is too old for this tool. Please use Chrome 49+ or Firefox 52+ on Windows 7.",
     seo_how_to_heading: "How to use this tool",
     seo_faq_heading: "Frequently asked questions",
     redact_badge: "Local Image & PDF Redaction",
@@ -255,6 +257,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     error_read_file: "读取文件失败。",
     error_no_valid_pages: "未指定有效页码。",
     error_delete_all_pages: "无法删除所有页面。",
+    error_browser_unsupported:
+      "当前浏览器版本过旧，无法运行此工具。Win7 请使用 Chrome 49+ 或 Firefox 52+。",
     redact_badge: "本地图片与 PDF 打码",
     redact_intro_title: "100% 本地数据打码",
     redact_intro_lead:
@@ -416,6 +420,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     error_read_file: "No se pudo leer el archivo.",
     error_no_valid_pages: "No se especificaron páginas válidas.",
     error_delete_all_pages: "No se pueden eliminar todas las páginas.",
+    error_browser_unsupported:
+      "Tu navegador es demasiado antiguo. En Windows 7 usa Chrome 49+ o Firefox 52+.",
     redact_badge: "Redacción local de imagen y PDF",
     redact_intro_title: "Redacción 100% local",
     redact_intro_lead:
@@ -579,6 +585,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     error_read_file: "ファイルの読み込みに失敗しました。",
     error_no_valid_pages: "有効なページが指定されていません。",
     error_delete_all_pages: "すべてのページを削除することはできません。",
+    error_browser_unsupported:
+      "お使いのブラウザは古すぎます。Windows 7 では Chrome 49+ または Firefox 52+ をご利用ください。",
     redact_badge: "ローカル画像・PDF 墨消し",
     redact_intro_title: "100% ローカル墨消し",
     redact_intro_lead:
