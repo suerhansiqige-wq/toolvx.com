@@ -337,27 +337,54 @@ type PdfLoadStrategy = {
   isImageDecoderSupported?: boolean;
 };
 
-const PDF_RENDER_RETRY_STRATEGIES: PdfLoadStrategy[] = [
-  {
-    useWasm: true,
-    useCdn: false,
-    isOffscreenCanvasSupported: false,
-    isImageDecoderSupported: false,
-  },
-  {
-    useWasm: true,
-    useCdn: true,
-    isOffscreenCanvasSupported: false,
-    isImageDecoderSupported: false,
-  },
-  { useWasm: true, useCdn: false },
-  {
-    useWasm: false,
-    useCdn: true,
-    isOffscreenCanvasSupported: false,
-    isImageDecoderSupported: false,
-  },
-];
+const PDF_RENDER_RETRY_STRATEGIES: PdfLoadStrategy[] = LEGACY_PDF
+  ? [
+      {
+        useWasm: false,
+        useCdn: false,
+        isOffscreenCanvasSupported: false,
+        isImageDecoderSupported: false,
+      },
+      {
+        useWasm: true,
+        useCdn: false,
+        isOffscreenCanvasSupported: false,
+        isImageDecoderSupported: false,
+      },
+      {
+        useWasm: false,
+        useCdn: true,
+        isOffscreenCanvasSupported: false,
+        isImageDecoderSupported: false,
+      },
+      {
+        useWasm: true,
+        useCdn: true,
+        isOffscreenCanvasSupported: false,
+        isImageDecoderSupported: false,
+      },
+    ]
+  : [
+      {
+        useWasm: true,
+        useCdn: false,
+        isOffscreenCanvasSupported: false,
+        isImageDecoderSupported: false,
+      },
+      {
+        useWasm: true,
+        useCdn: true,
+        isOffscreenCanvasSupported: false,
+        isImageDecoderSupported: false,
+      },
+      { useWasm: true, useCdn: false },
+      {
+        useWasm: false,
+        useCdn: true,
+        isOffscreenCanvasSupported: false,
+        isImageDecoderSupported: false,
+      },
+    ];
 
 const LEGACY_RENDER_SCALES = [
   PDF_RENDER_SCALE,

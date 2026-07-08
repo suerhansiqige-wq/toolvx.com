@@ -1,8 +1,17 @@
 import "@/scripts/legacy-polyfills";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
-import workerUrl from "@/scripts/pdf-worker-shim?worker&url";
 import { getAssetPath } from "@/utils/withBase";
 import { isPasswordPdfError } from "@/scripts/pdf-errors";
+
+/** UA-based legacy flag (independent of main-thread polyfills). */
+const LEGACY_UA_FLAG = (() => {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  if (/Windows NT 6\.[01]/.test(ua)) return true;
+  const chrome = ua.match(/(?:Chrome|CriOS)\/(\d+)/);
+  if (chrome && Number(chrome[1]) < 110) return true;
+  return false;
+})();
 
 const PDFJS_VERSION = "6.1.200";
 const PDFJS_CDN = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}`;
@@ -24,6 +33,8 @@ export function probeLocalPdfAssets(): Promise<boolean> {
         const urls = [
           pdfjsAssetUrl("cmaps/LICENSE", false),
           pdfjsAssetUrl("wasm/openjpeg.wasm", false),
+          pdfjsAssetUrl("wasm/jbig2.wasm", false),
+          pdfjsAssetUrl("pdf-worker-bootstrap.mjs", false),
         ];
         const results = await Promise.all(
           urls.map(url =>
@@ -52,14 +63,8 @@ export function supportsWebAssembly(): boolean {
 /** Win7 / Chrome < 110 and other browsers missing newer PDF.js APIs. */
 export function isLegacyPdfEnvironment(): boolean {
   if (typeof window === "undefined") return false;
+  if (LEGACY_UA_FLAG) return true;
   if (typeof Promise.withResolvers !== "function") return true;
-
-  const ua = navigator.userAgent;
-  if (/Windows NT 6\.[01]/.test(ua)) return true;
-
-  const chrome = ua.match(/(?:Chrome|CriOS)\/(\d+)/);
-  if (chrome && Number(chrome[1]) < 110) return true;
-
   return false;
 }
 
@@ -93,10 +98,8 @@ function buildDocumentInit(
 }
 
 function pdfjsWorkerSrc(): string {
-  if (typeof window === "undefined") return workerUrl;
-  // Legacy browsers (Win7 / Chrome 109) need the bundled shim worker with polyfills.
-  if (isLegacyPdfEnvironment()) return workerUrl;
-  const rel = getAssetPath("pdfjs/pdf.worker.min.mjs");
+  const rel = getAssetPath("pdfjs/pdf-worker-bootstrap.mjs");
+  if (typeof window === "undefined") return rel;
   return new URL(rel, window.location.origin).href;
 }
 
@@ -132,52 +135,56 @@ export async function loadPdfBytes(
   const payload = clonePdfBytes(data);
   const wasm = supportsWebAssembly();
   const localAssets = await probeLocalPdfAssets();
+  const legacy = isLegacyPdfEnvironment();
 
-  const preferred: LoadPdfOptions[] = [
-    {
-      ...options,
-      useWasm: true,
-      useCdn: false,
-      isOffscreenCanvasSupported: false,
-      isImageDecoderSupported: false,
-    },
-    {
-      ...options,
-      useWasm: true,
-      useCdn: true,
-      isOffscreenCanvasSupported: false,
-      isImageDecoderSupported: false,
-    },
-    { ...options, useWasm: true, useCdn: false },
-    { ...options, useWasm: true, useCdn: true },
-    { ...options, useWasm: wasm, useCdn: true },
-    { ...options, useWasm: false, useCdn: false, isOffscreenCanvasSupported: false },
-    {
-      ...options,
-      useWasm: false,
-      useCdn: true,
-      isOffscreenCanvasSupported: false,
-      isImageDecoderSupported: false,
-    },
-  ];
+  const noWasmLocal: LoadPdfOptions = {
+    ...options,
+    useWasm: false,
+    useCdn: false,
+    isOffscreenCanvasSupported: false,
+    isImageDecoderSupported: false,
+  };
+  const wasmLocal: LoadPdfOptions = {
+    ...options,
+    useWasm: true,
+    useCdn: false,
+    isOffscreenCanvasSupported: false,
+    isImageDecoderSupported: false,
+  };
+  const noWasmCdn: LoadPdfOptions = {
+    ...options,
+    useWasm: false,
+    useCdn: true,
+    isOffscreenCanvasSupported: false,
+    isImageDecoderSupported: false,
+  };
+  const wasmCdn: LoadPdfOptions = {
+    ...options,
+    useWasm: true,
+    useCdn: true,
+    isOffscreenCanvasSupported: false,
+    isImageDecoderSupported: false,
+  };
 
-  const cdnOnly: LoadPdfOptions[] = [
-    {
-      ...options,
-      useWasm: true,
-      useCdn: true,
-      isOffscreenCanvasSupported: false,
-      isImageDecoderSupported: false,
-    },
-    { ...options, useWasm: true, useCdn: true },
-    {
-      ...options,
-      useWasm: false,
-      useCdn: true,
-      isOffscreenCanvasSupported: false,
-      isImageDecoderSupported: false,
-    },
-  ];
+  const preferred: LoadPdfOptions[] = legacy
+    ? [noWasmLocal, wasmLocal, noWasmCdn, wasmCdn, { ...options, useWasm: true, useCdn: false }]
+    : [
+        wasmLocal,
+        wasmCdn,
+        { ...options, useWasm: true, useCdn: false },
+        { ...options, useWasm: true, useCdn: true },
+        { ...options, useWasm: wasm, useCdn: true },
+        noWasmLocal,
+        noWasmCdn,
+      ];
+
+  const cdnOnly: LoadPdfOptions[] = legacy
+    ? [noWasmCdn, wasmCdn, { ...options, useWasm: true, useCdn: true }]
+    : [
+        wasmCdn,
+        { ...options, useWasm: true, useCdn: true },
+        noWasmCdn,
+      ];
 
   const attempts = localAssets ? preferred : cdnOnly;
 

@@ -152,6 +152,7 @@ async function renderPdfPageToCanvasOnce(
     canvasContext: ctx,
     viewport,
     canvas,
+    background: "#ffffff",
   });
 
   const timeoutMs = LEGACY ? 240_000 : 180_000;

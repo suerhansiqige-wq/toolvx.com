@@ -40,3 +40,38 @@ for (const { from: relFrom, to } of workerFiles) {
   fs.copyFileSync(from, destFile);
   console.log(`Copied pdfjs worker → public/pdfjs/${to}`);
 }
+
+const bootstrap = `/**
+ * Self-hosted pdf.js worker bootstrap (Win7 / Chrome 109+).
+ * Polyfills run in the worker before loading the legacy worker bundle.
+ */
+if (typeof Promise.withResolvers !== "function") {
+  Promise.withResolvers = function withResolvers() {
+    let resolve;
+    let reject;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
+if (!Array.prototype.at) {
+  Object.defineProperty(Array.prototype, "at", {
+    value: function at(index) {
+      const len = this.length;
+      const relative = index >= 0 ? index : len + index;
+      if (relative < 0 || relative >= len) return undefined;
+      return this[relative];
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+import "./pdf.worker.min.mjs";
+`;
+
+fs.writeFileSync(path.join(dest, "pdf-worker-bootstrap.mjs"), bootstrap, "utf8");
+console.log("Wrote public/pdfjs/pdf-worker-bootstrap.mjs");

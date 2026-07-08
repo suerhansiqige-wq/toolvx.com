@@ -280,7 +280,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     error_pdf_password_incorrect: "PDF 密码不正确，请重试。",
     error_pdf_password_prompt: "请输入 PDF 密码以打开此文档。",
     error_pdf_assets:
-      "PDF 页面渲染失败（常见于特殊字体或图片编码）。请刷新页面后重试，或使用 Chrome / Edge 最新版浏览器。",
+      "PDF 页面渲染失败（常见于特殊字体或图片编码）。请按 Ctrl+F5 强制刷新后重试。Win7 用户可尝试 Firefox 115 ESR；其他系统请使用较新的 Chrome 或 Edge。",
     dialog_ok: "确定",
     dialog_cancel: "取消",
     redact_badge: "本地图片与 PDF 打码",
