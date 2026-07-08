@@ -30,5 +30,8 @@ public/pdfjs
 # pnpm
 .pnpm-store
 
+# cloudflare
+.wrangler
+
 # docker compose
 compose.override.yaml
