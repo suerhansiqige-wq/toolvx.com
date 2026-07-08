@@ -22,7 +22,7 @@ import {
   compressPdfFilesToZip,
   mergePdfBytes,
   mergePdfFiles,
-  type CompressionLevel,
+  type CompressionMode,
   splitPdfAllPages,
   splitPdfExtractPages,
   rotatePdf,
@@ -423,12 +423,16 @@ function bindActionButton(handler: () => Promise<void>) {
       const multi = $("compress-multi-actions");
       const eachBtn = $("tool-compress-each-btn") as HTMLButtonElement | null;
       const mergeBtn = $("tool-compress-merge-btn") as HTMLButtonElement | null;
+      const limitBtn = $("tool-compress-limit-btn") as HTMLButtonElement | null;
+      const hasLimit = parseCompressLimitMb() !== null;
 
       multi?.classList.toggle("hidden", count < 2);
       btn.classList.toggle("hidden", count >= 2);
+      limitBtn?.classList.toggle("hidden", count >= 2);
 
       if (count < 2) {
         btn.disabled = count === 0;
+        if (limitBtn) limitBtn.disabled = count === 0 || !hasLimit;
       } else {
         if (eachBtn) eachBtn.disabled = false;
         if (mergeBtn) mergeBtn.disabled = false;
@@ -516,11 +520,20 @@ function bindActionButton(handler: () => Promise<void>) {
   );
 }
 
-function getCompressionLevel(): CompressionLevel {
-  return (
-    (document.querySelector('input[name="compression"]:checked') as HTMLInputElement)
-      ?.value ?? "balanced"
-  ) as CompressionLevel;
+function parseCompressLimitMb(): number | null {
+  const raw = ($("compress-max-mb") as HTMLInputElement | null)?.value?.trim();
+  if (!raw) return null;
+  const mb = Number.parseFloat(raw);
+  if (!Number.isFinite(mb) || mb <= 0) return null;
+  return mb;
+}
+
+function getCompressionModeForMulti(): CompressionMode {
+  const mb = parseCompressLimitMb();
+  if (mb !== null) {
+    return { kind: "limit", maxBytes: Math.round(mb * 1024 * 1024) };
+  }
+  return { kind: "default" };
 }
 
 function showCompressStats(orig: number, out: number): void {
@@ -554,14 +567,22 @@ function initCompress() {
     if (files.length !== 1) return;
 
     const file = files[0];
-    const bytes = await compressPdfFile(file, getCompressionLevel());
+    const bytes = await compressPdfFile(file, { kind: "default" });
     downloadBytes(bytes, originalPdfFilename(file), "application/pdf");
     showCompressStats(file.size, bytes.byteLength);
   });
 
   const eachBtn = $("tool-compress-each-btn") as HTMLButtonElement | null;
   const mergeBtn = $("tool-compress-merge-btn") as HTMLButtonElement | null;
+  const limitBtn = $("tool-compress-limit-btn") as HTMLButtonElement | null;
+  const limitInput = $("compress-max-mb") as HTMLInputElement | null;
   if (!eachBtn) return;
+
+  limitInput?.addEventListener("input", () => {
+    (
+      getRoot() as (HTMLElement & { __updateToolDisabled?: () => void }) | null
+    )?.__updateToolDisabled?.();
+  });
 
   const bindId = `compress-extra-${getI18nKey()}`;
   if (eachBtn.dataset.compressExtraBound === bindId) {
@@ -572,6 +593,7 @@ function initCompress() {
   }
   eachBtn.dataset.compressExtraBound = bindId;
   if (mergeBtn) mergeBtn.dataset.compressExtraBound = bindId;
+  if (limitBtn) limitBtn.dataset.compressExtraBound = bindId;
 
   const prevAbort = (
     eachBtn as HTMLButtonElement & { __compressAbort?: AbortController }
@@ -593,6 +615,7 @@ function initCompress() {
     if (mainBtn) mainBtn.disabled = true;
     if (eachBtn && eachBtn !== btn) eachBtn.disabled = true;
     if (mergeBtn && mergeBtn !== btn) mergeBtn.disabled = true;
+    if (limitBtn && limitBtn !== btn) limitBtn.disabled = true;
     try {
       await task();
     } catch (err) {
@@ -616,8 +639,8 @@ function initCompress() {
         const files = getFiles(true);
         if (files.length < 2) throw new Error(t("common.needTwoFiles"));
 
-        const level = getCompressionLevel();
-        const zip = await compressPdfFilesToZip(files, level);
+        const mode = getCompressionModeForMulti();
+        const zip = await compressPdfFilesToZip(files, mode);
         const blob = await zipToBlob(zip);
         downloadBlob(blob, zipFilenameCompressedBatch(files));
 
@@ -635,12 +658,34 @@ function initCompress() {
         const files = getFiles(true);
         if (files.length < 2) throw new Error(t("common.needTwoFiles"));
 
-        const level = getCompressionLevel();
+        const mode = getCompressionModeForMulti();
         const merged = await mergePdfFiles(files);
-        const bytes = await compressPdfBytes(merged, level);
+        const bytes = await compressPdfBytes(merged, mode);
         const orig = files.reduce((sum, file) => sum + file.size, 0);
         downloadBytes(bytes, mergedCompressedFilename(files), "application/pdf");
         showCompressStats(orig, bytes.byteLength);
+      });
+    },
+    { signal: ac.signal }
+  );
+
+  limitBtn?.addEventListener(
+    "click",
+    () => {
+      void runAux(limitBtn, "common.compressToLimit", async () => {
+        const files = getFiles(true);
+        if (files.length !== 1) throw new Error(t(toolKey("error")));
+
+        const mb = parseCompressLimitMb();
+        if (mb === null) throw new Error(t("common.compressLimitRequired"));
+
+        const file = files[0];
+        const bytes = await compressPdfFile(file, {
+          kind: "limit",
+          maxBytes: Math.round(mb * 1024 * 1024),
+        });
+        downloadBytes(bytes, originalPdfFilename(file), "application/pdf");
+        showCompressStats(file.size, bytes.byteLength);
       });
     },
     { signal: ac.signal }

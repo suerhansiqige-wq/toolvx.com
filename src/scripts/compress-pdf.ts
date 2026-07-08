@@ -1,5 +1,5 @@
 export {
   compressPdfFile,
-  type CompressionLevel,
+  type CompressionMode,
 } from "@/scripts/pdf-tools";
 export { formatBytes } from "./tools";

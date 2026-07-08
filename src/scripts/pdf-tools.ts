@@ -15,11 +15,9 @@ import {
   zipPageFilename,
 } from "@/scripts/export-filename";
 
-export type CompressionLevel = "balanced" | "strong" | "maximum";
-
-const HD_PRESET = { scale: 2.0, quality: 0.9 };
-const STRONG_MAX_BYTES = 2 * 1024 * 1024;
-const MAXIMUM_MAX_BYTES = 1 * 1024 * 1024;
+export type CompressionMode =
+  | { kind: "default" }
+  | { kind: "limit"; maxBytes: number };
 
 const SIZE_TIER_PRESETS: { scale: number; quality: number }[] = [
   { scale: 1.65, quality: 0.78 },
@@ -114,34 +112,59 @@ async function compressToByteLimit(
   return best;
 }
 
+/** Smart compress: never return a file larger than the source. */
+async function compressDefault(bytes: Uint8Array): Promise<Uint8Array> {
+  const sourceSize = bytes.byteLength;
+  let best: Uint8Array | null = null;
+
+  const consider = (candidate: Uint8Array) => {
+    if (candidate.byteLength > sourceSize) return;
+    if (!best || candidate.byteLength < best.byteLength) best = candidate;
+  };
+
+  try {
+    consider(await optimizePdfWithoutRaster(bytes));
+  } catch {
+    /* ignore */
+  }
+
+  for (const preset of SIZE_TIER_PRESETS) {
+    try {
+      const result = await rasterizePdfBytes(bytes, preset.scale, preset.quality);
+      consider(result);
+    } catch {
+      /* try next preset */
+    }
+  }
+
+  return best ?? bytes;
+}
+
 export async function compressPdfFile(
   file: File,
-  level: CompressionLevel
+  mode: CompressionMode
 ): Promise<Uint8Array> {
   const bytes = await readPdfBytes(file);
-  return compressPdfBytes(bytes, level);
+  return compressPdfBytes(bytes, mode);
 }
 
 export async function compressPdfBytes(
   bytes: Uint8Array,
-  level: CompressionLevel
+  mode: CompressionMode
 ): Promise<Uint8Array> {
-  if (level === "balanced") {
-    return rasterizePdfBytes(bytes, HD_PRESET.scale, HD_PRESET.quality);
+  if (mode.kind === "limit") {
+    return compressToByteLimit(bytes, Math.max(1024, mode.maxBytes));
   }
-  if (level === "strong") {
-    return compressToByteLimit(bytes, STRONG_MAX_BYTES);
-  }
-  return compressToByteLimit(bytes, MAXIMUM_MAX_BYTES);
+  return compressDefault(bytes);
 }
 
 export async function compressPdfFilesToZip(
   files: File[],
-  level: CompressionLevel
+  mode: CompressionMode
 ): Promise<JSZip> {
   const zip = new JSZip();
   for (const file of files) {
-    const bytes = await compressPdfFile(file, level);
+    const bytes = await compressPdfFile(file, mode);
     zip.file(compressedPdfFilename(file.name), bytes);
   }
   return zip;

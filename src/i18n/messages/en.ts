@@ -161,8 +161,8 @@ export const en: Messages = {
   tools: attachSeoRich({
     compressPdf: tool(
       "Compress PDF",
-      "Reduce PDF file size in seconds — upload one or many PDFs, pick a level, and download.",
-      "Compress PDF",
+      "Reduce PDF file size in seconds — upload one or many PDFs, then compress with default settings or a custom size limit.",
+      "Default compress",
       "Download Compressed PDF",
       pdfMulti,
       pdfMultiCompressSub,
@@ -187,7 +187,7 @@ export const en: Messages = {
               ordered: true,
               items: [
                 "Upload one or more PDF files.",
-                "Choose Balanced (HD), Strong (under 2 MB), or Maximum (under 1 MB).",
+                "Use Default compress (output never larger than the original), or enter a max size in MB and click Compress to limit.",
                 "Compress a single file, each file separately (ZIP), or merge then compress.",
               ],
             },
