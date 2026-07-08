@@ -1,5 +1,4 @@
-import * as pdfjsLib from "pdfjs-dist";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { loadPdfBytes, pdfjsLib } from "@/scripts/pdf-worker";
 import { t } from "@/scripts/i18n-client";
 import { openImageLightbox } from "@/scripts/image-lightbox";
 import {
@@ -21,8 +20,6 @@ import {
   teardownDropzoneScrollbar,
 } from "@/scripts/dropzone-scrollbar";
 import { formatBytes } from "./tools";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const objectUrls = new WeakMap<HTMLElement, string[]>();
 let previewGeneration = 0;
@@ -57,7 +54,7 @@ function isPdfFile(file: File): boolean {
 
 async function renderPdfThumbnail(file: File, pageNum = 1, scale = 0.35): Promise<string> {
   const data = new Uint8Array(await file.arrayBuffer());
-  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  const pdf = await loadPdfBytes(data);
   return renderPdfPageThumbnail(pdf, pageNum, scale);
 }
 
@@ -581,7 +578,7 @@ async function renderSplitPdfPreview(
   let pageCount = 0;
   try {
     const data = new Uint8Array(await file.arrayBuffer());
-    const pdf = await pdfjsLib.getDocument({ data }).promise;
+    const pdf = await loadPdfBytes(data);
     pageCount = pdf.numPages;
 
     for (let i = 1; i <= pageCount; i++) {
@@ -699,7 +696,11 @@ export async function updateDropzonePreview(
     syncToolButtonState();
   }
 
-  syncDropzoneScrollbar(thumbs, preview);
+  try {
+    syncDropzoneScrollbar(thumbs, preview);
+  } catch {
+    /* scrollbar is optional */
+  }
 }
 
 export function bindDropzonePreview(

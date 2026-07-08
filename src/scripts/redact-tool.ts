@@ -1,10 +1,9 @@
-import * as pdfjsLib from "pdfjs-dist";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { loadPdfBytes, pdfjsLib, ensurePdfWorker } from "@/scripts/pdf-worker";
 import { PDFDocument } from "pdf-lib";
 import { REDACT_PALETTE } from "@/scripts/redact-colors";
 import { onI18nReady, t } from "@/scripts/i18n-client";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+ensurePdfWorker();
 
 type EffectType = "blackout" | "pixelate" | "blur";
 
@@ -496,7 +495,7 @@ async function loadPdfFile(file: File) {
   originalMime = "application/pdf";
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
+  pdfDoc = await loadPdfBytes(bytes);
   totalPages = pdfDoc.numPages;
   pdfPageSizePts = new Array(totalPages);
   pageStores = [];

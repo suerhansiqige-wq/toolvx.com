@@ -174,7 +174,7 @@ function createThumbDownloadCard(
   const previewBtn = document.createElement("button");
   previewBtn.type = "button";
   previewBtn.className =
-    "tool-page-thumb-card__preview aspect-[3/4] w-full cursor-zoom-in overflow-hidden bg-white dark:bg-gray-900";
+    "tool-page-thumb-card__preview min-h-[10rem] aspect-[3/4] w-full cursor-zoom-in overflow-hidden bg-white dark:bg-gray-900";
   previewBtn.setAttribute("aria-label", t("zoom_page_image", { n: String(item.pageIndex) }));
 
   const img = document.createElement("img");

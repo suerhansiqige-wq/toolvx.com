@@ -1,14 +1,13 @@
 import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
-import * as pdfjsLib from "pdfjs-dist";
+import { ensurePdfWorker, loadPdfBytes, pdfjsLib } from "@/scripts/pdf-worker";
 import JSZip from "jszip";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   pageImageFilename,
   zipImageFilename,
   zipPageFilename,
 } from "@/scripts/export-filename";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+ensurePdfWorker();
 
 export type CompressionLevel = "balanced" | "strong" | "maximum";
 
@@ -84,7 +83,7 @@ async function rasterizePdfBytes(
   scale: number,
   quality: number
 ): Promise<Uint8Array> {
-  const pdf = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+  const pdf = await loadPdfBytes(bytes.slice());
   return rasterizePdfToBytes(pdf, scale, quality);
 }
 
@@ -649,7 +648,7 @@ export async function csvToPdf(csv: string): Promise<Uint8Array> {
 
 async function loadPdfJs(file: File, password?: string) {
   const data = await readPdfBytes(file);
-  return pdfjsLib.getDocument({ data, password }).promise;
+  return loadPdfBytes(data, { password });
 }
 
 export async function extractPdfText(file: File, password?: string): Promise<string> {

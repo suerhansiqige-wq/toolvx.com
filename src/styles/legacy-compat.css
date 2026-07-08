@@ -1,0 +1,150 @@
+/*
+ * Legacy browser fallbacks (Win7 / Chrome < 111).
+ * Declarations without color-mix / dvh / logical inset run first;
+ * modern rules in component styles override when supported.
+ */
+
+/* --- Image lightbox --- */
+.image-lightbox-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.75);
+  cursor: zoom-out;
+}
+
+.image-lightbox-overlay__image {
+  display: block;
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  cursor: default;
+}
+
+.image-lightbox-overlay__close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+}
+
+.image-lightbox-overlay__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Tool preview / zoom click targets --- */
+.merge-dropzone-item__preview,
+.dropzone-page-thumb__preview,
+.tool-page-thumb-card__preview {
+  cursor: zoom-in;
+  pointer-events: auto;
+}
+
+.tool-page-thumb-card__preview {
+  min-height: 10rem;
+}
+
+@supports (aspect-ratio: 3 / 4) {
+  .tool-page-thumb-card__preview {
+    min-height: 0;
+  }
+}
+
+/* --- PDF reader fullscreen overlay --- */
+.pdf-reader-fullscreen {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.94);
+}
+
+.pdf-reader-side-nav--prev {
+  left: 0.75rem;
+}
+
+.pdf-reader-side-nav--next {
+  right: 0.75rem;
+}
+
+.pdf-reader-fullscreen-btn {
+  right: 0.75rem;
+}
+
+.pdf-reader-fullscreen-close {
+  right: 1rem;
+}
+
+.pdf-reader-fs-nav--prev {
+  left: 1rem;
+}
+
+.pdf-reader-fs-nav--next {
+  right: 1rem;
+}
+
+/* --- Dropzone with files --- */
+[data-dropzone].has-files {
+  border-color: var(--accent);
+  background-color: var(--card);
+}
+
+/* --- Custom scrollbar track (preview row) --- */
+.dropzone-custom-scrollbar__track {
+  background: var(--muted);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+
+.dropzone-custom-scrollbar__thumb {
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .dropzone-custom-scrollbar__track,
+.dark .dropzone-custom-scrollbar__track {
+  background: var(--muted);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+/* --- Reader controls --- */
+.pdf-reader-side-nav {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-reader-fullscreen-btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Sidebar scroll height --- */
+.tool-sidebar-scroll {
+  max-height: calc(100vh - 4.5rem);
+}
+
+@supports (height: 100dvh) {
+  .tool-sidebar-scroll {
+    max-height: calc(100dvh - 4.5rem);
+  }
+}

@@ -12,6 +12,48 @@ export function closeImageLightbox(): void {
   lastFocused = null;
 }
 
+function applyOverlayStyles(el: HTMLElement): void {
+  Object.assign(el.style, {
+    position: "fixed",
+    top: "0",
+    right: "0",
+    bottom: "0",
+    left: "0",
+    zIndex: "100",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "1rem",
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    cursor: "zoom-out",
+  });
+}
+
+function applyImageStyles(el: HTMLImageElement): void {
+  Object.assign(el.style, {
+    maxWidth: "100%",
+    maxHeight: "90vh",
+    objectFit: "contain",
+    cursor: "default",
+  });
+}
+
+function applyCloseButtonStyles(el: HTMLButtonElement): void {
+  Object.assign(el.style, {
+    position: "absolute",
+    top: "1rem",
+    right: "1rem",
+    borderRadius: "0.5rem",
+    padding: "0.5rem",
+    fontSize: "1.5rem",
+    lineHeight: "1",
+    color: "#fff",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+  });
+}
+
 export function openImageLightbox(
   src: string,
   alt: string,
@@ -21,28 +63,29 @@ export function openImageLightbox(
   lastFocused = trigger ?? document.activeElement;
 
   overlay = document.createElement("div");
+  overlay.className = "image-lightbox-overlay";
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute(
     "aria-label",
     alt ? t("image_preview_alt", { alt }) : t("image_preview")
   );
-  overlay.className =
-    "fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/75 p-4 backdrop-blur-sm";
+  applyOverlayStyles(overlay);
 
   const closeButton = document.createElement("button");
   closeButton.type = "button";
+  closeButton.className = "image-lightbox-overlay__close";
   closeButton.setAttribute("aria-label", t("close_preview"));
-  closeButton.className =
-    "absolute end-4 top-4 rounded-lg p-2 text-2xl leading-none text-white transition hover:bg-white/10";
   closeButton.textContent = "×";
+  applyCloseButtonStyles(closeButton);
   closeButton.addEventListener("click", closeImageLightbox);
 
   const image = document.createElement("img");
   image.src = src;
   image.alt = alt;
-  image.className = "max-h-[90dvh] max-w-full cursor-default object-contain";
+  image.className = "image-lightbox-overlay__image";
   image.draggable = false;
+  applyImageStyles(image);
 
   overlay.addEventListener("click", e => {
     if (e.target === overlay) closeImageLightbox();

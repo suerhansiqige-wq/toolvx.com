@@ -45,102 +45,97 @@ export function teardownDropzoneScrollbar(thumbs: HTMLElement): void {
   scrollbarControllers.delete(thumbs);
 }
 
-export function syncDropzoneScrollbar(thumbs: HTMLElement, preview: HTMLElement): void {
-  const { bar, track, thumb } = ensureCustomScrollbar(preview);
-  preview.appendChild(bar);
-
-  const update = () => {
-    const { scrollWidth, clientWidth, scrollLeft } = thumbs;
-    const scrollable = scrollWidth > clientWidth + 2;
-
-    bar.classList.toggle("hidden", !scrollable);
-    if (!scrollable) return;
-
-    const trackWidth = track.clientWidth;
-    if (trackWidth <= 0) return;
-
-    const ratio = clientWidth / scrollWidth;
-    const thumbWidth = Math.max(64, Math.floor(trackWidth * ratio));
-    const maxThumbOffset = Math.max(0, trackWidth - thumbWidth);
-    const maxScroll = scrollWidth - clientWidth;
-    const thumbOffset =
-      maxScroll > 0 ? (scrollLeft / maxScroll) * maxThumbOffset : 0;
-
-    thumb.style.width = `${thumbWidth}px`;
-    thumb.style.transform = `translateX(${thumbOffset}px)`;
-  };
-
-  let existing = scrollbarControllers.get(thumbs);
-  if (existing) {
-    requestAnimationFrame(update);
-    return;
-  }
-
-  const ac = new AbortController();
-  scrollbarControllers.set(thumbs, ac);
-  const { signal } = ac;
-
-  thumbs.addEventListener("scroll", update, { passive: true, signal });
-  window.addEventListener("resize", update, { signal });
-
-  const resizeObserver = new ResizeObserver(() => update());
-  resizeObserver.observe(thumbs);
-  resizeObserver.observe(track);
-  signal.addEventListener("abort", () => resizeObserver.disconnect());
-
-  const mutationObserver = new MutationObserver(() => {
-    requestAnimationFrame(update);
-  });
-  mutationObserver.observe(thumbs, { childList: true, subtree: true });
-  signal.addEventListener("abort", () => mutationObserver.disconnect());
-
+function bindThumbDrag(
+  thumbs: HTMLElement,
+  track: HTMLElement,
+  thumb: HTMLElement,
+  signal: AbortSignal
+): void {
   let dragPointerId: number | null = null;
   let dragStartX = 0;
   let dragStartScrollLeft = 0;
+  let mouseDragging = false;
 
-  thumb.addEventListener(
-    "pointerdown",
-    event => {
-      event.preventDefault();
-      event.stopPropagation();
-      dragPointerId = event.pointerId;
-      dragStartX = event.clientX;
-      dragStartScrollLeft = thumbs.scrollLeft;
-      thumb.setPointerCapture(event.pointerId);
-      thumb.classList.add("is-dragging");
-    },
-    { signal }
-  );
+  const scrollByDelta = (deltaX: number) => {
+    const trackWidth = track.clientWidth;
+    const thumbWidth = thumb.offsetWidth;
+    const scrollRange = trackWidth - thumbWidth;
+    const maxScroll = thumbs.scrollWidth - thumbs.clientWidth;
+    if (scrollRange <= 0 || maxScroll <= 0) return;
 
-  thumb.addEventListener(
-    "pointermove",
-    event => {
-      if (dragPointerId !== event.pointerId) return;
-      const trackWidth = track.clientWidth;
-      const thumbWidth = thumb.offsetWidth;
-      const scrollRange = trackWidth - thumbWidth;
-      const maxScroll = thumbs.scrollWidth - thumbs.clientWidth;
-      if (scrollRange <= 0 || maxScroll <= 0) return;
+    thumbs.scrollLeft = dragStartScrollLeft + (deltaX / scrollRange) * maxScroll;
+  };
 
-      const deltaX = event.clientX - dragStartX;
-      thumbs.scrollLeft = dragStartScrollLeft + (deltaX / scrollRange) * maxScroll;
-    },
-    { signal }
-  );
+  const startDrag = (clientX: number, pointerId?: number) => {
+    dragStartX = clientX;
+    dragStartScrollLeft = thumbs.scrollLeft;
+    thumb.classList.add("is-dragging");
+    if (pointerId !== undefined) dragPointerId = pointerId;
+    else mouseDragging = true;
+  };
 
-  const endDrag = (event: PointerEvent) => {
-    if (dragPointerId !== event.pointerId) return;
+  const endDrag = (pointerId?: number) => {
+    if (pointerId !== undefined && dragPointerId !== pointerId) return;
+    if (pointerId === undefined && !mouseDragging) return;
     dragPointerId = null;
+    mouseDragging = false;
     thumb.classList.remove("is-dragging");
-    try {
-      thumb.releasePointerCapture(event.pointerId);
-    } catch {
-      /* ignore */
+    if (pointerId !== undefined) {
+      try {
+        thumb.releasePointerCapture(pointerId);
+      } catch {
+        /* ignore */
+      }
     }
   };
 
-  thumb.addEventListener("pointerup", endDrag, { signal });
-  thumb.addEventListener("pointercancel", endDrag, { signal });
+  if (window.PointerEvent) {
+    thumb.addEventListener(
+      "pointerdown",
+      event => {
+        event.preventDefault();
+        event.stopPropagation();
+        startDrag(event.clientX, event.pointerId);
+        thumb.setPointerCapture(event.pointerId);
+      },
+      { signal }
+    );
+
+    thumb.addEventListener(
+      "pointermove",
+      event => {
+        if (dragPointerId !== event.pointerId) return;
+        scrollByDelta(event.clientX - dragStartX);
+      },
+      { signal }
+    );
+
+    thumb.addEventListener("pointerup", event => endDrag(event.pointerId), { signal });
+    thumb.addEventListener("pointercancel", event => endDrag(event.pointerId), {
+      signal,
+    });
+  } else {
+    thumb.addEventListener(
+      "mousedown",
+      event => {
+        event.preventDefault();
+        event.stopPropagation();
+        startDrag(event.clientX);
+      },
+      { signal }
+    );
+
+    document.addEventListener(
+      "mousemove",
+      event => {
+        if (!mouseDragging) return;
+        scrollByDelta(event.clientX - dragStartX);
+      },
+      { signal }
+    );
+
+    document.addEventListener("mouseup", () => endDrag(), { signal });
+  }
 
   track.addEventListener(
     "click",
@@ -162,11 +157,71 @@ export function syncDropzoneScrollbar(thumbs: HTMLElement, preview: HTMLElement)
     },
     { signal }
   );
+}
 
-  requestAnimationFrame(update);
-  setTimeout(update, 0);
-  setTimeout(update, 120);
-  setTimeout(update, 400);
+export function syncDropzoneScrollbar(thumbs: HTMLElement, preview: HTMLElement): void {
+  try {
+    const { bar, track, thumb } = ensureCustomScrollbar(preview);
+    preview.appendChild(bar);
+
+    const update = () => {
+      const { scrollWidth, clientWidth, scrollLeft } = thumbs;
+      const scrollable = scrollWidth > clientWidth + 2;
+
+      bar.classList.toggle("hidden", !scrollable);
+      if (!scrollable) return;
+
+      const trackWidth = track.clientWidth;
+      if (trackWidth <= 0) return;
+
+      const ratio = clientWidth / scrollWidth;
+      const thumbWidth = Math.max(64, Math.floor(trackWidth * ratio));
+      const maxThumbOffset = Math.max(0, trackWidth - thumbWidth);
+      const maxScroll = scrollWidth - clientWidth;
+      const thumbOffset =
+        maxScroll > 0 ? (scrollLeft / maxScroll) * maxThumbOffset : 0;
+
+      thumb.style.width = `${thumbWidth}px`;
+      thumb.style.transform = `translateX(${thumbOffset}px)`;
+    };
+
+    let existing = scrollbarControllers.get(thumbs);
+    if (existing) {
+      requestAnimationFrame(update);
+      return;
+    }
+
+    const ac = new AbortController();
+    scrollbarControllers.set(thumbs, ac);
+    const { signal } = ac;
+
+    thumbs.addEventListener("scroll", update, { passive: true, signal });
+    window.addEventListener("resize", update, { signal });
+
+    if (typeof ResizeObserver !== "undefined") {
+      const resizeObserver = new ResizeObserver(() => update());
+      resizeObserver.observe(thumbs);
+      resizeObserver.observe(track);
+      signal.addEventListener("abort", () => resizeObserver.disconnect());
+    }
+
+    if (typeof MutationObserver !== "undefined") {
+      const mutationObserver = new MutationObserver(() => {
+        requestAnimationFrame(update);
+      });
+      mutationObserver.observe(thumbs, { childList: true, subtree: true });
+      signal.addEventListener("abort", () => mutationObserver.disconnect());
+    }
+
+    bindThumbDrag(thumbs, track, thumb, signal);
+
+    requestAnimationFrame(update);
+    setTimeout(update, 0);
+    setTimeout(update, 120);
+    setTimeout(update, 400);
+  } catch {
+    /* scrollbar is optional; never block previews */
+  }
 }
 
 export function resetDropzoneScrollbar(preview: HTMLElement, thumbs?: HTMLElement): void {

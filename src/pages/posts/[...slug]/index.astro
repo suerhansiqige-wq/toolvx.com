@@ -342,6 +342,9 @@ const ogImage = ogImageUrl
       image.alt = "";
       image.className =
         "max-h-[90dvh] max-w-[90dvw] cursor-default object-contain";
+      image.style.maxHeight = "90vh";
+      image.style.maxWidth = "90vw";
+      image.style.objectFit = "contain";
 
       overlay.append(closeButton, image);
       overlay.addEventListener("click", e => {
