@@ -8,6 +8,16 @@ const PDFJS_CDN = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}`;
 
 let configured = false;
 
+/** Win7 Chrome 109+ still supports WebAssembly — required for many PDF image codecs. */
+export function supportsWebAssembly(): boolean {
+  if (typeof WebAssembly !== "object") return false;
+  try {
+    return typeof WebAssembly.instantiate === "function";
+  } catch {
+    return false;
+  }
+}
+
 /** Win7 / Chrome < 110 and other browsers missing newer PDF.js APIs. */
 export function isLegacyPdfEnvironment(): boolean {
   if (typeof window === "undefined") return false;
@@ -35,19 +45,19 @@ function buildDocumentInit(
 ): Parameters<typeof pdfjsLib.getDocument>[0] {
   const legacy = isLegacyPdfEnvironment();
   const useCdn = options?.useCdn ?? false;
+  const wasmDefault = legacy ? supportsWebAssembly() : true;
   return {
     data,
-    disableAutoFetch: true,
-    disableStream: legacy,
+    disableAutoFetch: false,
     password: options?.password,
-    useWasm: options?.useWasm ?? !legacy,
+    useWasm: options?.useWasm ?? wasmDefault,
     cMapUrl: pdfjsAssetUrl("cmaps", useCdn),
     cMapPacked: true,
     standardFontDataUrl: pdfjsAssetUrl("standard_fonts", useCdn),
     wasmUrl: pdfjsAssetUrl("wasm", useCdn),
     useSystemFonts: true,
     isOffscreenCanvasSupported: options?.isOffscreenCanvasSupported ?? !legacy,
-    isImageDecoderSupported: options?.isImageDecoderSupported ?? !legacy,
+    isImageDecoderSupported: options?.isImageDecoderSupported ?? false,
   };
 }
 
@@ -89,8 +99,12 @@ export async function loadPdfBytes(
   options?: LoadPdfOptions
 ): Promise<PdfDocumentProxy> {
   const pdfjs = ensurePdfWorker();
+  const wasm = supportsWebAssembly();
   const attempts: LoadPdfOptions[] = [
-    options ?? {},
+    { ...options, useWasm: options?.useWasm ?? wasm },
+    { ...options, useWasm: true },
+    { ...options, useWasm: wasm, useCdn: true },
+    { ...options, useWasm: true, useCdn: true },
     { ...options, useWasm: false },
     {
       ...options,

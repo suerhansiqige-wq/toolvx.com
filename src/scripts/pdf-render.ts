@@ -42,6 +42,28 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
+/** Detect renders that finished but drew no visible content (common when wasm is off). */
+export function isCanvasMostlyBlank(canvas: HTMLCanvasElement): boolean {
+  const ctx = canvas.getContext("2d");
+  if (!ctx || canvas.width < 2 || canvas.height < 2) return true;
+
+  const w = Math.min(64, canvas.width);
+  const h = Math.min(64, canvas.height);
+  const { data } = ctx.getImageData(0, 0, w, h);
+  let contentPixels = 0;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const alpha = data[i + 3];
+    if (alpha < 8) continue;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    if (r < 248 || g < 248 || b < 248) contentPixels++;
+  }
+
+  return contentPixels < 8;
+}
+
 export function copyCanvasTo(
   source: HTMLCanvasElement,
   target: HTMLCanvasElement
@@ -119,6 +141,11 @@ async function renderPdfPageToCanvasOnce(
 
   const timeoutMs = LEGACY ? 240_000 : 180_000;
   await promiseWithTimeout(renderTask.promise, timeoutMs, "PDF render timeout");
+
+  if (LEGACY && isCanvasMostlyBlank(canvas)) {
+    throw new Error("PDF render blank");
+  }
+
   return canvas;
 }
 

@@ -4,6 +4,7 @@ import {
   canvasToJpegBlob,
   copyCanvasTo,
   getPdfRenderScale,
+  isCanvasMostlyBlank,
   renderPdfPageToCanvas,
 } from "@/scripts/pdf-render";
 import { PDFDocument } from "pdf-lib";
@@ -40,6 +41,7 @@ let overlayCtx: CanvasRenderingContext2D;
 
 let isPdf = false;
 let pdfDoc: pdfjsLib.PDFDocumentProxy | null = null;
+let pdfSourceBytes: Uint8Array | null = null;
 let pdfPageSizePts: { width: number; height: number }[] = [];
 let currentPage = 1;
 let totalPages = 1;
@@ -324,11 +326,32 @@ function saveCurrentPageToStore() {
 
 async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement) {
   if (!pdfDoc) return;
-  const page = await pdfDoc.getPage(pageNum);
-  const rendered = await renderPdfPageToCanvas(page, PDF_RENDER_SCALE);
-  copyCanvasTo(rendered, target);
-  const base = page.getViewport({ scale: 1 });
-  pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
+
+  const drawPage = async () => {
+    const page = await pdfDoc!.getPage(pageNum);
+    const rendered = await renderPdfPageToCanvas(page, PDF_RENDER_SCALE);
+    copyCanvasTo(rendered, target);
+    const base = page.getViewport({ scale: 1 });
+    pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
+    return rendered;
+  };
+
+  try {
+    const rendered = await drawPage();
+    if (!LEGACY_PDF || !isCanvasMostlyBlank(rendered)) return;
+  } catch {
+    /* retry below with wasm-enabled document */
+  }
+
+  if (!pdfSourceBytes) {
+    throw new Error("PDF render blank");
+  }
+
+  pdfDoc = await loadPdfBytes(pdfSourceBytes, { useWasm: true });
+  const rendered = await drawPage();
+  if (isCanvasMostlyBlank(rendered)) {
+    throw new Error("PDF render blank");
+  }
 }
 
 function canvasToThumbUrl(canvas: HTMLCanvasElement, quality = 0.5): string {
@@ -623,6 +646,7 @@ async function loadPdfFile(file: File) {
   setRedactLoading(true);
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
+    pdfSourceBytes = bytes;
     pdfDoc = await loadPdfBytes(bytes);
     totalPages = pdfDoc.numPages;
     pdfPageSizePts = new Array(totalPages);
@@ -661,6 +685,7 @@ async function loadPdfFile(file: File) {
 function mapRedactLoadError(err: unknown): string {
   if (err instanceof Error && err.message) {
     if (err.message.includes("PDF render timeout")) return t("error_pdf_render_timeout");
+    if (err.message.includes("PDF render blank")) return t("error_pdf_render_timeout");
     if (err.message.includes("withResolvers")) return t("error_browser_unsupported");
     if (err.message.includes("Canvas")) return t("error_pdf_render_timeout");
   }
