@@ -11,6 +11,8 @@ const { locale = "en" } = Astro.props;
 const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
 const q = catalog.blog.home.toolQuick;
 
+type TileAccent = "redact" | "pdf" | "image" | "ofd";
+
 type QuickTile = {
   id: string;
   href?: string;
@@ -19,7 +21,7 @@ type QuickTile = {
   titleKey: string;
   desc: string;
   descKey: string;
-  accent: "redact" | "pdf" | "image" | "audio" | "ofd";
+  accent: TileAccent;
   comingSoon?: boolean;
 };
 
@@ -55,16 +57,6 @@ const tiles: QuickTile[] = [
     accent: "image",
   },
   {
-    id: "audio",
-    icon: "convert",
-    title: q.audio,
-    titleKey: "blog.home.toolQuick.audio",
-    desc: q.audioDesc,
-    descKey: "blog.home.toolQuick.audioDesc",
-    accent: "audio",
-    comingSoon: true,
-  },
-  {
     id: "ofd",
     icon: "word-pdf",
     title: q.ofd,
@@ -89,21 +81,25 @@ const tiles: QuickTile[] = [
 
         const inner = (
           <>
+            <span class="metro-tile__pattern" aria-hidden="true"></span>
+            <span class="metro-tile__depth" aria-hidden="true"></span>
             <span class="metro-tile__flash" aria-hidden="true"></span>
             <span class="metro-tile__gloss" aria-hidden="true"></span>
             <span class="metro-tile__art">
-              <svg
-                class="metro-tile__icon"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.85"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                set:html={toolIconPaths[tile.icon]}
-              />
+              <span class="metro-tile__icon-plinth">
+                <svg
+                  class="metro-tile__icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.85"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  set:html={toolIconPaths[tile.icon]}
+                />
+              </span>
               <span class="metro-tile__label" data-i18n={tile.titleKey}>
                 {tile.title}
               </span>
@@ -142,128 +138,191 @@ const tiles: QuickTile[] = [
 <style>
   .home-metro {
     margin-bottom: 1.25rem;
-    padding: 0.35rem;
-    border-radius: 0.35rem;
-    background:
-      radial-gradient(circle at 18% 22%, color-mix(in oklab, #60a5fa 18%, transparent) 0%, transparent 42%),
-      radial-gradient(circle at 82% 78%, color-mix(in oklab, #a78bfa 14%, transparent) 0%, transparent 38%),
-      linear-gradient(160deg, #1e3a5f 0%, #0f172a 48%, #111827 100%);
-    box-shadow:
-      inset 0 1px 0 color-mix(in oklab, white 10%, transparent),
-      0 10px 30px color-mix(in oklab, black 18%, transparent);
-  }
-
-  :global(.dark) .home-metro,
-  :global([data-theme="dark"]) .home-metro {
-    background:
-      radial-gradient(circle at 20% 18%, color-mix(in oklab, #3b82f6 22%, transparent) 0%, transparent 40%),
-      radial-gradient(circle at 78% 82%, color-mix(in oklab, #8b5cf6 16%, transparent) 0%, transparent 36%),
-      linear-gradient(160deg, #0b1220 0%, #020617 100%);
+    perspective: 900px;
   }
 
   .home-metro__grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.35rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.65rem;
   }
 
   .metro-tile {
     position: relative;
     display: flex;
-    min-height: 8.75rem;
+    min-height: 7.5rem;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     border: 0;
-    border-radius: 0.2rem;
-    padding: 1rem 0.75rem;
+    border-radius: 1rem;
+    padding: 0.85rem 0.5rem 0.95rem;
     text-decoration: none;
     color: #fff;
     cursor: pointer;
     isolation: isolate;
-    transition: transform 0.18s ease;
+    transform-style: preserve-3d;
+    transform: translateZ(0);
+    box-shadow:
+      inset 0 2px 0 color-mix(in oklab, white 42%, transparent),
+      inset 0 -4px 8px color-mix(in oklab, black 22%, transparent),
+      0 4px 0 color-mix(in oklab, black 18%, transparent),
+      0 10px 22px color-mix(in oklab, black 28%, transparent),
+      0 18px 36px color-mix(in oklab, black 14%, transparent);
+    transition:
+      transform 0.22s ease,
+      box-shadow 0.22s ease;
   }
 
   .metro-tile--redact {
-    background: linear-gradient(160deg, #ff4d6d 0%, #e11d48 52%, #be123c 100%);
+    background: linear-gradient(155deg, #ff6b8a 0%, #e11d48 42%, #9f1239 100%);
   }
 
   .metro-tile--pdf {
-    background: linear-gradient(160deg, #a78bfa 0%, #7c3aed 55%, #5b21b6 100%);
+    background: linear-gradient(155deg, #c4b5fd 0%, #7c3aed 45%, #4c1d95 100%);
   }
 
   .metro-tile--image {
-    background: linear-gradient(160deg, #f472b6 0%, #db2777 55%, #9d174d 100%);
-  }
-
-  .metro-tile--audio {
-    background: linear-gradient(160deg, #60a5fa 0%, #2563eb 55%, #1d4ed8 100%);
+    background: linear-gradient(155deg, #f9a8d4 0%, #db2777 45%, #831843 100%);
   }
 
   .metro-tile--ofd {
-    background: linear-gradient(160deg, #38bdf8 0%, #0284c7 55%, #0369a1 100%);
+    background: linear-gradient(155deg, #7dd3fc 0%, #0284c7 45%, #075985 100%);
+  }
+
+  .metro-tile--redact .metro-tile__pattern {
+    background-image:
+      radial-gradient(circle at 82% 18%, color-mix(in oklab, white 22%, transparent) 0%, transparent 28%),
+      repeating-linear-gradient(
+        -35deg,
+        transparent,
+        transparent 10px,
+        color-mix(in oklab, white 7%, transparent) 10px,
+        color-mix(in oklab, white 7%, transparent) 11px
+      );
+  }
+
+  .metro-tile--pdf .metro-tile__pattern {
+    background-image:
+      radial-gradient(circle at 15% 85%, color-mix(in oklab, white 18%, transparent) 0%, transparent 32%),
+      linear-gradient(color-mix(in oklab, white 9%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklab, white 9%, transparent) 1px, transparent 1px);
+    background-size: auto, 14px 14px, 14px 14px;
+  }
+
+  .metro-tile--image .metro-tile__pattern {
+    background-image:
+      radial-gradient(circle at 78% 72%, color-mix(in oklab, white 16%, transparent) 0%, transparent 30%),
+      radial-gradient(circle at 22% 28%, color-mix(in oklab, white 12%, transparent) 0%, transparent 22%),
+      radial-gradient(circle, color-mix(in oklab, white 11%, transparent) 1.5px, transparent 1.5px);
+    background-size: auto, auto, 18px 18px;
+  }
+
+  .metro-tile--ofd .metro-tile__pattern {
+    background-image:
+      linear-gradient(160deg, transparent 58%, color-mix(in oklab, white 10%, transparent) 58%, color-mix(in oklab, white 10%, transparent) 60%, transparent 60%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 8px,
+        color-mix(in oklab, white 8%, transparent) 8px,
+        color-mix(in oklab, white 8%, transparent) 9px
+      );
   }
 
   .metro-tile--soon {
     cursor: not-allowed;
-    filter: saturate(0.45) brightness(0.72);
+    filter: saturate(0.5) brightness(0.78);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 22%, transparent),
+      inset 0 -3px 6px color-mix(in oklab, black 18%, transparent),
+      0 3px 0 color-mix(in oklab, black 14%, transparent),
+      0 8px 16px color-mix(in oklab, black 20%, transparent);
+  }
+
+  .metro-tile__pattern {
+    position: absolute;
+    inset: 0;
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .metro-tile__depth {
+    position: absolute;
+    inset: auto 0 0;
+    height: 38%;
+    background: linear-gradient(180deg, transparent 0%, color-mix(in oklab, black 28%, transparent) 100%);
+    pointer-events: none;
+    z-index: 1;
   }
 
   .metro-tile__gloss {
     position: absolute;
     inset: 0;
     background: linear-gradient(
-      155deg,
-      color-mix(in oklab, white 28%, transparent) 0%,
-      transparent 42%,
-      color-mix(in oklab, black 12%, transparent) 100%
+      148deg,
+      color-mix(in oklab, white 34%, transparent) 0%,
+      transparent 38%,
+      color-mix(in oklab, black 10%, transparent) 100%
     );
     pointer-events: none;
-    z-index: 1;
+    z-index: 2;
   }
 
   .metro-tile__flash {
     position: absolute;
     inset: 0;
-    background: #fff;
+    background: linear-gradient(
+      115deg,
+      transparent 30%,
+      color-mix(in oklab, white 55%, transparent) 50%,
+      transparent 70%
+    );
     opacity: 0;
     pointer-events: none;
-    z-index: 2;
+    z-index: 4;
   }
 
   .metro-tile:not(.metro-tile--soon):hover .metro-tile__flash,
   .metro-tile:not(.metro-tile--soon):focus-visible .metro-tile__flash {
-    animation: metro-flash 0.65s ease-in-out;
+    animation: metro-flash 0.7s ease-in-out;
   }
 
   .metro-tile:not(.metro-tile--soon):hover,
   .metro-tile:not(.metro-tile--soon):focus-visible {
-    transform: scale(1.015);
+    transform: translateY(-5px) rotateX(4deg) scale(1.02);
+    box-shadow:
+      inset 0 2px 0 color-mix(in oklab, white 48%, transparent),
+      inset 0 -4px 8px color-mix(in oklab, black 18%, transparent),
+      0 6px 0 color-mix(in oklab, black 16%, transparent),
+      0 16px 28px color-mix(in oklab, black 32%, transparent),
+      0 28px 48px color-mix(in oklab, black 18%, transparent);
   }
 
   .metro-tile:not(.metro-tile--soon):focus-visible {
-    outline: 2px solid color-mix(in oklab, white 75%, transparent);
-    outline-offset: 2px;
+    outline: 2px solid color-mix(in oklab, white 78%, transparent);
+    outline-offset: 3px;
   }
 
   @keyframes metro-flash {
     0% {
       opacity: 0;
+      transform: translateX(-30%);
     }
-    18% {
-      opacity: 0.42;
+    22% {
+      opacity: 0.75;
     }
-    36% {
-      opacity: 0.08;
+    45% {
+      opacity: 0.12;
+      transform: translateX(10%);
     }
-    54% {
-      opacity: 0.35;
-    }
-    72% {
-      opacity: 0.05;
+    68% {
+      opacity: 0.55;
     }
     100% {
       opacity: 0;
+      transform: translateX(35%);
     }
   }
 
@@ -275,64 +334,85 @@ const tiles: QuickTile[] = [
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.55rem;
+    gap: 0.45rem;
     text-align: center;
-    text-shadow: 0 1px 2px color-mix(in oklab, black 28%, transparent);
+  }
+
+  .metro-tile__icon-plinth {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(2.4rem, 5vw, 3.25rem);
+    height: clamp(2.4rem, 5vw, 3.25rem);
+    border-radius: 0.85rem;
+    background: linear-gradient(
+      145deg,
+      color-mix(in oklab, white 38%, transparent) 0%,
+      color-mix(in oklab, white 8%, transparent) 100%
+    );
+    box-shadow:
+      inset 0 2px 5px color-mix(in oklab, white 55%, transparent),
+      inset 0 -3px 6px color-mix(in oklab, black 18%, transparent),
+      0 6px 14px color-mix(in oklab, black 28%, transparent);
+    transform: translateZ(12px);
   }
 
   .metro-tile__icon {
-    width: 2.65rem;
-    height: 2.65rem;
-    flex-shrink: 0;
+    width: 58%;
+    height: 58%;
     color: #fff;
-    filter: drop-shadow(0 2px 6px color-mix(in oklab, black 22%, transparent));
+    filter: drop-shadow(0 2px 4px color-mix(in oklab, black 30%, transparent));
   }
 
   .metro-tile__label {
     max-width: 100%;
-    font-size: 1.02rem;
+    padding: 0 0.15rem;
+    font-size: clamp(0.68rem, 1.35vw, 0.95rem);
     font-weight: 800;
-    line-height: 1.25;
-    letter-spacing: 0.01em;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
     color: #fff;
+    text-shadow:
+      0 1px 0 color-mix(in oklab, black 25%, transparent),
+      0 2px 8px color-mix(in oklab, black 35%, transparent);
     word-break: break-word;
   }
 
   .metro-tile__badge {
-    margin-top: 0.1rem;
     border-radius: 999px;
-    padding: 0.12rem 0.5rem;
-    font-size: 0.625rem;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.55rem;
     font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: color-mix(in oklab, white 92%, transparent);
-    background: color-mix(in oklab, black 22%, transparent);
-    border: 1px solid color-mix(in oklab, white 22%, transparent);
+    letter-spacing: 0.05em;
+    color: color-mix(in oklab, white 94%, transparent);
+    background: color-mix(in oklab, black 26%, transparent);
+    border: 1px solid color-mix(in oklab, white 24%, transparent);
+    box-shadow: 0 2px 6px color-mix(in oklab, black 22%, transparent);
   }
 
   @media (min-width: 640px) {
     .home-metro {
       margin-bottom: 1.5rem;
-      padding: 0.4rem;
     }
 
     .home-metro__grid {
-      gap: 0.4rem;
+      gap: 0.85rem;
     }
 
     .metro-tile {
-      min-height: 10.25rem;
-      padding: 1.2rem 1rem;
-    }
-
-    .metro-tile__icon {
-      width: 3.1rem;
-      height: 3.1rem;
+      min-height: 9.5rem;
+      padding: 1.1rem 0.65rem 1.15rem;
+      border-radius: 1.15rem;
     }
 
     .metro-tile__label {
-      font-size: 1.15rem;
+      font-size: clamp(0.8rem, 1.1vw, 1.05rem);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .metro-tile {
+      min-height: 10.5rem;
     }
   }
 </style>
