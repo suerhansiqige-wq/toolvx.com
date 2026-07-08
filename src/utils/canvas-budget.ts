@@ -1,12 +1,18 @@
 import { isLegacyPdfEnvironment } from "@/scripts/pdf-worker";
 
-const LEGACY = isLegacyPdfEnvironment();
+function legacyEnv(): boolean {
+  return isLegacyPdfEnvironment();
+}
 
 /** Max width/height per canvas edge — avoids GPU/RAM exhaustion on old systems. */
-export const MAX_CANVAS_DIM = LEGACY ? 4096 : 8192;
+export function getMaxCanvasDim(): number {
+  return legacyEnv() ? 4096 : 8192;
+}
 
 /** Max total pixels (~12 MP legacy, ~48 MP modern). */
-export const MAX_CANVAS_PIXELS = LEGACY ? 12_000_000 : 48_000_000;
+export function getMaxCanvasPixels(): number {
+  return legacyEnv() ? 12_000_000 : 48_000_000;
+}
 
 export type ClampedDimensions = {
   width: number;
@@ -26,16 +32,18 @@ export function clampImageDimensions(
   let h = Math.max(1, Math.floor(height));
   let scale = 1;
 
-  if (w > MAX_CANVAS_DIM || h > MAX_CANVAS_DIM) {
-    const ratio = Math.min(MAX_CANVAS_DIM / w, MAX_CANVAS_DIM / h);
+  const maxDim = getMaxCanvasDim();
+  if (w > maxDim || h > maxDim) {
+    const ratio = Math.min(maxDim / w, maxDim / h);
     w = Math.max(1, Math.floor(w * ratio));
     h = Math.max(1, Math.floor(h * ratio));
     scale = ratio;
   }
 
   const pixels = w * h;
-  if (pixels > MAX_CANVAS_PIXELS) {
-    const ratio = Math.sqrt(MAX_CANVAS_PIXELS / pixels);
+  const maxPixels = getMaxCanvasPixels();
+  if (pixels > maxPixels) {
+    const ratio = Math.sqrt(maxPixels / pixels);
     w = Math.max(1, Math.floor(w * ratio));
     h = Math.max(1, Math.floor(h * ratio));
     scale *= ratio;
@@ -46,5 +54,5 @@ export function clampImageDimensions(
 
 /** Default JPEG quality for thumbs/exports on legacy vs modern browsers. */
 export function legacyAwareJpegQuality(modern = 0.85): number {
-  return LEGACY ? Math.min(modern, 0.72) : modern;
+  return legacyEnv() ? Math.min(modern, 0.72) : modern;
 }

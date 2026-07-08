@@ -63,15 +63,9 @@ export default defineConfig({
       cssTarget: "chrome50",
     },
     ssr: {
-      // Force PDF/image/UI deps through Vite's transpiler at build time (static + SSR prerender).
-      noExternal: [
-        "pdf-lib",
-        "pdfjs-dist",
-        "pdfjs-dist-v3",
-        "jszip",
-        "@pdf-lib/standard-fonts",
-        "pako",
-      ],
+      // pdf.js must stay external during prerender — bundling it pulls optional native
+      // `canvas` and breaks Cloudflare Pages / Linux CI builds.
+      external: ["pdfjs-dist", "pdfjs-dist-v3", "canvas"],
     },
   },
   fonts: [

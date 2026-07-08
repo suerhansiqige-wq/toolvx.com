@@ -1,12 +1,19 @@
 import { getPdfjsEngineVersion, isLegacyPdfEnvironment } from "@/scripts/pdf-worker";
 import type { PdfPageProxy } from "@/scripts/pdf-engine-types";
 
-const LEGACY = isLegacyPdfEnvironment();
 const LEGACY_MAX_CANVAS_DIM = 4096;
 
+function legacyEnv(): boolean {
+  return isLegacyPdfEnvironment();
+}
+
 export const HD_JPG_RENDER = {
-  scale: LEGACY ? 2 : 4,
-  quality: LEGACY ? 0.92 : 1,
+  get scale() {
+    return legacyEnv() ? 2 : 4;
+  },
+  get quality() {
+    return legacyEnv() ? 0.92 : 1;
+  },
 };
 
 export const ZIP_JPG_RENDER = HD_JPG_RENDER;
@@ -23,14 +30,14 @@ export function isPdfRenderBlankError(err: unknown): boolean {
 }
 
 export function getPdfRenderScale(modernScale = 1.5): number {
-  return LEGACY ? Math.min(modernScale, 0.85) : modernScale;
+  return legacyEnv() ? Math.min(modernScale, 0.85) : modernScale;
 }
 
 export function clampPdfRenderScale(
   page: PdfPageProxy,
   scale: number
 ): number {
-  const maxDim = LEGACY ? LEGACY_MAX_CANVAS_DIM : 8192;
+  const maxDim = legacyEnv() ? LEGACY_MAX_CANVAS_DIM : 8192;
   let s = scale;
   for (let i = 0; i < 16; i++) {
     const { width, height } = page.getViewport({ scale: s });
@@ -187,7 +194,7 @@ export function drawPdfPreviewPlaceholder(
   displayScale?: number
 ): void {
   const scale =
-    displayScale ?? (LEGACY ? getPdfRenderScale(0.75) : getPdfRenderScale(1.1));
+    displayScale ?? (legacyEnv() ? getPdfRenderScale(0.75) : getPdfRenderScale(1.1));
   const w = Math.max(1, Math.floor(pageWidthPt * scale));
   const h = Math.max(1, Math.floor(pageHeightPt * scale));
   canvas.width = w;
@@ -221,10 +228,10 @@ export async function renderPdfPageToCanvas(
   const throwOnBlank = opts?.throwOnBlank ?? !opts?.preview;
   const baseScale = clampPdfRenderScale(page, scale);
   const scaleSteps = opts?.preview
-    ? LEGACY
+    ? legacyEnv()
       ? [baseScale, baseScale * 0.85, 0.6, 0.45, 0.35, 0.28]
       : [baseScale, baseScale * 0.85, 0.75, 0.6, 0.5]
-    : LEGACY
+    : legacyEnv()
       ? [baseScale, baseScale * 0.9, 0.72, 0.6, 0.5, 0.4, 0.32]
       : [baseScale, baseScale * 0.85, 1.0, 0.75, 0.6];
   const scales = [
@@ -291,7 +298,7 @@ async function renderPdfPageToCanvasOnce(
     renderParams as Parameters<PdfPageProxy["render"]>[0]
   );
 
-  const timeoutMs = LEGACY ? 240_000 : 180_000;
+  const timeoutMs = legacyEnv() ? 240_000 : 180_000;
   try {
     await promiseWithTimeout(renderTask.promise, timeoutMs, "PDF render timeout");
   } catch (err) {
@@ -354,7 +361,7 @@ export async function canvasToJpegBlob(
   canvas: HTMLCanvasElement,
   quality: number
 ): Promise<Blob> {
-  const blob = await tryCanvasToBlob(canvas, quality, LEGACY ? 45_000 : 90_000);
+  const blob = await tryCanvasToBlob(canvas, quality, legacyEnv() ? 45_000 : 90_000);
   if (blob) return blob;
 
   try {
