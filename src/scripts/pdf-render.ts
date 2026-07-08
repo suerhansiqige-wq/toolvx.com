@@ -11,6 +11,17 @@ export const HD_JPG_RENDER = {
 
 export const ZIP_JPG_RENDER = HD_JPG_RENDER;
 
+export type PdfRenderOptions = {
+  /** When false, return a blank canvas instead of throwing (preview thumbnails). */
+  throwOnBlank?: boolean;
+  /** Lower scales and legacy flags for dropzone previews. */
+  preview?: boolean;
+};
+
+export function isPdfRenderBlankError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("PDF render blank");
+}
+
 export function getPdfRenderScale(modernScale = 1.5): number {
   return LEGACY ? Math.min(modernScale, 0.85) : modernScale;
 }
@@ -42,6 +53,38 @@ export function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
+/** Release canvas backing store on memory-constrained legacy browsers. */
+export function releaseCanvasMemory(canvas: HTMLCanvasElement | null | undefined): void {
+  if (!canvas) return;
+  try {
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = 0;
+    canvas.height = 0;
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Obtain a 2D context with fallbacks for older engines (no alpha / willReadFrequently hints).
+ */
+export function getCanvas2dContext(
+  canvas: HTMLCanvasElement
+): CanvasRenderingContext2D {
+  let ctx: CanvasRenderingContext2D | null = null;
+  try {
+    ctx = canvas.getContext("2d", { alpha: false }) as CanvasRenderingContext2D | null;
+  } catch {
+    /* older browsers may reject context attributes */
+  }
+  if (!ctx) {
+    ctx = canvas.getContext("2d");
+  }
+  if (!ctx) throw new Error("Canvas not supported");
+  return ctx;
+}
+
 /** Detect renders that finished but drew no visible content (common when wasm is off). */
 export function isCanvasMostlyBlank(canvas: HTMLCanvasElement): boolean {
   const ctx = canvas.getContext("2d");
@@ -58,13 +101,18 @@ export function isCanvasMostlyBlank(canvas: HTMLCanvasElement): boolean {
     for (let gx = 0; gx < grid; gx++) {
       const x = Math.min(gx * cellW, Math.max(0, canvas.width - sampleW));
       const y = Math.min(gy * cellH, Math.max(0, canvas.height - sampleH));
-      const { data } = ctx.getImageData(x, y, sampleW, sampleH);
-      for (let i = 0; i < data.length; i += 4) {
-        const alpha = data[i + 3];
+      let data: ImageData;
+      try {
+        data = ctx.getImageData(x, y, sampleW, sampleH);
+      } catch {
+        return true;
+      }
+      for (let i = 0; i < data.data.length; i += 4) {
+        const alpha = data.data[i + 3];
         if (alpha < 8) continue;
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
+        const r = data.data[i];
+        const g = data.data[i + 1];
+        const b = data.data[i + 2];
         if (r < 248 || g < 248 || b < 248) contentPixels++;
       }
     }
@@ -79,8 +127,7 @@ export function copyCanvasTo(
 ): void {
   target.width = source.width;
   target.height = source.height;
-  const ctx = target.getContext("2d");
-  if (!ctx) throw new Error("Canvas not supported");
+  const ctx = getCanvas2dContext(target);
   ctx.drawImage(source, 0, 0);
 }
 
@@ -104,19 +151,52 @@ function promiseWithTimeout<T>(
   });
 }
 
+function legacyPdfRenderFlags(): Record<string, unknown> {
+  if (!LEGACY) return {};
+  return {
+    // Force classic 2D canvas path — ImageBitmap/WebGL often blank on Win7 GPUs.
+    disableCreateImageBitmap: true,
+    enableWebGL: false,
+  };
+}
+
+function buildRenderParams(
+  _page: PdfPageProxy,
+  ctx: CanvasRenderingContext2D,
+  viewport: { width: number; height: number },
+  canvas: HTMLCanvasElement
+): Record<string, unknown> {
+  const params: Record<string, unknown> = {
+    canvasContext: ctx,
+    viewport,
+    background: "#ffffff",
+    intent: "display",
+    annotationMode: 0,
+    ...legacyPdfRenderFlags(),
+  };
+  if (getPdfjsEngineVersion() === 6) {
+    params.canvas = canvas;
+  }
+  return params;
+}
+
 export async function renderPdfPageToCanvas(
   page: PdfPageProxy,
   scale: number,
-  opts?: { throwOnBlank?: boolean }
+  opts?: PdfRenderOptions
 ): Promise<HTMLCanvasElement> {
-  const throwOnBlank = opts?.throwOnBlank ?? true;
+  const throwOnBlank = opts?.throwOnBlank ?? !opts?.preview;
   const baseScale = clampPdfRenderScale(page, scale);
-  const scaleSteps = LEGACY
-    ? [baseScale, baseScale * 0.9, 0.72, 0.6, 0.5]
-    : [baseScale, baseScale * 0.85, 1.0, 0.75, 0.6];
+  const scaleSteps = opts?.preview
+    ? LEGACY
+      ? [baseScale, baseScale * 0.85, 0.6, 0.45, 0.35, 0.28]
+      : [baseScale, baseScale * 0.85, 0.75, 0.6, 0.5]
+    : LEGACY
+      ? [baseScale, baseScale * 0.9, 0.72, 0.6, 0.5, 0.4, 0.32]
+      : [baseScale, baseScale * 0.85, 1.0, 0.75, 0.6];
   const scales = [
     ...new Set(scaleSteps.map(s => Math.round(s * 100) / 100)),
-  ].filter(s => s >= 0.25);
+  ].filter(s => s >= 0.2);
 
   let lastError: unknown;
   for (const attemptScale of scales) {
@@ -129,6 +209,28 @@ export async function renderPdfPageToCanvas(
   throw lastError;
 }
 
+/**
+ * Preview-safe render: never throws on blank canvas; returns null when unusable.
+ */
+export async function tryRenderPdfPagePreview(
+  page: PdfPageProxy,
+  scale: number
+): Promise<HTMLCanvasElement | null> {
+  try {
+    const canvas = await renderPdfPageToCanvas(page, scale, {
+      preview: true,
+      throwOnBlank: false,
+    });
+    if (isCanvasMostlyBlank(canvas)) {
+      releaseCanvasMemory(canvas);
+      return null;
+    }
+    return canvas;
+  } catch {
+    return null;
+  }
+}
+
 async function renderPdfPageToCanvasOnce(
   page: PdfPageProxy,
   scale: number,
@@ -138,37 +240,42 @@ async function renderPdfPageToCanvasOnce(
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.floor(viewport.width));
   canvas.height = Math.max(1, Math.floor(viewport.height));
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas not supported");
+  const ctx = getCanvas2dContext(canvas);
 
   ctx.imageSmoothingEnabled = true;
-  if ("imageSmoothingQuality" in ctx) {
-    ctx.imageSmoothingQuality = "high";
+  try {
+    if ("imageSmoothingQuality" in ctx) {
+      ctx.imageSmoothingQuality = "low";
+    }
+  } catch {
+    /* unsupported on very old canvas implementations */
   }
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const renderParams: {
-    canvasContext: CanvasRenderingContext2D;
-    viewport: { width: number; height: number };
-    canvas?: HTMLCanvasElement;
-    background?: string;
-  } = {
-    canvasContext: ctx,
-    viewport,
-    background: "#ffffff",
-  };
-  if (getPdfjsEngineVersion() === 6) {
-    renderParams.canvas = canvas;
-  }
-
-  const renderTask = page.render(renderParams);
+  const renderParams = buildRenderParams(page, ctx, viewport, canvas);
+  const renderTask = page.render(
+    renderParams as Parameters<PdfPageProxy["render"]>[0]
+  );
 
   const timeoutMs = LEGACY ? 240_000 : 180_000;
-  await promiseWithTimeout(renderTask.promise, timeoutMs, "PDF render timeout");
+  try {
+    await promiseWithTimeout(renderTask.promise, timeoutMs, "PDF render timeout");
+  } catch (err) {
+    try {
+      renderTask.cancel?.();
+    } catch {
+      /* ignore */
+    }
+    releaseCanvasMemory(canvas);
+    throw err;
+  }
 
   if (isCanvasMostlyBlank(canvas)) {
-    if (throwOnBlank) throw new Error("PDF render blank");
+    if (throwOnBlank) {
+      releaseCanvasMemory(canvas);
+      throw new Error("PDF render blank");
+    }
     return canvas;
   }
 
@@ -230,7 +337,7 @@ export async function renderPdfPageToDataUrl(
   scale: number,
   quality = 0.85
 ): Promise<string> {
-  const canvas = await renderPdfPageToCanvas(page, scale);
+  const canvas = await renderPdfPageToCanvas(page, scale, { preview: true });
   try {
     const blob = await canvasToJpegBlob(canvas, quality);
     return URL.createObjectURL(blob);

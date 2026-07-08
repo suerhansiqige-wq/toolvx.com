@@ -3,6 +3,8 @@ import { loadPdfBytes, type PdfDocumentProxy } from "@/scripts/pdf-worker";
 import {
   canvasToJpegBlob,
   HD_JPG_RENDER,
+  isPdfRenderBlankError,
+  releaseCanvasMemory,
   renderPdfPageToCanvas,
   ZIP_JPG_RENDER,
 } from "@/scripts/pdf-render";
@@ -51,19 +53,30 @@ async function rasterizePdfToBytes(
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const pageSize = page.getViewport({ scale: 1 });
-    const canvas = await renderPdfPageToCanvas(page, scale);
-    const jpegBytes = await canvasToJpegBytes(canvas, quality);
-    const image = await outDoc.embedJpg(jpegBytes);
-    const outPage = outDoc.addPage([pageSize.width, pageSize.height]);
-    outPage.drawImage(image, {
-      x: 0,
-      y: 0,
-      width: pageSize.width,
-      height: pageSize.height,
-    });
+    let canvas: HTMLCanvasElement | null = null;
+    try {
+      canvas = await renderPdfPageToCanvas(page, scale);
+      const jpegBytes = await canvasToJpegBytes(canvas, quality);
+      const image = await outDoc.embedJpg(jpegBytes);
+      const outPage = outDoc.addPage([pageSize.width, pageSize.height]);
+      outPage.drawImage(image, {
+        x: 0,
+        y: 0,
+        width: pageSize.width,
+        height: pageSize.height,
+      });
+    } finally {
+      releaseCanvasMemory(canvas);
+    }
   }
 
   return outDoc.save({ useObjectStreams: true });
+}
+
+/** Re-save without rasterizing when canvas render is unavailable on legacy browsers. */
+async function optimizePdfWithoutRaster(bytes: Uint8Array): Promise<Uint8Array> {
+  const doc = await PDFDocument.load(bytes.slice(), { ignoreEncryption: true });
+  return doc.save({ useObjectStreams: true });
 }
 
 async function rasterizePdfBytes(
@@ -72,7 +85,14 @@ async function rasterizePdfBytes(
   quality: number
 ): Promise<Uint8Array> {
   const pdf = await loadPdfBytes(bytes.slice());
-  return rasterizePdfToBytes(pdf, scale, quality);
+  try {
+    return await rasterizePdfToBytes(pdf, scale, quality);
+  } catch (err) {
+    if (isPdfRenderBlankError(err)) {
+      return optimizePdfWithoutRaster(bytes);
+    }
+    throw err;
+  }
 }
 
 async function compressToByteLimit(
@@ -689,13 +709,18 @@ export async function pdfPagesToJpegs(file: File): Promise<PdfPageImage[]> {
 
   for (let i = 1; i <= total; i++) {
     const page = await pdf.getPage(i);
-    const canvas = await renderPdfPageToCanvas(page, HD_JPG_RENDER.scale);
-    const blob = await canvasToJpegBlob(canvas, HD_JPG_RENDER.quality);
-    images.push({
-      pageIndex: i,
-      blob,
-      filename: pageImageFilename(file.name, i, total, "jpg"),
-    });
+    let canvas: HTMLCanvasElement | null = null;
+    try {
+      canvas = await renderPdfPageToCanvas(page, HD_JPG_RENDER.scale);
+      const blob = await canvasToJpegBlob(canvas, HD_JPG_RENDER.quality);
+      images.push({
+        pageIndex: i,
+        blob,
+        filename: pageImageFilename(file.name, i, total, "jpg"),
+      });
+    } finally {
+      releaseCanvasMemory(canvas);
+    }
   }
   return images;
 }
@@ -714,18 +739,23 @@ export async function pdfPagesToImages(
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-    const canvas = await renderPdfPageToCanvas(page, scale);
-    const blob =
-      format === "jpeg"
-        ? await canvasToJpegBlob(canvas, quality)
-        : await new Promise<Blob>((resolve, reject) => {
-            canvas.toBlob(
-              b => (b ? resolve(b) : reject(new Error("Render failed"))),
-              mime,
-              quality
-            );
-          });
-    zip.file(zipImageFilename(file.name, i, ext), blob);
+    let canvas: HTMLCanvasElement | null = null;
+    try {
+      canvas = await renderPdfPageToCanvas(page, scale);
+      const blob =
+        format === "jpeg"
+          ? await canvasToJpegBlob(canvas, quality)
+          : await new Promise<Blob>((resolve, reject) => {
+              canvas!.toBlob(
+                b => (b ? resolve(b) : reject(new Error("Render failed"))),
+                mime,
+                quality
+              );
+            });
+      zip.file(zipImageFilename(file.name, i, ext), blob);
+    } finally {
+      releaseCanvasMemory(canvas);
+    }
   }
   return zip;
 }
@@ -779,10 +809,15 @@ export async function renderReaderPage(
     canvas.style.height = "";
   }
 
-  const rendered = await renderPdfPageToCanvas(page, renderScale);
-  canvas.width = rendered.width;
-  canvas.height = rendered.height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas not supported");
-  ctx.drawImage(rendered, 0, 0);
+  let rendered: HTMLCanvasElement | null = null;
+  try {
+    rendered = await renderPdfPageToCanvas(page, renderScale);
+    canvas.width = rendered.width;
+    canvas.height = rendered.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas not supported");
+    ctx.drawImage(rendered, 0, 0);
+  } finally {
+    releaseCanvasMemory(rendered);
+  }
 }

@@ -9,7 +9,11 @@ export type PdfPageProxy = {
     viewport: { width: number; height: number };
     canvas?: HTMLCanvasElement;
     background?: string;
-  }): { promise: Promise<void> };
+    intent?: string;
+    annotationMode?: number;
+    disableCreateImageBitmap?: boolean;
+    enableWebGL?: boolean;
+  }): { promise: Promise<void>; cancel?: () => void };
   getTextContent(): Promise<{
     items: Array<{ str?: string } | Record<string, unknown>>;
   }>;

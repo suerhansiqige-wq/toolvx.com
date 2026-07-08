@@ -171,6 +171,7 @@ function buildDocumentInit(
       standardFontDataUrl: pdfjsAssetUrl("standard_fonts", useCdn),
       useSystemFonts: true,
       disableFontFace: false,
+      disableCreateImageBitmap: legacy,
     };
   }
 
@@ -187,6 +188,7 @@ function buildDocumentInit(
     useSystemFonts: true,
     isOffscreenCanvasSupported: options?.isOffscreenCanvasSupported ?? false,
     isImageDecoderSupported: options?.isImageDecoderSupported ?? false,
+    disableCreateImageBitmap: legacy,
   };
 }
 

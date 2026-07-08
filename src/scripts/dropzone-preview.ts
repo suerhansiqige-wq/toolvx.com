@@ -1,5 +1,9 @@
 import { loadPdfBytes, type PdfDocumentProxy } from "@/scripts/pdf-worker";
-import { canvasToJpegBlob, renderPdfPageToCanvas } from "@/scripts/pdf-render";
+import {
+  canvasToJpegBlob,
+  releaseCanvasMemory,
+  tryRenderPdfPagePreview,
+} from "@/scripts/pdf-render";
 import { t } from "@/scripts/i18n-client";
 import { openImageLightbox } from "@/scripts/image-lightbox";
 import {
@@ -65,12 +69,17 @@ async function renderPdfPageThumbnail(
   scale = 0.35
 ): Promise<string> {
   const page = await pdf.getPage(pageNum);
-  const canvas = await renderPdfPageToCanvas(page, scale);
+  const canvas = await tryRenderPdfPagePreview(page, scale);
+  if (!canvas) return "";
   try {
-    return canvas.toDataURL("image/jpeg", 0.85);
-  } catch {
-    const blob = await canvasToJpegBlob(canvas, 0.85);
-    return URL.createObjectURL(blob);
+    try {
+      return canvas.toDataURL("image/jpeg", 0.85);
+    } catch {
+      const blob = await canvasToJpegBlob(canvas, 0.85);
+      return URL.createObjectURL(blob);
+    }
+  } finally {
+    releaseCanvasMemory(canvas);
   }
 }
 
@@ -587,13 +596,16 @@ async function renderSplitPdfPreview(
       const page = await pdf.getPage(i);
       let src = "";
       try {
-        const canvas = await renderPdfPageToCanvas(page, 0.28);
-        try {
-          src = canvas.toDataURL("image/jpeg", 0.75);
-        } catch {
-          const blob = await canvasToJpegBlob(canvas, 0.75);
-          src = URL.createObjectURL(blob);
-          trackUrl(zone, src);
+        const canvas = await tryRenderPdfPagePreview(page, 0.28);
+        if (canvas) {
+          try {
+            src = canvas.toDataURL("image/jpeg", 0.75);
+          } catch {
+            const blob = await canvasToJpegBlob(canvas, 0.75);
+            src = URL.createObjectURL(blob);
+            trackUrl(zone, src);
+          }
+          releaseCanvasMemory(canvas);
         }
       } catch {
         src = "";

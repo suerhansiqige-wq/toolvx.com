@@ -6,6 +6,7 @@ import {
   dataUrlToBlob,
   getPdfRenderScale,
   isCanvasMostlyBlank,
+  releaseCanvasMemory,
   renderPdfPageToCanvas,
 } from "@/scripts/pdf-render";
 import { PDFDocument } from "pdf-lib";
@@ -421,10 +422,12 @@ async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement)
             throwOnBlank: true,
           });
           if (isCanvasMostlyBlank(rendered)) {
+            releaseCanvasMemory(rendered);
             throw new Error("PDF render blank");
           }
 
           copyCanvasTo(rendered, target);
+          releaseCanvasMemory(rendered);
           const base = page.getViewport({ scale: 1 });
           pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
           return;
@@ -679,7 +682,8 @@ async function renderPdfPagesInBackground(fromPage: number) {
       await renderPdfPageToTarget(i, pageStores[i - 1].canvas);
       await upsertThumbForPage(i);
     } catch (err) {
-      console.error(`Redact PDF page ${i} failed`, err);
+      console.warn(`Redact PDF page ${i} preview skipped`, err);
+      releaseCanvasMemory(pageStores[i - 1]?.canvas);
     }
     await new Promise<void>(resolve => window.setTimeout(resolve, LEGACY_PDF ? 32 : 0));
   }
@@ -753,6 +757,9 @@ async function openPdfDocument(bytes: Uint8Array, password?: string) {
 }
 
 function resetRedactState() {
+  for (const store of pageStores) {
+    releaseCanvasMemory(store.canvas);
+  }
   isPdf = false;
   pdfDoc = null;
   pdfSourceBytes = null;

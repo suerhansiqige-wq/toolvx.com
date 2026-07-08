@@ -37,6 +37,10 @@ export function isIncorrectPasswordPdfError(err: unknown): boolean {
     : /incorrect password|wrong password|password.*incorrect/i.test(message);
 }
 
+export function isPdfRenderBlankError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("PDF render blank");
+}
+
 export function classifyPdfLoadError(err: unknown): PdfErrorKey {
   if (isIncorrectPasswordPdfError(err)) return "error_pdf_password_incorrect";
   if (isPasswordPdfError(err)) return "error_pdf_password_required";
