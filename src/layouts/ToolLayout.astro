@@ -4,6 +4,7 @@ import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import AdSlot from "@/components/AdSlot.astro";
 import ToolSidebarNav from "@/components/tools/ToolSidebarNav.astro";
+import ToolMobileNav from "@/components/tools/ToolMobileNav.astro";
 import { resolveDefaultOgImagePath } from "@/utils/resolveDefaultOgImagePath";
 import config from "@/config";
 import type { FAQItem } from "@/data/toolsSeo";
@@ -119,6 +120,7 @@ const faqStructuredData =
         aria-label="Tool workspace"
         data-i18n-aria-label="blog.layout.toolWorkspace"
       >
+        <ToolMobileNav />
         <slot />
       </section>
 

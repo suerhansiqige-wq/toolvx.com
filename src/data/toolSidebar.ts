@@ -82,6 +82,12 @@ export function buildToolSidebarGroups(
   }));
 }
 
+export function buildFlatToolSidebarItems(
+  resolveHref: (slug: string) => string
+): SidebarItem[] {
+  return buildToolSidebarGroups(resolveHref).flatMap(group => group.items);
+}
+
 export function isToolPathActive(currentPath: string, href: string): boolean {
   const normalize = (path: string) => {
     const value = path.startsWith("http")
