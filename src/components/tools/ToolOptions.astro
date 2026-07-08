@@ -1,0 +1,525 @@
+---
+import type { ToolAction } from "@/data/toolsRegistry";
+
+type Props = {
+  action: ToolAction;
+};
+
+const { action } = Astro.props;
+
+const inputClass =
+  "border-border bg-background text-foreground w-full rounded-xl border px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20";
+const labelClass = "text-foreground mb-1.5 block text-sm font-medium";
+---
+
+{
+  action === "compress" && (
+    <fieldset class="mb-6 text-start">
+      <legend class="text-foreground mb-3 text-sm font-semibold" data-i18n="common.compressionLegend">
+        Compression level
+      </legend>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <label class="border-border hover:border-accent interactive has-[:checked]:border-accent has-[:checked]:bg-accent/5 flex cursor-pointer items-center gap-3 rounded-xl border p-4">
+          <input type="radio" name="compression" value="balanced" checked class="accent-accent size-4" />
+          <span>
+            <span class="text-foreground block text-sm font-medium" data-i18n="common.compressionBalanced">Balanced</span>
+            <span class="text-muted-foreground mt-0.5 block text-xs" data-i18n="common.compressionBalancedHint">HD output</span>
+          </span>
+        </label>
+        <label class="border-border hover:border-accent interactive has-[:checked]:border-accent has-[:checked]:bg-accent/5 flex cursor-pointer items-center gap-3 rounded-xl border p-4">
+          <input type="radio" name="compression" value="strong" class="accent-accent size-4" />
+          <span>
+            <span class="text-foreground block text-sm font-medium" data-i18n="common.compressionStrong">Strong</span>
+            <span class="text-muted-foreground mt-0.5 block text-xs" data-i18n="common.compressionStrongHint">Under 2 MB</span>
+          </span>
+        </label>
+        <label class="border-border hover:border-accent interactive has-[:checked]:border-accent has-[:checked]:bg-accent/5 flex cursor-pointer items-center gap-3 rounded-xl border p-4">
+          <input type="radio" name="compression" value="maximum" class="accent-accent size-4" />
+          <span>
+            <span class="text-foreground block text-sm font-medium" data-i18n="common.compressionMaximum">Maximum</span>
+            <span class="text-muted-foreground mt-0.5 block text-xs" data-i18n="common.compressionMaximumHint">Under 1 MB</span>
+          </span>
+        </label>
+      </div>
+      <div
+        id="compress-multi-actions"
+        class="mt-4 hidden grid gap-3 sm:grid-cols-2"
+      >
+        <button
+          type="button"
+          id="tool-compress-each-btn"
+          class="tool-action-btn interactive flex h-12 w-full items-center justify-center rounded-[1rem] px-3 text-sm font-semibold tracking-tight disabled:cursor-not-allowed disabled:opacity-45"
+          disabled
+        >
+          <span data-i18n="common.compressEach">Compress separately</span>
+        </button>
+        <button
+          type="button"
+          id="tool-compress-merge-btn"
+          class="tool-action-btn interactive flex h-12 w-full items-center justify-center rounded-[1rem] px-3 text-sm font-semibold tracking-tight disabled:cursor-not-allowed disabled:opacity-45"
+          disabled
+        >
+          <span data-i18n="common.compressMerge">Merge &amp; compress</span>
+        </button>
+      </div>
+    </fieldset>
+  )
+}
+
+{
+  action === "split" && (
+    <div class="mb-6 space-y-4 text-start">
+      <fieldset>
+        <legend class="text-foreground mb-3 text-sm font-semibold" data-i18n="common.splitMode">Split mode</legend>
+        <div class="flex flex-wrap gap-4">
+          <label class="flex items-center gap-2 text-sm">
+            <input type="radio" name="split-mode" value="all" checked class="accent-accent" />
+            <span data-i18n="common.splitEveryPage">Every page (ZIP)</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="radio" name="split-mode" value="at" class="accent-accent" />
+            <span data-i18n="common.splitAtPageOption">At page number</span>
+          </label>
+        </div>
+      </fieldset>
+      <div id="split-pages-wrap" class="hidden">
+        <label for="split-page" class={labelClass} data-i18n="common.splitPages">Pages to extract</label>
+        <input type="text" id="split-page" placeholder="1, 2, 3" class={inputClass} data-i18n-placeholder="common.splitPagesExample" />
+      </div>
+    </div>
+  )
+}
+
+{
+  action === "rotate" && (
+    <div class="mb-6 text-start">
+      <label for="rotate-angle" class={labelClass} data-i18n="common.rotation">Rotation angle</label>
+      <select id="rotate-angle" class={inputClass}>
+        <option value="90">90°</option>
+        <option value="180">180°</option>
+        <option value="270">270°</option>
+      </select>
+    </div>
+  )
+}
+
+{
+  action === "delete-pages" && (
+    <div class="mb-6 text-start">
+      <label for="page-spec" class={labelClass} data-i18n="common.pageNumbers">Pages to delete</label>
+      <input type="text" id="page-spec" placeholder="1,3,5-7" class={inputClass} data-i18n-placeholder="common.pageNumbersExample" />
+    </div>
+  )
+}
+
+{
+  action === "number-pages" && (
+    <div class="mb-6 grid gap-4 text-start sm:grid-cols-2">
+      <div>
+        <label for="page-number-start-at" class={labelClass} data-i18n="common.pageNumberStartAt">
+          Start numbering on page
+        </label>
+        <input type="number" id="page-number-start-at" min="1" value="1" class={inputClass} />
+      </div>
+      <div>
+        <label for="page-number-start-from" class={labelClass} data-i18n="common.pageNumberStartFrom">
+          First page number
+        </label>
+        <input type="number" id="page-number-start-from" min="1" value="1" class={inputClass} />
+      </div>
+    </div>
+  )
+}
+
+{
+  action === "edit-metadata" && (
+    <div class="mb-6 grid gap-4 text-start sm:grid-cols-3">
+      <div>
+        <label for="meta-title" class={labelClass} data-i18n="common.metadataTitle">Document title</label>
+        <input type="text" id="meta-title" class={inputClass} />
+      </div>
+      <div>
+        <label for="meta-author" class={labelClass} data-i18n="common.metadataAuthor">Author</label>
+        <input type="text" id="meta-author" class={inputClass} />
+      </div>
+      <div>
+        <label for="meta-subject" class={labelClass} data-i18n="common.metadataSubject">Subject</label>
+        <input type="text" id="meta-subject" class={inputClass} />
+      </div>
+    </div>
+  )
+}
+
+{
+  action === "crop" && (
+    <div class="mb-6 text-start">
+      <label for="crop-margin" class={labelClass} data-i18n="common.cropMargin">Crop margin (%)</label>
+      <input type="number" id="crop-margin" min="0" max="40" value="5" class={inputClass} />
+    </div>
+  )
+}
+
+{
+  action === "watermark" && (
+    <div class="mb-6 space-y-4 text-start">
+      <fieldset>
+        <legend class="text-foreground mb-3 text-sm font-semibold" data-i18n="common.watermarkMode">
+          Watermark type
+        </legend>
+        <div class="flex flex-wrap gap-4">
+          <label class="flex items-center gap-2 text-sm">
+            <input type="radio" name="watermark-mode" value="text" checked class="accent-accent" />
+            <span data-i18n="common.watermarkTypeText">Text watermark</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="radio" name="watermark-mode" value="image" class="accent-accent" />
+            <span data-i18n="common.watermarkTypeImage">Image watermark</span>
+          </label>
+        </div>
+      </fieldset>
+      <div id="watermark-text-wrap">
+        <label for="watermark-text" class={labelClass} data-i18n="common.watermarkText">Watermark text</label>
+        <input type="text" id="watermark-text" value="CONFIDENTIAL" class={inputClass} data-i18n-value="common.watermarkDefault" />
+      </div>
+      <div id="watermark-image-wrap" class="hidden">
+        <label for="watermark-image-input" class={labelClass} data-i18n="common.watermarkImage">
+          Watermark image
+        </label>
+        <input
+          type="file"
+          id="watermark-image-input"
+          accept="image/png,image/jpeg,image/jpg"
+          class={inputClass}
+        />
+        <p id="watermark-image-name" class="text-muted-foreground mt-2 text-xs"></p>
+      </div>
+    </div>
+  )
+}
+
+{
+  action === "sign" && (
+    <div class="mb-6 text-start">
+      <label for="signature-text" class={labelClass} data-i18n="common.signatureText">Signature text</label>
+      <input type="text" id="signature-text" placeholder="Your name" class={inputClass} data-i18n-placeholder="common.signaturePlaceholder" />
+    </div>
+  )
+}
+
+{
+  (action === "protect" || action === "unlock") && (
+    <div class="mb-6 grid gap-4 text-start sm:grid-cols-2">
+      <div>
+        <label for="pdf-password" class={labelClass} data-i18n="common.password">Password</label>
+        <input type="password" id="pdf-password" class={inputClass} autocomplete="new-password" />
+      </div>
+      {action === "protect" && (
+        <div>
+          <label for="pdf-password-confirm" class={labelClass} data-i18n="common.confirmPassword">Confirm password</label>
+          <input type="password" id="pdf-password-confirm" class={inputClass} autocomplete="new-password" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+{
+  action === "reader" && (
+    <div id="pdf-reader-view" class="mt-6 hidden">
+      <div id="pdf-reader-stage" class="pdf-reader-stage relative">
+        <div
+          id="pdf-reader-canvas-wrap"
+          class="pdf-reader-canvas-wrap border-border overflow-auto rounded-xl border bg-white p-4 dark:bg-gray-900"
+        >
+          <canvas id="pdf-canvas" class="mx-auto max-w-full cursor-zoom-in"></canvas>
+        </div>
+
+        <button
+          type="button"
+          id="reader-side-prev"
+          class="pdf-reader-side-nav pdf-reader-side-nav--prev interactive"
+          aria-label="Previous page"
+          data-i18n-aria-label="common.prevPage"
+          disabled
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-6" aria-hidden="true">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          id="reader-side-next"
+          class="pdf-reader-side-nav pdf-reader-side-nav--next interactive"
+          aria-label="Next page"
+          data-i18n-aria-label="common.nextPage"
+          disabled
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-6" aria-hidden="true">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          id="reader-fullscreen-btn"
+          class="pdf-reader-fullscreen-btn interactive"
+          aria-label="Full screen"
+          data-i18n-aria-label="reader.fullscreen"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+          </svg>
+          <span data-i18n="reader.fullscreen">Full screen</span>
+        </button>
+      </div>
+
+      <div class="mt-4 flex flex-wrap items-center justify-center gap-4">
+        <button type="button" id="reader-prev" class="interactive rounded-lg border px-4 py-2 text-sm" disabled>
+          <span data-i18n="common.prevPage">Previous</span>
+        </button>
+        <span id="reader-page-label" class="text-muted-foreground min-w-[8rem] text-center text-sm tabular-nums"></span>
+        <button type="button" id="reader-next" class="interactive rounded-lg border px-4 py-2 text-sm" disabled>
+          <span data-i18n="common.nextPage">Next</span>
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="pdf-reader-fullscreen"
+      class="pdf-reader-fullscreen hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="PDF full screen reader"
+      data-i18n-aria-label="reader.fullscreen"
+    >
+      <button
+        type="button"
+        id="reader-fullscreen-close"
+        class="pdf-reader-fullscreen-close interactive"
+        aria-label="Close"
+        data-i18n-aria-label="close_preview"
+      >
+        ×
+      </button>
+
+      <button
+        type="button"
+        id="reader-fs-prev"
+        class="pdf-reader-fs-nav pdf-reader-fs-nav--prev interactive"
+        aria-label="Previous page"
+        data-i18n-aria-label="common.prevPage"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-7" aria-hidden="true">
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+      </button>
+
+      <div class="pdf-reader-fullscreen-body">
+        <canvas id="pdf-canvas-fullscreen"></canvas>
+      </div>
+
+      <p id="reader-fs-page-label" class="pdf-reader-fs-page-label"></p>
+
+      <button
+        type="button"
+        id="reader-fs-next"
+        class="pdf-reader-fs-nav pdf-reader-fs-nav--next interactive"
+        aria-label="Next page"
+        data-i18n-aria-label="common.nextPage"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-7" aria-hidden="true">
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+<style is:global>
+  .pdf-reader-stage {
+    position: relative;
+  }
+
+  .pdf-reader-canvas-wrap {
+    min-height: 18rem;
+    max-height: min(72vh, 52rem);
+  }
+
+  .pdf-reader-side-nav {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: flex;
+    height: 3rem;
+    width: 3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+    background: color-mix(in oklab, var(--card) 92%, var(--muted) 8%);
+    color: var(--foreground);
+    box-shadow:
+      0 1px 2px color-mix(in oklab, black 6%, transparent),
+      0 8px 20px color-mix(in oklab, black 5%, transparent);
+    transform: translateY(-50%);
+    transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  }
+
+  .pdf-reader-side-nav--prev {
+    inset-inline-start: 0.75rem;
+  }
+
+  .pdf-reader-side-nav--next {
+    inset-inline-end: 0.75rem;
+  }
+
+  .pdf-reader-side-nav:not(:disabled):hover {
+    transform: translateY(-50%) scale(1.04);
+    background: color-mix(in oklab, var(--accent) 10%, var(--card));
+  }
+
+  .pdf-reader-side-nav:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+
+  .pdf-reader-fullscreen-btn {
+    position: absolute;
+    top: 0.75rem;
+    inset-inline-end: 0.75rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+    background: color-mix(in oklab, var(--card) 94%, transparent);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--foreground);
+    box-shadow: 0 4px 16px color-mix(in oklab, black 8%, transparent);
+  }
+
+  .pdf-reader-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgb(0 0 0 / 94%);
+    backdrop-filter: blur(6px);
+  }
+
+  .pdf-reader-fullscreen.hidden {
+    display: none;
+  }
+
+  .pdf-reader-fullscreen-close {
+    position: absolute;
+    top: 1rem;
+    inset-inline-end: 1rem;
+    z-index: 4;
+    display: flex;
+    height: 2.75rem;
+    width: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 14%);
+    font-size: 1.75rem;
+    line-height: 1;
+    color: white;
+  }
+
+  .pdf-reader-fullscreen-close:hover {
+    background: rgb(255 255 255 / 24%);
+  }
+
+  .pdf-reader-fullscreen-body {
+    position: absolute;
+    inset: 3.5rem 5.5rem 4.75rem;
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #pdf-canvas-fullscreen {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0.35rem;
+    box-shadow:
+      0 12px 48px rgb(0 0 0 / 55%),
+      0 0 0 1px rgb(255 255 255 / 8%);
+  }
+
+  .pdf-reader-fs-page-label {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    z-index: 4;
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 14%);
+    padding: 0.45rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: white;
+    font-variant-numeric: tabular-nums;
+    backdrop-filter: blur(8px);
+  }
+
+  .pdf-reader-fs-nav {
+    position: absolute;
+    top: 50%;
+    z-index: 3;
+    display: flex;
+    height: 3.5rem;
+    width: 3.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 18%);
+    background: rgb(255 255 255 / 12%);
+    color: white;
+    transform: translateY(-50%);
+    transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  }
+
+  .pdf-reader-fs-nav--prev {
+    inset-inline-start: 1rem;
+  }
+
+  .pdf-reader-fs-nav--next {
+    inset-inline-end: 1rem;
+  }
+
+  .pdf-reader-fs-nav:not(:disabled):hover {
+    transform: translateY(-50%) scale(1.04);
+    background: rgb(255 255 255 / 22%);
+  }
+
+  .pdf-reader-fs-nav:disabled {
+    cursor: not-allowed;
+    opacity: 0.28;
+  }
+
+  @media (max-width: 640px) {
+    .pdf-reader-side-nav {
+      height: 2.5rem;
+      width: 2.5rem;
+    }
+
+    .pdf-reader-fullscreen-body {
+      inset: 3rem 3.75rem 4.25rem;
+    }
+
+    .pdf-reader-fs-nav {
+      height: 2.75rem;
+      width: 2.75rem;
+    }
+  }
+</style>

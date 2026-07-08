@@ -1,0 +1,61 @@
+---
+/**
+ * Starter template for new tool pages.
+ * Copy to: src/pages/tools/<slug>/index.astro
+ */
+import ToolLayout from "@/layouts/ToolLayout.astro";
+import ToolWorkspace from "@/components/tools/ToolWorkspace.astro";
+import FileDropZone from "@/components/tools/FileDropZone.astro";
+import ToolActionBar from "@/components/tools/ToolActionBar.astro";
+
+const seo = {
+  title: "Your Tool Name Online Free | Your Brand",
+  description:
+    "One or two sentences describing the tool for Google snippets (150–160 characters).",
+  keywords: "keyword one, keyword two, keyword three",
+};
+
+const tool = {
+  title: "Your Tool Name",
+  tagline: "Short value proposition in plain English.",
+};
+---
+
+<ToolLayout
+  title={seo.title}
+  description={seo.description}
+  keywords={seo.keywords}
+>
+  <ToolWorkspace title={tool.title} tagline={tool.tagline}>
+    <FileDropZone
+      accept=".pdf,application/pdf"
+      hint="Click to upload or drag & drop your file here"
+      subhint="Replace accept/hint for your file type"
+    />
+
+    <ToolActionBar
+      actionLabel="Process File"
+      actionI18n="tools.compressPdf.action"
+      downloadLabel="Download"
+      downloadI18n="tools.compressPdf.download"
+    />
+  </ToolWorkspace>
+</ToolLayout>
+
+<script>
+  const input = document.getElementById("file-input") as HTMLInputElement | null;
+  const actionBtn = document.getElementById("tool-action-btn") as HTMLButtonElement | null;
+  const result = document.getElementById("tool-result");
+
+  input?.addEventListener("change", () => {
+    if (actionBtn) actionBtn.disabled = !input.files?.length;
+  });
+
+  actionBtn?.addEventListener("click", () => {
+    if (result) {
+      result.classList.remove("hidden");
+      result.innerHTML =
+        '<p class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Done — wire up your download link here.</p>';
+    }
+  });
+</script>

@@ -1,0 +1,137 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import { stripBase, stripLocale } from "@/utils/withBase";
+import { useTranslations } from "@/i18n";
+import config from "@/config";
+
+const locale = Astro.currentLocale ?? config.site.lang;
+const t = useTranslations(locale);
+
+const pathWithoutBase = stripBase(Astro.url.pathname).replace(/\/+$/, "");
+const currentUrlPath = stripLocale(pathWithoutBase, locale);
+const pathSegments = currentUrlPath.split("/").slice(1).filter(Boolean);
+
+const decodeSegment = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+type Crumb = {
+  label: string;
+  href?: string;
+  i18nKey?: string;
+  i18nVars?: Record<string, string>;
+  lowercase?: boolean;
+};
+
+const navKeys: Record<string, string> = {
+  posts: "site.nav.posts",
+  tags: "site.nav.tags",
+  about: "site.nav.about",
+  archives: "site.nav.archives",
+  search: "site.nav.search",
+  tools: "site.nav.tools",
+};
+
+const crumbs: Crumb[] = [
+  {
+    label: t.nav.home,
+    href: getRelativeLocaleUrl(locale, ""),
+    i18nKey: "site.nav.home",
+  },
+];
+
+if (pathSegments[0] === "posts" && pathSegments[1]) {
+  crumbs.push({
+    label: `${t.nav.posts} (${t.pagination.page.toLowerCase()} ${pathSegments[1]})`,
+    i18nKey: "blog.breadcrumb.postsPage",
+    i18nVars: { page: pathSegments[1] },
+    lowercase: true,
+  });
+} else if (
+  pathSegments[0] === "tags" &&
+  pathSegments[1] &&
+  pathSegments[2] &&
+  !Number.isNaN(Number(pathSegments[2]))
+) {
+  const tag = decodeSegment(pathSegments[1]);
+  const page = pathSegments[2];
+  crumbs.push({
+    label:
+      Number(page) === 1
+        ? tag
+        : `${tag} (${t.pagination.page.toLowerCase()} ${page})`,
+    i18nKey: Number(page) === 1 ? undefined : "blog.breadcrumb.tagPage",
+    i18nVars: Number(page) === 1 ? undefined : { tag, page },
+    lowercase: true,
+  });
+} else {
+  for (let index = 0; index < pathSegments.length; index++) {
+    const segment = pathSegments[index];
+    const isLast = index === pathSegments.length - 1;
+    const hrefPath = pathSegments.slice(0, index + 1).join("/");
+    const navKey = navKeys[segment];
+    crumbs.push({
+      label: navKey ? t.nav[segment as keyof typeof t.nav] : decodeSegment(segment),
+      href: isLast ? undefined : getRelativeLocaleUrl(locale, hrefPath),
+      i18nKey: navKey,
+      lowercase: index > 0 && !navKey,
+    });
+  }
+}
+---
+
+<nav
+  class="app-layout mt-6 mb-2"
+  aria-label="breadcrumb"
+  data-i18n-aria-label="blog.a11y.breadcrumb"
+>
+  <ul
+    class="text-muted-foreground flex flex-wrap items-center gap-1 text-sm [&>li]:inline"
+  >
+    {
+      crumbs.map((crumb, index) => {
+        const isLast = index === crumbs.length - 1;
+        const varsAttr = crumb.i18nVars
+          ? JSON.stringify(crumb.i18nVars)
+          : undefined;
+
+        return isLast ? (
+          <li>
+            <span
+              class:list={[
+                "text-foreground font-medium",
+                { capitalize: !crumb.lowercase, lowercase: crumb.lowercase },
+              ]}
+              aria-current="page"
+              data-i18n={crumb.i18nKey}
+              data-i18n-vars={varsAttr}
+            >
+              {crumb.label}
+            </span>
+          </li>
+        ) : (
+          <li>
+            <a
+              href={crumb.href}
+              class:list={[
+                "interactive rounded-lg px-2 py-1 hover:text-accent",
+                { capitalize: !crumb.lowercase, lowercase: crumb.lowercase },
+              ]}
+              data-i18n={crumb.i18nKey}
+              data-i18n-vars={varsAttr}
+            >
+              {crumb.label}
+            </a>
+            <span aria-hidden="true" class="mx-1 opacity-50">
+              &raquo;
+            </span>
+          </li>
+        );
+      })
+    }
+  </ul>
+</nav>

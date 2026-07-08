@@ -1,0 +1,27 @@
+import type { ToolIcon } from "@/data/toolsMenu";
+
+export const toolIconStyles: Record<ToolIcon, { bg: string; text: string }> = {
+  compress: { bg: "bg-violet-100 dark:bg-violet-500/15", text: "text-violet-600 dark:text-violet-400" },
+  convert: { bg: "bg-indigo-100 dark:bg-indigo-500/15", text: "text-indigo-600 dark:text-indigo-400" },
+  merge: { bg: "bg-blue-100 dark:bg-blue-500/15", text: "text-blue-600 dark:text-blue-400" },
+  split: { bg: "bg-sky-100 dark:bg-sky-500/15", text: "text-sky-600 dark:text-sky-400" },
+  rotate: { bg: "bg-cyan-100 dark:bg-cyan-500/15", text: "text-cyan-600 dark:text-cyan-400" },
+  delete: { bg: "bg-rose-100 dark:bg-rose-500/15", text: "text-rose-600 dark:text-rose-400" },
+  edit: { bg: "bg-amber-100 dark:bg-amber-500/15", text: "text-amber-600 dark:text-amber-400" },
+  reader: { bg: "bg-orange-100 dark:bg-orange-500/15", text: "text-orange-600 dark:text-orange-400" },
+  number: { bg: "bg-lime-100 dark:bg-lime-500/15", text: "text-lime-700 dark:text-lime-400" },
+  crop: { bg: "bg-emerald-100 dark:bg-emerald-500/15", text: "text-emerald-600 dark:text-emerald-400" },
+  watermark: { bg: "bg-teal-100 dark:bg-teal-500/15", text: "text-teal-600 dark:text-teal-400" },
+  "pdf-word": { bg: "bg-blue-100 dark:bg-blue-500/15", text: "text-blue-700 dark:text-blue-400" },
+  "pdf-excel": { bg: "bg-green-100 dark:bg-green-500/15", text: "text-green-700 dark:text-green-400" },
+  "pdf-ppt": { bg: "bg-orange-100 dark:bg-orange-500/15", text: "text-orange-700 dark:text-orange-400" },
+  "pdf-jpg": { bg: "bg-pink-100 dark:bg-pink-500/15", text: "text-pink-600 dark:text-pink-400" },
+  "word-pdf": { bg: "bg-blue-100 dark:bg-blue-500/15", text: "text-blue-700 dark:text-blue-400" },
+  "excel-pdf": { bg: "bg-green-100 dark:bg-green-500/15", text: "text-green-700 dark:text-green-400" },
+  "ppt-pdf": { bg: "bg-orange-100 dark:bg-orange-500/15", text: "text-orange-700 dark:text-orange-400" },
+  "jpg-pdf": { bg: "bg-fuchsia-100 dark:bg-fuchsia-500/15", text: "text-fuchsia-600 dark:text-fuchsia-400" },
+  sign: { bg: "bg-purple-100 dark:bg-purple-500/15", text: "text-purple-600 dark:text-purple-400" },
+  unlock: { bg: "bg-yellow-100 dark:bg-yellow-500/15", text: "text-yellow-700 dark:text-yellow-400" },
+  protect: { bg: "bg-red-100 dark:bg-red-500/15", text: "text-red-600 dark:text-red-400" },
+  redact: { bg: "bg-slate-100 dark:bg-slate-500/15", text: "text-slate-700 dark:text-slate-300" },
+};

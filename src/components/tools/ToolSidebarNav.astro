@@ -1,0 +1,179 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import ToolIconBadge from "@/components/tools/ToolIconBadge.astro";
+import { buildToolSidebarGroups, isToolPathActive } from "@/data/toolSidebar";
+
+const currentPath = Astro.url.pathname;
+
+const groups = buildToolSidebarGroups(slug =>
+  getRelativeLocaleUrl("en", `tools/${slug}`)
+);
+---
+
+<nav
+  class="tool-sidebar-nav"
+  aria-label="PDF tools navigation"
+  data-i18n-aria-label="site.sidebar.ariaLabel"
+  data-pagefind-ignore
+>
+  {
+    groups.map((group, groupIndex) => (
+      <section class="contents">
+        {
+          group.items.map((item, itemIndex) => {
+            const active = isToolPathActive(currentPath, item.href);
+            return (
+              <a
+                href={item.href}
+                class:list={[
+                  "tool-sidebar-nav__link",
+                  {
+                    "tool-sidebar-nav__link--group-start":
+                      groupIndex > 0 && itemIndex === 0,
+                  },
+                  active && "tool-sidebar-nav__link--active",
+                ]}
+                aria-current={active ? "page" : undefined}
+              >
+                <span class="tool-sidebar-nav__icon">
+                  <ToolIconBadge icon={item.icon} size="sm" />
+                </span>
+                <span
+                  class="tool-sidebar-nav__label"
+                  data-i18n={`menu.tools.${item.i18nKey}`}
+                >
+                  {item.label}
+                </span>
+              </a>
+            );
+          })
+        }
+      </section>
+    ))
+  }
+
+  <div class="tool-sidebar-nav__spacer" aria-hidden="true"></div>
+</nav>
+
+<script>
+  import { syncToolSidebarWidth } from "@/scripts/tool-sidebar-width";
+
+  syncToolSidebarWidth();
+  document.addEventListener("astro:page-load", () => syncToolSidebarWidth());
+</script>
+
+<style>
+  .tool-sidebar-nav {
+    display: inline-grid;
+    grid-auto-rows: auto;
+    justify-items: stretch;
+    width: max-content;
+    min-width: max-content;
+    overflow: visible;
+    --tool-sidebar-width-extra: 1.5rem;
+    --tool-sidebar-hover-slack: 0.875rem;
+    padding-inline: 0.125rem;
+    padding-inline-end: var(--tool-sidebar-hover-slack);
+    padding-block-end: 0.5rem;
+    box-sizing: border-box;
+  }
+
+  .tool-sidebar-nav__spacer {
+    display: block;
+    height: 2.5rem;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .tool-sidebar-nav__link--group-start {
+    margin-top: 0.75rem;
+  }
+
+  .tool-sidebar-nav__link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: visible;
+    padding: 0.5rem 1.125rem;
+    border-radius: 0.625rem;
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.375;
+    color: var(--foreground);
+    text-decoration: none;
+    transition:
+      transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+      color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tool-sidebar-nav__link:hover {
+    transform: translateX(6px);
+    border-color: color-mix(in oklab, var(--accent) 35%, transparent);
+    background: color-mix(in oklab, var(--accent) 10%, var(--background));
+    box-shadow:
+      inset 3px 0 0 var(--accent),
+      0 4px 14px color-mix(in oklab, var(--accent) 18%, transparent);
+    color: var(--accent);
+  }
+
+  .tool-sidebar-nav__link--active {
+    transform: translateX(4px);
+    border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+    background: color-mix(in oklab, var(--accent) 12%, var(--background));
+    box-shadow:
+      inset 3px 0 0 var(--accent),
+      0 2px 8px color-mix(in oklab, var(--accent) 14%, transparent);
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .tool-sidebar-nav__link--active:hover {
+    transform: translateX(6px);
+  }
+
+  .tool-sidebar-nav__icon {
+    flex-shrink: 0;
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tool-sidebar-nav__link:hover .tool-sidebar-nav__icon {
+    transform: translateY(-3px) scale(1.12);
+  }
+
+  .tool-sidebar-nav__link--active .tool-sidebar-nav__icon {
+    transform: scale(1.08);
+  }
+
+  .tool-sidebar-nav__label {
+    flex: 1 1 auto;
+    min-width: max-content;
+    white-space: nowrap;
+    overflow: visible;
+    text-align: start;
+  }
+
+  .tool-sidebar-nav__link:hover :global(.tool-icon-badge) {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 62%, transparent),
+      inset 0 -2px 0 color-mix(in oklab, black 14%, transparent),
+      0 4px 8px color-mix(in oklab, black 14%, transparent),
+      0 14px 24px color-mix(in oklab, var(--accent) 28%, transparent);
+  }
+
+  :global(.dark) .tool-sidebar-nav__link:hover {
+    background: color-mix(in oklab, var(--accent) 16%, transparent);
+    box-shadow:
+      inset 3px 0 0 var(--accent),
+      0 4px 18px color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+
+  :global(.dark) .tool-sidebar-nav__link--active {
+    background: color-mix(in oklab, var(--accent) 18%, transparent);
+  }
+</style>

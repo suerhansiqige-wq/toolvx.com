@@ -1,0 +1,137 @@
+---
+import { toolIconPaths, toolsMenuColumns } from "@/data/toolsMenu";
+import { toolIconStyles } from "@/data/toolIconStyles";
+import { getRelativeLocaleUrl } from "astro:i18n";
+
+type Props = {
+  variant?: "desktop" | "mobile";
+};
+
+const { variant = "desktop" } = Astro.props;
+
+const iconStyles = toolIconStyles;
+
+const toolLinkClass =
+  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-gray-50 hover:text-accent dark:hover:bg-gray-800/40";
+
+function resolveHref(href: string) {
+  if (href.startsWith("#") || href.startsWith("http")) return href;
+  return getRelativeLocaleUrl("en", href.replace(/^\//, ""));
+}
+---
+
+{
+  variant === "desktop" ? (
+    <div
+      id="tools-mega-menu"
+      class="pointer-events-none invisible absolute start-1/2 top-full z-50 mt-4 w-screen max-w-[100vw] -translate-x-1/2 translate-y-2 opacity-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] [.tools-open>&]:pointer-events-auto [.tools-open>&]:visible [.tools-open>&]:translate-y-0 [.tools-open>&]:opacity-100"
+      role="menu"
+      aria-label="PDF tools"
+      data-i18n-aria-label="menu.pdfTools"
+    >
+      <div class="app-layout">
+        <div class="border-border/60 bg-card/90 rounded-2xl border shadow-2xl backdrop-blur-xl">
+          <div class="grid grid-cols-1 gap-6 p-8 md:grid-cols-3 lg:grid-cols-6">
+            {toolsMenuColumns.map(column => (
+              <div class="min-w-0">
+                <p
+                  class="text-muted-foreground mb-3 text-[11px] font-semibold tracking-wider uppercase"
+                  data-i18n={column.titleKey}
+                >
+                  {column.title}
+                </p>
+                <ul class="space-y-0.5" role="none">
+                  {column.items.map(item => {
+                    const style = iconStyles[item.icon];
+                    return (
+                      <li role="none">
+                        <a
+                          href={resolveHref(item.href)}
+                          class={toolLinkClass}
+                          role="menuitem"
+                        >
+                          <span
+                            class:list={[
+                              "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                              style.bg,
+                              style.text,
+                            ]}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              class="size-4"
+                              aria-hidden="true"
+                              set:html={toolIconPaths[item.icon]}
+                            />
+                          </span>
+                          <span data-i18n={item.labelKey}>{item.label}</span>
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div class="border-border/60 space-y-4 border-t pt-4">
+      <p
+        class="text-muted-foreground text-xs font-semibold tracking-wider uppercase"
+        data-i18n="menu.pdfTools"
+      >
+        PDF Tools
+      </p>
+      {toolsMenuColumns.map(column => (
+        <div>
+          <p
+            class="text-muted-foreground mb-2 text-[10px] font-semibold tracking-wider uppercase"
+            data-i18n={column.titleKey}
+          >
+            {column.title}
+          </p>
+          <ul class="space-y-0.5">
+            {column.items.map(item => {
+              const style = iconStyles[item.icon];
+              return (
+                <li>
+                  <a href={resolveHref(item.href)} class={toolLinkClass}>
+                    <span
+                      class:list={[
+                        "flex size-7 shrink-0 items-center justify-center rounded-lg",
+                        style.bg,
+                        style.text,
+                      ]}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="size-3.5"
+                        aria-hidden="true"
+                        set:html={toolIconPaths[item.icon]}
+                      />
+                    </span>
+                    <span class="text-sm" data-i18n={item.labelKey}>{item.label}</span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}

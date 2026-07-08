@@ -1,0 +1,32 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import Socials from "./Socials.astro";
+import { useTranslations } from "@/i18n";
+
+type Props = {
+  noMarginTop?: boolean;
+} & HTMLAttributes<"footer">;
+
+const { noMarginTop = false, class: className, ...attrs } = Astro.props;
+
+const t = useTranslations(Astro.currentLocale);
+const currentYear = new Date().getFullYear();
+---
+
+<footer
+  class:list={["app-layout", { "mt-auto": !noMarginTop }, className]}
+  {...attrs}
+>
+  <div
+    class="border-border/60 flex flex-col items-center justify-between gap-6 border-t py-10 sm:flex-row-reverse sm:py-12"
+  >
+    <Socials />
+    <div
+      class="text-muted-foreground flex flex-col items-center gap-1 text-sm whitespace-nowrap sm:flex-row sm:gap-0"
+    >
+      <span><span data-i18n="site.footer.copyright">{t.footer.copyright}</span> &#169; {currentYear}</span>
+      <span class="hidden sm:inline">&nbsp;|&nbsp;</span>
+      <span data-i18n="site.footer.allRightsReserved">{t.footer.allRightsReserved}</span>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,94 @@
+---
+import Layout from "./Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import { resolveDefaultOgImagePath } from "@/utils/resolveDefaultOgImagePath";
+import config from "@/config";
+import type { FAQItem } from "@/data/toolsSeo";
+
+type Props = {
+  title: string;
+  description: string;
+  keywords?: string;
+  ogImage?: string;
+  canonicalURL?: string;
+  appName?: string;
+  faqs?: FAQItem[];
+  /** When true, adds noindex (staging only). Production redact page should stay indexable. */
+  noIndex?: boolean;
+};
+
+const {
+  title,
+  description,
+  keywords,
+  ogImage = resolveDefaultOgImagePath(config),
+  canonicalURL = new URL(Astro.url.pathname, Astro.site).href,
+  appName,
+  faqs = [],
+  noIndex = false,
+} = Astro.props;
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: appName ?? title.split("|")[0]?.trim() ?? title,
+  description,
+  url: canonicalURL,
+  applicationCategory: "UtilitiesApplication",
+  operatingSystem: "Any",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  inLanguage: "en",
+};
+
+const faqStructuredData =
+  faqs.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqs.map(faq => ({
+          "@type": "Question",
+          name: faq.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: faq.answer,
+          },
+        })),
+      }
+    : null;
+---
+
+<Layout {title} {description} {ogImage} {canonicalURL}>
+  <Fragment slot="head">
+    {keywords && <meta name="keywords" content={keywords} />}
+    <meta property="og:locale" content="en_US" />
+    <meta name="language" content="English" />
+    {noIndex ? (
+      <meta name="robots" content="noindex, nofollow" />
+    ) : (
+      <meta name="robots" content="index, follow" />
+    )}
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(structuredData)} />
+    {
+      faqStructuredData && (
+        <script type="application/ld+json" is:inline set:html={JSON.stringify(faqStructuredData)} />
+      )
+    }
+    <slot name="head" />
+  </Fragment>
+
+  <Header />
+
+  <main
+    id="main-content"
+    class="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6 sm:py-8"
+  >
+    <slot />
+  </main>
+
+  <Footer noMarginTop />
+</Layout>

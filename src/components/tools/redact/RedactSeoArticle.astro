@@ -1,0 +1,70 @@
+---
+import type { RedactToolSEO } from "@/data/redactToolSeo";
+
+type Props = {
+  seo: RedactToolSEO;
+  class?: string;
+};
+
+const { seo, class: className } = Astro.props;
+const stepsId = "redact-guide-steps";
+const faqId = "redact-guide-faq";
+---
+
+<section
+  id="redact-seo-article"
+  class:list={[
+    "redact-seo-article border-border mx-auto mt-10 max-w-4xl border-t pt-10",
+    className,
+  ]}
+  aria-labelledby={stepsId}
+  data-pagefind-body
+>
+  <div class="bg-muted/40 mb-10 rounded-2xl p-6 sm:p-8">
+    <h2
+      id={stepsId}
+      class="text-foreground mb-4 text-2xl font-semibold tracking-tight sm:text-3xl"
+      data-i18n="redact.stepsHeading"
+    >
+      {seo.stepsHeading}
+    </h2>
+    <ol class="text-muted-foreground list-decimal space-y-3 ps-6 text-base leading-relaxed">
+      {
+        seo.steps.map((step, index) => (
+          <li class="text-foreground/90" data-i18n={`redact.step.${index}`}>
+            {step}
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+
+  <div class="space-y-8">
+    <h2
+      id={faqId}
+      class="text-foreground text-2xl font-semibold tracking-tight sm:text-3xl"
+      data-i18n="redact.faqHeading"
+    >
+      {seo.faqHeading}
+    </h2>
+
+    {
+      seo.faqs.map(faq => (
+        <div class="border-border border-b pb-8 last:border-b-0 last:pb-0">
+          <h3
+            class="text-foreground mb-3 text-lg font-semibold tracking-tight sm:text-xl"
+            data-i18n={`redact.${faq.qKey}`}
+          >
+            {faq.question}
+          </h3>
+          <p
+            class="text-muted-foreground border-accent/60 border-s-2 ps-4 text-base leading-relaxed"
+            data-i18n={`redact.${faq.aKey}`}
+          >
+            {faq.answer}
+          </p>
+        </div>
+      ))
+    }
+  </div>
+</section>

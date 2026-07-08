@@ -1,0 +1,214 @@
+---
+type Props = {
+  actionLabel: string;
+  actionI18n: string;
+  downloadLabel: string;
+  downloadI18n: string;
+};
+
+const { actionLabel, actionI18n, downloadLabel, downloadI18n } = Astro.props;
+---
+
+<div id="tool-action-bar" class="mt-8 w-full" aria-live="polite">
+  <div class="flex w-full flex-col items-center gap-3">
+    <div
+      class="tool-action-segment grid w-full grid-cols-2 gap-1 rounded-[1.25rem] p-1"
+      role="group"
+      aria-label="Tool actions"
+      data-i18n-aria-label="blog.layout.toolActions"
+    >
+      <button
+        type="button"
+        id="tool-action-btn"
+        class="tool-action-btn interactive flex h-12 w-full min-w-0 items-center justify-center gap-2 rounded-[1rem] px-3 text-sm font-semibold tracking-tight transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:cursor-not-allowed disabled:opacity-45"
+        disabled
+      >
+        <span
+          class="tool-action-btn__icon flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/20"
+          aria-hidden="true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="size-3.5"
+          >
+            <path d="M12 2v8" /><path d="m8 6 4-4 4 4" /><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
+          </svg>
+        </span>
+        <span class="truncate" data-i18n={actionI18n}>{actionLabel}</span>
+      </button>
+
+      <a
+        id="tool-download-btn"
+        href="#"
+        download
+        class="tool-download-btn interactive flex h-12 w-full min-w-0 items-center justify-center gap-2 rounded-[1rem] px-3 text-sm font-semibold tracking-tight transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        aria-disabled="true"
+        tabindex="-1"
+      >
+        <span
+          class="tool-download-btn__icon flex size-7 shrink-0 items-center justify-center rounded-lg"
+          aria-hidden="true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="size-3.5"
+          >
+            <path d="M12 15V3" /><path d="m7 10 5 5 5-5" /><path d="M4 19h16" />
+          </svg>
+        </span>
+        <span class="truncate" data-i18n={downloadI18n}>{downloadLabel}</span>
+      </a>
+    </div>
+
+    <div id="tool-success-row" class="hidden items-center justify-center gap-2">
+      <span class="tool-success-badge inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-semibold tracking-wide">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="size-3.5"
+          aria-hidden="true"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+        <span data-i18n="common.success">Done! Your file is ready.</span>
+      </span>
+    </div>
+
+    <div
+      id="tool-multi-download"
+      class="tool-action-segment hidden w-full grid-cols-2 gap-1 rounded-[1.25rem] p-1"
+    >
+    </div>
+
+    <p id="tool-stats" class="text-muted-foreground hidden text-center text-sm"></p>
+  </div>
+</div>
+
+<style>
+  .tool-action-segment {
+    border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+    background: color-mix(in oklab, var(--muted) 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 70%, transparent),
+      0 1px 2px color-mix(in oklab, black 4%, transparent),
+      0 8px 24px color-mix(in oklab, black 4%, transparent);
+  }
+
+  :global(.dark) .tool-action-segment {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 6%, transparent),
+      0 1px 2px color-mix(in oklab, black 20%, transparent),
+      0 8px 24px color-mix(in oklab, black 25%, transparent);
+  }
+
+  .tool-action-btn {
+    color: var(--accent-foreground);
+    background: linear-gradient(
+      165deg,
+      color-mix(in oklab, var(--accent) 100%, white 8%) 0%,
+      var(--accent) 48%,
+      color-mix(in oklab, var(--accent) 88%, black 8%) 100%
+    );
+    box-shadow:
+      0 1px 2px color-mix(in oklab, var(--accent) 25%, transparent),
+      inset 0 1px 0 color-mix(in oklab, white 22%, transparent);
+  }
+
+  .tool-action-btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 8px 20px color-mix(in oklab, var(--accent) 28%, transparent),
+      inset 0 1px 0 color-mix(in oklab, white 22%, transparent);
+  }
+
+  .tool-download-btn {
+    pointer-events: none;
+    color: color-mix(in oklab, var(--muted-foreground) 75%, transparent);
+    background: color-mix(in oklab, var(--card) 70%, var(--muted) 30%);
+    box-shadow: inset 0 1px 0 color-mix(in oklab, white 50%, transparent);
+  }
+
+  .tool-download-btn .tool-download-btn__icon {
+    background: color-mix(in oklab, var(--muted) 80%, transparent);
+    color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+  }
+
+  .tool-download-btn.is-ready {
+    pointer-events: auto;
+    color: white;
+    background: linear-gradient(
+      165deg,
+      color-mix(in oklab, #34d399 100%, white 10%) 0%,
+      #10b981 50%,
+      color-mix(in oklab, #059669 100%, black 5%) 100%
+    );
+    box-shadow:
+      0 1px 2px color-mix(in oklab, #059669 30%, transparent),
+      inset 0 1px 0 color-mix(in oklab, white 20%, transparent);
+  }
+
+  .tool-download-btn.is-ready .tool-download-btn__icon {
+    background: color-mix(in oklab, white 18%, transparent);
+    color: white;
+  }
+
+  .tool-download-btn.is-ready:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 8px 22px color-mix(in oklab, #10b981 32%, transparent),
+      inset 0 1px 0 color-mix(in oklab, white 20%, transparent);
+  }
+
+  .tool-success-badge {
+    color: #047857;
+    border: 1px solid color-mix(in oklab, #10b981 22%, transparent);
+    background: color-mix(in oklab, #10b981 10%, transparent);
+  }
+
+  :global(.dark) .tool-success-badge {
+    color: #6ee7b7;
+    border-color: color-mix(in oklab, #34d399 25%, transparent);
+    background: color-mix(in oklab, #10b981 14%, transparent);
+  }
+
+  :global(.tool-page-thumb-card) {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  :global(.tool-page-thumb-card__preview) {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: none;
+    appearance: none;
+    text-align: inherit;
+    font: inherit;
+  }
+
+  :global(.tool-page-thumb-card__preview:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  :global(.tool-page-thumb-card__preview) {
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  }
+</style>

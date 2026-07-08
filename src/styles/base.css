@@ -1,0 +1,17 @@
+/* Core color tokens — modern tech palette */
+:root,
+[data-theme="light"] {
+  --color-fill: #f8f9fa;
+  --color-text-base: #1f2937;
+  --color-accent: #4f46e5;
+  --color-card: #ffffff;
+  --color-card-muted: #f3f4f6;
+}
+
+[data-theme="dark"] {
+  --color-fill: #0b0f19;
+  --color-text-base: #e5e7eb;
+  --color-accent: #06b6d4;
+  --color-card: #111827;
+  --color-card-muted: #1f2937;
+}

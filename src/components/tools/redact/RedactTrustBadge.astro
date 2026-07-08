@@ -1,0 +1,128 @@
+---
+/** Redact tool trust panel — same visual language as TrustBadge, redact-specific copy. */
+---
+
+<section
+  class="trust-badge mt-8 rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-6 dark:border-emerald-900/50 dark:bg-emerald-950/25 sm:p-8"
+  aria-labelledby="redact-trust-title"
+  data-pagefind-ignore
+>
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+    <div
+      class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-md shadow-emerald-500/25"
+      aria-hidden="true"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="size-6"
+      >
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        <path d="m9 12 2 2 4-4"></path>
+      </svg>
+    </div>
+
+    <div class="min-w-0 flex-1">
+      <span
+        class="mb-2 inline-block rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold tracking-wide text-emerald-700 dark:text-emerald-300"
+        data-i18n="redact_badge"
+      >
+        Local Image &amp; PDF Redaction
+      </span>
+      <h2
+        id="redact-trust-title"
+        class="text-foreground text-lg font-bold leading-snug tracking-tight sm:text-xl"
+        data-i18n="redact_intro_title"
+      >
+        100% Local Data Redaction
+      </h2>
+      <p
+        class="text-muted-foreground mt-2 text-sm leading-relaxed sm:text-base"
+        data-i18n="redact_intro_lead"
+      >
+        Mask and remove sensitive information from images and PDFs before you share — all in your
+        browser.
+      </p>
+
+      <ul class="mt-4 space-y-2.5" role="list">
+        <li class="text-foreground/90 flex items-start gap-2.5 text-sm">
+          <span
+            class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+            aria-hidden="true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              class="size-3"
+            >
+              <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+          </span>
+          <span data-i18n="redact_trust_1">Mask IDs, faces, and account numbers</span>
+        </li>
+        <li class="text-foreground/90 flex items-start gap-2.5 text-sm">
+          <span
+            class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+            aria-hidden="true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              class="size-3"
+            >
+              <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+          </span>
+          <span data-i18n="redact_trust_2">Works offline after page load</span>
+        </li>
+        <li class="text-foreground/90 flex items-start gap-2.5 text-sm">
+          <span
+            class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+            aria-hidden="true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              class="size-3"
+            >
+              <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+          </span>
+          <span data-i18n="redact_trust_3">No data leaves your device</span>
+        </li>
+        <li class="text-foreground/90 flex items-start gap-2.5 text-sm">
+          <span
+            class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+            aria-hidden="true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              class="size-3"
+            >
+              <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+          </span>
+          <span data-i18n="redact_trust_4">Multi-page PDF support</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>

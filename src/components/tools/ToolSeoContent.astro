@@ -1,0 +1,60 @@
+---
+import type { SeoSection } from "@/types/tool-seo";
+
+type Props = {
+  toolI18nKey: string;
+  sections: SeoSection[];
+  class?: string;
+};
+
+const { toolI18nKey, sections, class: className } = Astro.props;
+const prefix = `tools.${toolI18nKey}.seoSections`;
+---
+
+<article
+  class:list={[
+    "app-prose border-border prose-headings:tracking-tight max-w-none border-t pt-10",
+    className,
+  ]}
+>
+  {
+    sections.map((section, sectionIndex) => (
+      <div>
+        <h2 data-i18n={`${prefix}.${sectionIndex}.heading`}>
+          {section.heading}
+        </h2>
+        {section.blocks.map((block, blockIndex) => {
+          if (block.type === "paragraph") {
+            return (
+              <p data-i18n={`${prefix}.${sectionIndex}.blocks.${blockIndex}.text`}>
+                {block.text}
+              </p>
+            );
+          }
+          if (block.ordered) {
+            return (
+              <ol>
+                {block.items.map((item, itemIndex) => (
+                  <li
+                    data-i18n-html={`${prefix}.${sectionIndex}.blocks.${blockIndex}.items.${itemIndex}`}
+                    set:html={item}
+                  />
+                ))}
+              </ol>
+            );
+          }
+          return (
+            <ul>
+              {block.items.map((item, itemIndex) => (
+                <li
+                  data-i18n-html={`${prefix}.${sectionIndex}.blocks.${blockIndex}.items.${itemIndex}`}
+                  set:html={item}
+                />
+              ))}
+            </ul>
+          );
+        })}
+      </div>
+    ))
+  }
+</article>

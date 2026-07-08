@@ -1,0 +1,68 @@
+---
+import type { ToolSEO } from "@/data/toolsSeo";
+
+type Props = {
+  seo: ToolSEO;
+  toolI18nKey: string;
+  class?: string;
+};
+
+const { seo, toolI18nKey, class: className } = Astro.props;
+const prefix = `tools.${toolI18nKey}.seoRich`;
+const stepsId = `tool-guide-${seo.id}`;
+const faqId = `tool-faq-${seo.id}`;
+---
+
+<section
+  class:list={[
+    "tool-seo-article border-border mt-10 border-t pt-10",
+    className,
+  ]}
+  aria-labelledby={stepsId}
+  data-pagefind-body
+>
+  <h2
+    id={stepsId}
+    class="text-foreground mb-4 text-2xl font-bold tracking-tight sm:text-3xl"
+    data-i18n="common.seoHowToHeading"
+  >
+    How to use this tool
+  </h2>
+  <ol class="text-muted-foreground mb-10 list-decimal space-y-3 ps-6 text-base leading-relaxed">
+    {
+      seo.steps.map((step, index) => (
+        <li class="text-foreground/90" data-i18n={`${prefix}.steps.${index}`}>
+          {step}
+        </li>
+      ))
+    }
+  </ol>
+
+  <h2
+    id={faqId}
+    class="text-foreground mb-6 text-2xl font-bold tracking-tight sm:text-3xl"
+    data-i18n="common.seoFaqHeading"
+  >
+    Frequently asked questions
+  </h2>
+  <div class="space-y-8">
+    {
+      seo.faqs.map((faq, index) => (
+        <div class="border-border border-b pb-8 last:border-b-0 last:pb-0">
+          <h3
+            class="text-foreground mb-3 text-lg font-semibold tracking-tight"
+            data-i18n={`${prefix}.faqs.${index}.question`}
+          >
+            {faq.question}
+          </h3>
+          <p
+            class="text-muted-foreground text-base leading-relaxed"
+            data-i18n={`${prefix}.faqs.${index}.answer`}
+          >
+            {faq.answer}
+          </p>
+        </div>
+      ))
+    }
+  </div>
+</section>

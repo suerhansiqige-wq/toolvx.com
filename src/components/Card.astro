@@ -1,0 +1,46 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { getPostUrl } from "@/utils/getPostPaths";
+import { toTransitionName } from "@/utils/toTransitionName";
+import Datetime from "./Datetime.astro";
+
+type Props = {
+  variant?: "h2" | "h3";
+} & CollectionEntry<"posts">;
+
+const { variant: Heading = "h2", id, data, filePath } = Astro.props;
+
+const { title, description, ...props } = data;
+---
+
+<li class="list-none">
+  <article
+    class="card-surface hover-lift group flex h-full flex-col p-6 sm:p-8"
+  >
+    <a
+      href={getPostUrl(id, filePath, Astro.currentLocale)}
+      class="focus-visible:no-underline flex flex-1 flex-col gap-3"
+    >
+      <Heading
+        transition:name={toTransitionName(title)}
+        class="text-foreground text-lg leading-snug font-semibold transition-all duration-300 ease-out group-hover:bg-gradient-to-r group-hover:from-accent group-hover:to-accent/60 group-hover:bg-clip-text group-hover:text-transparent sm:text-xl"
+      >
+        {title}
+      </Heading>
+      <Datetime {...props} />
+      {
+        description && (
+          <p class="text-muted-foreground line-clamp-3 flex-1 text-sm leading-relaxed sm:text-base">
+            {description}
+          </p>
+        )
+      }
+      <span
+        class="text-accent mt-2 inline-flex items-center gap-1 text-sm font-medium opacity-0 transition-all group-hover:opacity-100"
+        data-i18n="blog.card.readMore"
+      >
+        Read more →
+      </span>
+    </a>
+  </article>
+</li>

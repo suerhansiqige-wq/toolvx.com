@@ -1,0 +1,236 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import IconUnderline from "@/assets/icons/IconUnderline.svg";
+import IconMenuDeep from "@/assets/icons/IconMenuDeep.svg";
+import IconArchive from "@/assets/icons/IconArchive.svg";
+import IconSunHigh from "@/assets/icons/IconSunHigh.svg";
+import IconSearch from "@/assets/icons/IconSearch.svg";
+import IconMoon from "@/assets/icons/IconMoon.svg";
+import IconX from "@/assets/icons/IconX.svg";
+import LinkButton from "./LinkButton.astro";
+import { stripBase, stripLocale } from "@/utils/withBase";
+import { useTranslations } from "@/i18n";
+import config from "@/config";
+
+const { site, features } = config;
+
+const locale = "en";
+const t = useTranslations(locale);
+
+const relativePath = stripBase(Astro.url.pathname);
+const pathWithoutTrailingSlash =
+  relativePath.endsWith("/") && relativePath !== "/"
+    ? relativePath.slice(0, -1)
+    : relativePath;
+
+const currentPath = stripLocale(pathWithoutTrailingSlash, locale);
+
+const isActive = (path: string) => {
+  const currentPathArray = currentPath.split("/").filter(p => p.trim());
+  const pathArray = path.split("/").filter(p => p.trim());
+  return currentPath === path || currentPathArray[0] === pathArray[0];
+};
+
+const navLinkClass =
+  "interactive flex items-center gap-1 rounded-xl px-4 py-2.5 text-center font-medium text-muted-foreground hover:text-accent hover:bg-muted/50 sm:px-3 sm:py-2";
+
+const toolsHref = getRelativeLocaleUrl(locale, "tools/compress-pdf");
+const redactHref = getRelativeLocaleUrl(locale, "redact-preview");
+---
+
+<a
+  id="skip-to-content"
+  href="#main-content"
+  class="glass-nav text-accent absolute inset-s-16 -top-full z-50 rounded-xl px-4 py-2.5 transition-all focus:top-4"
+  data-i18n="site.a11y.skipToContent"
+>
+  {t.a11y.skipToContent}
+</a>
+
+<header class="sticky top-0 z-40 glass-nav border-b border-border/60">
+  <div
+    class="app-layout flex flex-col items-center justify-between sm:flex-row"
+  >
+    <div
+      class="relative flex w-full items-baseline justify-between py-5 sm:items-center sm:py-6"
+    >
+      <a
+        href={getRelativeLocaleUrl(locale, "")}
+        class="interactive absolute py-1 text-xl leading-8 font-bold tracking-tight whitespace-nowrap sm:static sm:my-auto sm:text-2xl sm:leading-none hover:text-accent"
+      >
+        {site.title}
+      </a>
+      <nav
+        id="nav-menu"
+        class="flex w-full flex-col items-center sm:ms-4 sm:flex-row sm:justify-end sm:space-x-1 sm:py-0"
+      >
+        <button
+          id="menu-btn"
+          class="focus-outline interactive self-end rounded-xl p-2.5 hover:bg-muted/50 lg:hidden"
+          aria-label={t.a11y.openMenu}
+          aria-expanded="false"
+          aria-controls="menu-items"
+          data-label-open={t.a11y.openMenu}
+          data-label-close={t.a11y.closeMenu}
+          data-label-open-key="site.a11y.openMenu"
+          data-label-close-key="site.a11y.closeMenu"
+        >
+          <IconX id="close-icon" class="hidden" />
+          <IconMenuDeep id="menu-icon" />
+        </button>
+        <ul
+          id="menu-items"
+          class="mt-4 hidden w-full max-w-md grid-cols-2 place-content-center gap-1 sm:mt-0 sm:max-w-none lg:flex lg:w-auto lg:gap-x-1 lg:gap-y-0 [&>li>a]:block lg:[&>li]:h-auto"
+        >
+          <li class="col-span-2 lg:col-span-1">
+            <a
+              href={toolsHref}
+              class:list={[navLinkClass, { "active-nav": isActive("/tools") }]}
+              data-i18n="site.nav.tools"
+            >
+              PDF Tools
+            </a>
+          </li>
+          <li class="col-span-2 lg:col-span-1">
+            <a
+              href={redactHref}
+              class:list={[navLinkClass, { "active-nav": isActive("/redact-preview") }]}
+              data-i18n="site.nav.redact"
+            >
+              {t.nav.redact}
+            </a>
+          </li>
+          <li class="col-span-2 lg:col-span-1">
+            <a
+              href={getRelativeLocaleUrl(locale, "posts")}
+              class:list={[navLinkClass, { "active-nav": isActive("/posts") }]}
+              data-i18n="site.nav.posts"
+            >
+              {t.nav.posts}
+            </a>
+          </li>
+          <li class="col-span-2 lg:col-span-1">
+            <a
+              href={getRelativeLocaleUrl(locale, "tags")}
+              class:list={[navLinkClass, { "active-nav": isActive("/tags") }]}
+              data-i18n="site.nav.tags"
+            >
+              {t.nav.tags}
+            </a>
+          </li>
+          <li class="col-span-2 lg:col-span-1">
+            <a
+              href={getRelativeLocaleUrl(locale, "about")}
+              class:list={[navLinkClass, { "active-nav": isActive("/about") }]}
+              data-i18n="site.nav.about"
+            >
+              {t.nav.about}
+            </a>
+          </li>
+          {
+            features.showArchives && (
+              <li class="col-span-1 flex items-center justify-center lg:col-span-1">
+                <LinkButton
+                  href={getRelativeLocaleUrl(locale, "archives")}
+                  class:list={[
+                    "focus-outline interactive flex size-full justify-center rounded-xl p-3 hover:bg-muted/50 lg:relative lg:size-10 lg:p-0",
+                    { "active-nav": isActive("/archives") },
+                  ]}
+                  title={t.nav.archives}
+                  aria-label={t.nav.archives}
+                  data-i18n-title="site.nav.archives"
+                  data-i18n-aria-label="site.nav.archives"
+                >
+                  <IconArchive class="hidden lg:absolute lg:top-1/2 lg:left-1/2 lg:block lg:size-5 lg:-translate-x-1/2 lg:-translate-y-1/2" />
+                  <span class="lg:sr-only" data-i18n="site.nav.archives">{t.nav.archives}</span>
+                  {isActive("/archives") && (
+                    <IconUnderline
+                      aria-hidden="true"
+                      class="scale-125 max-lg:hidden lg:absolute lg:bottom-0 lg:w-6"
+                    />
+                  )}
+                </LinkButton>
+              </li>
+            )
+          }
+          {
+            features.search !== false && (
+              <li class="col-span-1 flex items-center justify-center">
+                <LinkButton
+                  href={getRelativeLocaleUrl(locale, "search")}
+                  class:list={[
+                    "focus-outline interactive relative size-10 rounded-xl hover:bg-muted/50",
+                  ]}
+                  title={t.nav.search}
+                  aria-label={t.nav.search}
+                  data-i18n-title="site.nav.search"
+                  data-i18n-aria-label="site.nav.search"
+                >
+                  <IconSearch class="absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-1/2" />
+                  <span class="sr-only" data-i18n="site.nav.search">{t.nav.search}</span>
+                  {isActive("/search") && (
+                    <IconUnderline
+                      aria-hidden="true"
+                      class="absolute bottom-0 w-6 scale-125 max-lg:inset-s-2"
+                    />
+                  )}
+                </LinkButton>
+              </li>
+            )
+          }
+          {
+            features.lightAndDarkMode && (
+              <li class="col-span-1 flex items-center justify-center">
+                <button
+                  id="theme-btn"
+                  class="focus-outline interactive hover:[&>svg]:stroke-accent relative size-10 rounded-xl p-2 hover:bg-muted/50"
+                  title={t.a11y.toggleTheme}
+                  aria-label={t.a11y.toggleTheme}
+                  aria-live="polite"
+                  data-i18n-title="site.a11y.toggleTheme"
+                  data-i18n-aria-label="site.a11y.toggleTheme"
+                >
+                  <IconMoon class="absolute top-[50%] left-[50%] translate-[-50%] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+                  <IconSunHigh class="absolute top-[50%] left-[50%] translate-[-50%] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+                </button>
+              </li>
+            )
+          }
+        </ul>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<script>
+  function toggleNav() {
+    const menuBtn = document.querySelector<HTMLButtonElement>("#menu-btn");
+    const menuItems = document.querySelector("#menu-items");
+    const menuIcon = document.querySelector("#menu-icon");
+    const closeIcon = document.querySelector("#close-icon");
+
+    if (!menuBtn || !menuItems || !menuIcon || !closeIcon) return;
+
+    const openLabel = menuBtn.dataset.labelOpen ?? "Open menu";
+    const closeLabel = menuBtn.dataset.labelClose ?? "Close menu";
+
+    menuBtn.addEventListener("click", () => {
+      const openMenu = menuBtn.getAttribute("aria-expanded") === "true";
+
+      menuBtn.setAttribute("aria-expanded", openMenu ? "false" : "true");
+      menuBtn.setAttribute("aria-label", openMenu ? openLabel : closeLabel);
+
+      menuItems.classList.toggle("hidden");
+      menuItems.classList.toggle("grid");
+      menuIcon.classList.toggle("hidden");
+      closeIcon.classList.toggle("hidden");
+    });
+  }
+
+  function initHeader() {
+    toggleNav();
+  }
+
+  initHeader();
+  document.addEventListener("astro:after-swap", initHeader);
+</script>

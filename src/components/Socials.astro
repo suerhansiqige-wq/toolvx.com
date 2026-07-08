@@ -1,0 +1,62 @@
+---
+import config from "@/config";
+import LinkButton from "./LinkButton.astro";
+
+const { site, socials } = config;
+
+const icons = import.meta.glob<{
+  default: (_props: Record<string, unknown>) => unknown;
+}>("/src/assets/icons/socials/*.svg");
+
+const platformLabel = (name: string) =>
+  name.charAt(0).toUpperCase() + name.slice(1);
+
+const items = await Promise.all(
+  socials.map(async ({ name, url, linkTitle }) => {
+    const mod = await icons[`/src/assets/icons/socials/${name}.svg`]?.();
+    const Icon = mod?.default;
+    const isEmail = url.startsWith("mailto:") || name === "mail";
+    const title =
+      linkTitle ??
+      (isEmail
+        ? `Send an email to ${site.title}`
+        : `${site.title} on ${platformLabel(name)}`);
+    const i18nKey = linkTitle
+      ? undefined
+      : isEmail
+        ? "blog.socials.emailTo"
+        : "blog.socials.onPlatform";
+    const i18nVars = linkTitle
+      ? undefined
+      : isEmail
+        ? { site: site.title }
+        : { site: site.title, platform: platformLabel(name) };
+    return { url, title, Icon, i18nKey, i18nVars };
+  })
+);
+---
+
+<div class="flex flex-wrap items-center gap-2">
+  {
+    items.map(({ url, title, Icon, i18nKey, i18nVars }) =>
+      Icon ? (
+        <LinkButton
+          href={url}
+          class="interactive card-surface inline-flex items-center justify-center rounded-xl p-2.5 hover:-translate-y-0.5 hover:shadow-hover"
+          title={title}
+          data-i18n-title={i18nKey}
+          data-i18n-vars={i18nVars ? JSON.stringify(i18nVars) : undefined}
+        >
+          <Icon class="inline-block size-5 fill-transparent stroke-current stroke-2 opacity-90 group-hover:fill-transparent" />
+          <span
+            class="sr-only"
+            data-i18n={i18nKey}
+            data-i18n-vars={i18nVars ? JSON.stringify(i18nVars) : undefined}
+          >
+            {title}
+          </span>
+        </LinkButton>
+      ) : null
+    )
+  }
+</div>

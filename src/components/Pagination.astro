@@ -1,0 +1,53 @@
+---
+import type { Page } from "astro";
+import type { CollectionEntry } from "astro:content";
+import IconArrowLeft from "@/assets/icons/IconArrowLeft.svg";
+import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
+import LinkButton from "./LinkButton.astro";
+import { useTranslations } from "@/i18n";
+
+type Props = {
+  page: Page<CollectionEntry<"posts">>;
+};
+
+const { page } = Astro.props;
+
+const t = useTranslations(Astro.currentLocale);
+---
+
+{
+  page.lastPage > 1 && (
+    <nav
+      class="app-layout mt-auto mb-12 flex items-center justify-center gap-6"
+      role="navigation"
+      aria-label="Pagination Navigation"
+      data-i18n-aria-label="blog.a11y.paginationNav"
+    >
+      <LinkButton
+        disabled={!page.url.prev}
+        variant="button"
+        href={page.url.prev as string}
+        class:list={["select-none", { "opacity-50": !page.url.prev }]}
+        aria-label={t.a11y.goToPreviousPage}
+        data-i18n-aria-label="blog.a11y.goToPreviousPage"
+      >
+        <IconArrowLeft class="inline-block rtl:rotate-180" />
+        <span data-i18n="blog.pagination.prev">{t.pagination.prev}</span>
+      </LinkButton>
+      <span class="text-muted-foreground text-sm font-medium">
+        {page.currentPage} / {page.lastPage}
+      </span>
+      <LinkButton
+        disabled={!page.url.next}
+        variant="button"
+        href={page.url.next as string}
+        class:list={["select-none", { "opacity-50": !page.url.next }]}
+        aria-label={t.a11y.goToNextPage}
+        data-i18n-aria-label="blog.a11y.goToNextPage"
+      >
+        <span data-i18n="blog.pagination.next">{t.pagination.next}</span>
+        <IconArrowRight class="inline-block rtl:rotate-180" />
+      </LinkButton>
+    </nav>
+  )
+}

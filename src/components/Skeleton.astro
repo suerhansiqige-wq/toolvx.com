@@ -1,0 +1,23 @@
+---
+type Props = {
+  variant?: "text" | "title" | "card";
+  class?: string;
+};
+
+const { variant = "text", class: className } = Astro.props;
+
+const variantClass = {
+  text: "skeleton-text",
+  title: "skeleton-title",
+  card: "skeleton-card",
+};
+---
+
+<div
+  class:list={[variantClass[variant], className]}
+  role="status"
+  aria-label="Loading…"
+  data-i18n-aria-label="site.a11y.loading"
+>
+  <span class="sr-only" data-i18n="site.a11y.loading">Loading…</span>
+</div>

@@ -1,0 +1,245 @@
+@import "tailwindcss";
+@import "./theme.css";
+@import "./typography.css";
+@import "rehype-callouts/theme/obsidian";
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@layer base {
+  * {
+    @apply border-border outline-accent/75;
+    scrollbar-width: auto;
+    scrollbar-color: var(--color-muted) transparent;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  a,
+  button {
+    @apply outline-accent outline-offset-1 focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-dashed;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* ===== Layout Utilities ===== */
+:root {
+  /* Fallback before layout-width.ts runs; overridden on load/resize */
+  --layout-gutter: 1rem;
+  --layout-max-width: min(calc(100vw - 2rem), 80rem);
+}
+
+@utility max-w-app {
+  max-width: var(--layout-max-width);
+}
+
+@utility app-layout {
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  width: 100%;
+  padding-inline: var(--layout-gutter);
+}
+
+@utility active-nav {
+  @apply text-accent font-semibold;
+}
+
+/* ===== Glass Morphism ===== */
+@utility glass-nav {
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ===== Card Surface ===== */
+@utility card-surface {
+  background: var(--card);
+  color: var(--card-foreground);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-ambient);
+  border: 1px solid var(--border);
+}
+
+/* ===== Interactive Transitions ===== */
+@utility interactive {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@utility hover-lift {
+  @apply interactive;
+
+  &:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-hover);
+  }
+}
+
+@utility shadow-ambient {
+  box-shadow: var(--shadow-ambient);
+}
+
+@utility shadow-elevated {
+  box-shadow: var(--shadow-elevated);
+}
+
+@utility shadow-hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* ===== Skeleton Screen ===== */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@utility skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    color-mix(in srgb, var(--muted) 60%, var(--foreground) 5%) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  border-radius: var(--radius-button);
+}
+
+@utility skeleton-text {
+  @apply skeleton h-4 w-full;
+}
+
+@utility skeleton-title {
+  @apply skeleton h-6 w-3/4;
+}
+
+@utility skeleton-card {
+  @apply skeleton h-48 w-full;
+  border-radius: var(--radius-card);
+}
+
+/* ===== Post Grid ===== */
+@utility post-grid {
+  @apply grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3;
+}
+
+:target {
+  scroll-margin-block: 1rem;
+}
+
+/* Hide native scrollbar — custom bar rendered below thumbnails */
+[data-dropzone-thumbs],
+.dropzone-thumbs-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+[data-dropzone-thumbs]::-webkit-scrollbar,
+.dropzone-thumbs-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.tool-page-thumbnails-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+/* Custom dropzone horizontal scrollbar */
+.dropzone-custom-scrollbar {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 0.35rem 0.5rem 0.15rem;
+}
+
+.dropzone-custom-scrollbar.hidden {
+  display: none;
+}
+
+.dropzone-custom-scrollbar__track {
+  position: relative;
+  height: 36px;
+  border-radius: 9999px;
+  cursor: pointer;
+  background: color-mix(in oklab, var(--muted) 40%, var(--foreground) 14%);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--foreground) 16%, transparent);
+}
+
+.dropzone-custom-scrollbar__thumb {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: 28px;
+  min-width: 64px;
+  border-radius: 9999px;
+  cursor: grab;
+  touch-action: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 96%, white 14%) 0%,
+    color-mix(in oklab, var(--accent) 80%, var(--foreground) 8%) 100%
+  );
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent) 40%, transparent),
+    0 2px 8px color-mix(in oklab, var(--foreground) 28%, transparent);
+  transition: background 0.15s ease;
+}
+
+.dropzone-custom-scrollbar__thumb:hover {
+  background: color-mix(in oklab, var(--accent) 100%, white 5%);
+}
+
+.dropzone-custom-scrollbar__thumb.is-dragging,
+.dropzone-custom-scrollbar__thumb:active {
+  cursor: grabbing;
+  background: color-mix(in oklab, var(--accent) 88%, black 6%);
+}
+
+[data-theme="dark"] .dropzone-custom-scrollbar__track,
+.dark .dropzone-custom-scrollbar__track {
+  background: color-mix(in oklab, var(--muted) 42%, black 48%);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, white 20%, transparent);
+}
+
+[data-theme="dark"] .dropzone-custom-scrollbar__thumb,
+.dark .dropzone-custom-scrollbar__thumb {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 96%, white 42%) 0%,
+    color-mix(in oklab, var(--accent) 84%, white 18%) 100%
+  );
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent) 50%, transparent),
+    0 2px 10px color-mix(in oklab, black 55%, transparent);
+}
+
+.tool-action-btn {
+  color: var(--accent-foreground);
+  background: linear-gradient(
+    165deg,
+    color-mix(in oklab, var(--accent) 100%, white 8%) 0%,
+    var(--accent) 48%,
+    color-mix(in oklab, var(--accent) 88%, black 8%) 100%
+  );
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--accent) 25%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 22%, transparent);
+}
+
+.tool-action-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 8px 20px color-mix(in oklab, var(--accent) 28%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 22%, transparent);
+}

@@ -1,0 +1,41 @@
+---
+type Props = {
+  title: string;
+  tagline: string;
+  titleI18n?: string;
+  taglineI18n?: string;
+  /** Extra index text (e.g. Chinese labels) for Pagefind — not shown in UI. */
+  searchSynonyms?: string;
+  class?: string;
+};
+
+const { title, tagline, titleI18n, taglineI18n, searchSynonyms, class: className } =
+  Astro.props;
+---
+
+<section
+  class:list={[
+    "card-surface shadow-elevated mb-10 p-6 text-center sm:p-10",
+    className,
+  ]}
+  data-pagefind-body
+>
+  <h1
+    class="text-foreground mb-2 text-3xl font-bold tracking-tight sm:text-4xl"
+    data-i18n={titleI18n}
+  >
+    {title}
+  </h1>
+  <p
+    class="text-muted-foreground mx-auto mb-8 max-w-2xl text-sm sm:text-base"
+    data-i18n={taglineI18n}
+  >
+    {tagline}
+  </p>
+  {searchSynonyms && (
+    <p class="sr-only" aria-hidden="true">
+      {searchSynonyms}
+    </p>
+  )}
+  <slot />
+</section>

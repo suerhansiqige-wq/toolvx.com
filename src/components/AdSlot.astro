@@ -1,0 +1,48 @@
+---
+import type { HTMLAttributes } from "astro/types";
+
+type AdVariant = "leaderboard" | "skyscraper";
+
+type Props = {
+  variant?: AdVariant;
+  class?: string;
+} & HTMLAttributes<"div">;
+
+const {
+  variant = "leaderboard",
+  class: className,
+  ...attrs
+} = Astro.props;
+
+const variantClass: Record<AdVariant, string> = {
+  leaderboard: "min-h-[90px] w-full",
+  skyscraper: "mx-auto min-h-[600px] w-full max-w-[300px]",
+};
+---
+
+<!--
+  AdSense pre-approval placeholder.
+  After Google AdSense approval, replace the inner content below with your
+  <ins class="adsbygoogle" ...></ins> snippet and the matching (adsbygoogle = window.adsbygoogle || []).push({}); script.
+-->
+<div
+  role="complementary"
+  aria-label="Advertisement placeholder"
+  data-i18n-aria-label="ad_aria"
+  data-ad-slot={variant}
+  class:list={[
+    "ad-slot flex items-center justify-center rounded-xl",
+    "border border-dashed border-gray-200 bg-gray-50/50",
+    "dark:border-gray-800 dark:bg-gray-900/30",
+    variantClass[variant],
+    className,
+  ]}
+  {...attrs}
+>
+  <span
+    class="pointer-events-none select-none text-xs font-medium tracking-wider text-gray-400"
+    data-i18n="ad_text"
+  >
+    ADVERTISEMENT PLACEHOLDER
+  </span>
+</div>

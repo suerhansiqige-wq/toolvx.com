@@ -1,0 +1,110 @@
+---
+import RedactLayout from "@/layouts/RedactLayout.astro";
+import RedactWorkspace from "@/components/tools/redact/RedactWorkspace.astro";
+import RedactTrustBadge from "@/components/tools/redact/RedactTrustBadge.astro";
+import RedactSeoArticle from "@/components/tools/redact/RedactSeoArticle.astro";
+import AdSlot from "@/components/AdSlot.astro";
+import { redactToolFaqsForSchema, getRedactToolSeo } from "@/data/redactToolSeo";
+import { redactSearchSynonyms } from "@/utils/tool-search-synonyms";
+
+const seo = getRedactToolSeo();
+---
+
+<RedactLayout
+  title={seo.title}
+  description={seo.description}
+  keywords={seo.keywords.join(", ")}
+  appName={seo.h1}
+  faqs={redactToolFaqsForSchema()}
+  noIndex={false}
+>
+  <div id="redact-page" class="redact-page mx-auto w-full max-w-[80rem]">
+    <header
+      id="redact-page-header"
+      class="redact-page-header mx-auto mb-4 max-w-3xl sm:mb-5"
+      data-pagefind-body
+    >
+      <h1
+        class="text-foreground text-center text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl"
+        data-i18n="redact.h1"
+      >
+        {seo.h1}
+      </h1>
+      <p
+        class="text-muted-foreground mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed sm:text-base"
+        data-i18n="redact.introduction"
+      >
+        {seo.introduction}
+      </p>
+      <p class="sr-only" aria-hidden="true">
+        {redactSearchSynonyms}
+      </p>
+      <div class="redact-page-header__line" aria-hidden="true"></div>
+    </header>
+
+    <RedactWorkspace />
+
+    <div id="redact-trust-wrap" class="redact-trust-wrap mx-auto w-full">
+      <RedactTrustBadge />
+    </div>
+
+    <div
+      id="redact-mid-ad-wrap"
+      class="redact-mid-ad-wrap mx-auto mt-8 w-full max-w-4xl lg:mt-10"
+      data-pagefind-ignore
+    >
+      <AdSlot variant="leaderboard" data-ad-position="redact-mid-leaderboard" />
+    </div>
+
+    <RedactSeoArticle seo={seo} class="px-1 sm:px-0" />
+
+    <div id="redact-ad-wrap" class="redact-ad-wrap mx-auto mt-8 w-full lg:mt-10" data-pagefind-ignore>
+      <AdSlot variant="leaderboard" data-ad-position="redact-bottom-leaderboard" />
+    </div>
+  </div>
+</RedactLayout>
+
+<style>
+  .redact-page {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .redact-page-header {
+    width: 100%;
+    text-align: center;
+  }
+
+  .redact-page--editing .redact-page-header,
+  .redact-page--editing .redact-trust-wrap {
+    display: none;
+  }
+
+  .redact-ad-wrap,
+  .redact-mid-ad-wrap {
+    flex-shrink: 0;
+  }
+
+  .redact-page--editing {
+    max-width: 80rem;
+  }
+
+  .redact-page-header__line {
+    width: 4rem;
+    height: 0.25rem;
+    margin: 0.75rem auto 0;
+    border-radius: 9999px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--accent),
+      transparent
+    );
+    opacity: 0.65;
+  }
+</style>
+
+<script>
+  import "@/scripts/redact-tool.ts";
+</script>
