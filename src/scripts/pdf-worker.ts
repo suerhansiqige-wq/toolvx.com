@@ -146,32 +146,68 @@ export async function ensurePdfWorker(): Promise<PdfJsModule> {
   return pdfjsModule;
 }
 
+type PdfAssetCdn = "local" | "jsdelivr" | "cdnjs";
+
 type LoadPdfOptions = {
   password?: string;
   useWasm?: boolean;
   isOffscreenCanvasSupported?: boolean;
   isImageDecoderSupported?: boolean;
+  /** @deprecated Prefer assetCdn */
   useCdn?: boolean;
+  /** CMap / standard_fonts / wasm source: self-hosted, jsDelivr, or cdnjs. */
+  assetCdn?: PdfAssetCdn;
 };
+
+function resolveAssetCdn(options?: LoadPdfOptions): PdfAssetCdn {
+  if (options?.assetCdn) return options.assetCdn;
+  return options?.useCdn ? "jsdelivr" : "local";
+}
+
+/** Public CMap / font / wasm folder URL (trailing slash). */
+function pdfjsAssetFolderUrl(folder: string, cdn: PdfAssetCdn): string {
+  const v3 = usesPdfjsV3();
+  const version = v3 ? PDFJS_V3_VERSION : PDFJS_V6_VERSION;
+
+  if (cdn === "local") {
+    return pdfjsAssetUrl(folder, false);
+  }
+  if (cdn === "cdnjs") {
+    return `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/${folder}/`;
+  }
+  return `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/${folder}/`;
+}
+
+function pdfjsWasmFileUrl(cdn: PdfAssetCdn): string {
+  if (cdn === "local") return pdfjsAssetUrl("wasm", false);
+  const version = usesPdfjsV3() ? PDFJS_V3_VERSION : PDFJS_V6_VERSION;
+  if (cdn === "cdnjs") {
+    return `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/wasm/`;
+  }
+  return `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/wasm/`;
+}
 
 function buildDocumentInit(
   data: Uint8Array,
-  options?: LoadPdfOptions & { useCdn?: boolean }
+  options?: LoadPdfOptions
 ): Record<string, unknown> {
   const legacy = isLegacyPdfEnvironment();
-  const useCdn = options?.useCdn ?? false;
+  const cdn = resolveAssetCdn(options);
   const v3 = usesPdfjsV3();
+
+  const cMapUrl = pdfjsAssetFolderUrl("cmaps", cdn);
+  const standardFontDataUrl = pdfjsAssetFolderUrl("standard_fonts", cdn);
 
   if (v3) {
     return {
       data,
       password: options?.password,
-      cMapUrl: pdfjsAssetUrl("cmaps", useCdn),
+      cMapUrl,
       cMapPacked: true,
-      standardFontDataUrl: pdfjsAssetUrl("standard_fonts", useCdn),
+      standardFontDataUrl,
       useSystemFonts: true,
       disableFontFace: false,
-      disableCreateImageBitmap: legacy,
+      disableCreateImageBitmap: true,
     };
   }
 
@@ -181,15 +217,54 @@ function buildDocumentInit(
     disableAutoFetch: false,
     password: options?.password,
     useWasm: options?.useWasm ?? wasmDefault,
-    cMapUrl: pdfjsAssetUrl("cmaps", useCdn),
+    cMapUrl,
     cMapPacked: true,
-    standardFontDataUrl: pdfjsAssetUrl("standard_fonts", useCdn),
-    wasmUrl: pdfjsAssetUrl("wasm", useCdn),
+    standardFontDataUrl,
+    wasmUrl: pdfjsWasmFileUrl(cdn),
     useSystemFonts: true,
     isOffscreenCanvasSupported: options?.isOffscreenCanvasSupported ?? false,
     isImageDecoderSupported: options?.isImageDecoderSupported ?? false,
-    disableCreateImageBitmap: legacy,
+    disableCreateImageBitmap: true,
   };
+}
+
+function assetCdnAttempts(legacy: boolean, localAssets: boolean): PdfAssetCdn[] {
+  if (legacy) return ["jsdelivr", "cdnjs", "local"];
+  if (localAssets) return ["local", "jsdelivr", "cdnjs"];
+  return ["jsdelivr", "cdnjs"];
+}
+
+function expandLoadAttempts(
+  base: LoadPdfOptions,
+  legacy: boolean,
+  localAssets: boolean,
+  v3: boolean
+): LoadPdfOptions[] {
+  const cdns = assetCdnAttempts(legacy, localAssets);
+  const attempts: LoadPdfOptions[] = [];
+
+  if (v3) {
+    for (const assetCdn of cdns) {
+      attempts.push({ ...base, assetCdn });
+    }
+    return attempts;
+  }
+
+  const wasmFlags = legacy
+    ? [false, true]
+    : [true, false];
+  for (const assetCdn of cdns) {
+    for (const useWasm of wasmFlags) {
+      attempts.push({
+        ...base,
+        assetCdn,
+        useWasm,
+        isOffscreenCanvasSupported: false,
+        isImageDecoderSupported: false,
+      });
+    }
+  }
+  return attempts;
 }
 
 /** Load a PDF from bytes with settings suited to local file previews. */
@@ -199,20 +274,14 @@ export async function loadPdfBytes(
 ): Promise<PdfDocumentProxy> {
   const pdfjs = await ensurePdfWorker();
   const payload = clonePdfBytes(data);
-  const wasm = supportsWebAssembly();
   const localAssets = await probeLocalPdfAssets();
   const legacy = isLegacyPdfEnvironment();
   const v3 = usesPdfjsV3();
 
   if (v3) {
-    const attempts: LoadPdfOptions[] = [
-      { ...options, useCdn: false },
-      { ...options, useCdn: true },
-    ];
-    const cdnOnly: LoadPdfOptions[] = [{ ...options, useCdn: true }];
-    const strategies = localAssets ? attempts : cdnOnly;
+    const attempts = expandLoadAttempts(options ?? {}, legacy, localAssets, true);
     let lastError: unknown;
-    for (const attempt of strategies) {
+    for (const attempt of attempts) {
       try {
         return await pdfjs.getDocument(buildDocumentInit(payload, attempt)).promise;
       } catch (err) {
@@ -223,44 +292,7 @@ export async function loadPdfBytes(
     throw lastError;
   }
 
-  const noWasmLocal: LoadPdfOptions = {
-    ...options,
-    useWasm: false,
-    useCdn: false,
-    isOffscreenCanvasSupported: false,
-    isImageDecoderSupported: false,
-  };
-  const wasmLocal: LoadPdfOptions = {
-    ...options,
-    useWasm: true,
-    useCdn: false,
-    isOffscreenCanvasSupported: false,
-    isImageDecoderSupported: false,
-  };
-  const noWasmCdn: LoadPdfOptions = {
-    ...options,
-    useWasm: false,
-    useCdn: true,
-    isOffscreenCanvasSupported: false,
-    isImageDecoderSupported: false,
-  };
-  const wasmCdn: LoadPdfOptions = {
-    ...options,
-    useWasm: true,
-    useCdn: true,
-    isOffscreenCanvasSupported: false,
-    isImageDecoderSupported: false,
-  };
-
-  const preferred: LoadPdfOptions[] = legacy
-    ? [noWasmLocal, wasmLocal, noWasmCdn, wasmCdn, { ...options, useWasm: true, useCdn: false }]
-    : [wasmLocal, wasmCdn, { ...options, useWasm: true, useCdn: false }, { ...options, useWasm: true, useCdn: true }, { ...options, useWasm: wasm, useCdn: true }, noWasmLocal, noWasmCdn];
-
-  const cdnOnly: LoadPdfOptions[] = legacy
-    ? [noWasmCdn, wasmCdn, { ...options, useWasm: true, useCdn: true }]
-    : [wasmCdn, { ...options, useWasm: true, useCdn: true }, noWasmCdn];
-
-  const attempts = localAssets ? preferred : cdnOnly;
+  const attempts = expandLoadAttempts(options ?? {}, legacy, localAssets, false);
 
   let lastError: unknown;
   for (const attempt of attempts) {

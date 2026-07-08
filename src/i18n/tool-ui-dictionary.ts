@@ -103,6 +103,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     error_pdf_password_prompt: "Enter the PDF password to open this document.",
     error_pdf_assets:
       "PDF page rendering failed (often due to special fonts or image encoding). Refresh and try again, or use the latest Chrome or Edge.",
+    pdf_preview_unavailable: "Preview unavailable",
+    pdf_loaded_no_preview: "PDF loaded — preview could not be drawn on this device. You can still export or process the file.",
     dialog_ok: "OK",
     dialog_cancel: "Cancel",
     seo_how_to_heading: "How to use this tool",
@@ -281,6 +283,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     error_pdf_password_prompt: "请输入 PDF 密码以打开此文档。",
     error_pdf_assets:
       "PDF 页面渲染失败（常见于特殊字体或图片编码）。请按 Ctrl+F5 强制刷新后重试。Win7 用户可尝试 Firefox 115 ESR；其他系统请使用较新的 Chrome 或 Edge。",
+    pdf_preview_unavailable: "暂无预览",
+    pdf_loaded_no_preview: "PDF 已成功加载，当前设备无法绘制预览图，您仍可继续导出或处理文件。",
     dialog_ok: "确定",
     dialog_cancel: "取消",
     redact_badge: "本地图片与 PDF 打码",
@@ -457,6 +461,9 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     error_pdf_password_prompt: "Introduzca la contraseña del PDF para abrir este documento.",
     error_pdf_assets:
       "Error al renderizar la página PDF (a menudo por fuentes o codificación de imagen). Actualice la página o use Chrome o Edge recientes.",
+    pdf_preview_unavailable: "Vista previa no disponible",
+    pdf_loaded_no_preview:
+      "PDF cargado: no se pudo dibujar la vista previa en este dispositivo. Aún puede exportar o procesar el archivo.",
     dialog_ok: "Aceptar",
     dialog_cancel: "Cancelar",
     redact_badge: "Redacción local de imagen y PDF",
@@ -635,6 +642,9 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     error_pdf_password_prompt: "この PDF を開くにはパスワードを入力してください。",
     error_pdf_assets:
       "PDF ページの描画に失敗しました（特殊フォントや画像形式が原因のことがあります）。ページを更新するか、最新の Chrome / Edge をお試しください。",
+    pdf_preview_unavailable: "プレビューなし",
+    pdf_loaded_no_preview:
+      "PDF は読み込み済みです。この端末ではプレビューを描画できませんが、エクスポートや処理は続行できます。",
     dialog_ok: "OK",
     dialog_cancel: "キャンセル",
     redact_badge: "ローカル画像・PDF 墨消し",

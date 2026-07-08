@@ -41,6 +41,17 @@ export function isPdfRenderBlankError(err: unknown): boolean {
   return err instanceof Error && err.message.includes("PDF render blank");
 }
 
+/** Preview/render failures where the PDF bytes are still usable for export. */
+export function isPdfRenderRecoverableError(err: unknown): boolean {
+  if (isPdfRenderBlankError(err)) return true;
+  if (err instanceof Error) {
+    return /PDF render timeout|JPEG encode failed|Canvas not supported/i.test(
+      err.message
+    );
+  }
+  return false;
+}
+
 export function classifyPdfLoadError(err: unknown): PdfErrorKey {
   if (isIncorrectPasswordPdfError(err)) return "error_pdf_password_incorrect";
   if (isPasswordPdfError(err)) return "error_pdf_password_required";

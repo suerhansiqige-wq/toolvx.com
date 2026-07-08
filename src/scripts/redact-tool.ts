@@ -4,6 +4,7 @@ import {
   canvasToJpegBlob,
   copyCanvasTo,
   dataUrlToBlob,
+  drawPdfPreviewPlaceholder,
   getPdfRenderScale,
   isCanvasMostlyBlank,
   releaseCanvasMemory,
@@ -16,6 +17,7 @@ import {
   isIncorrectPasswordPdfError,
   isPasswordPdfError,
   isPdfFileBytes,
+  isPdfRenderRecoverableError,
 } from "@/scripts/pdf-errors";
 import { onI18nReady, showAppAlert, showAppPrompt, t } from "@/scripts/i18n-client";
 import { openFileInput, prepareLegacyFileInput } from "@/scripts/file-input";
@@ -397,24 +399,24 @@ const LEGACY_RENDER_SCALES = [
   0.5,
 ];
 
-async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement) {
-  if (!pdfSourceBytes?.length) {
-    throw new Error("PDF render blank");
-  }
+async function tryRenderPdfPageToTarget(
+  pageNum: number,
+  target: HTMLCanvasElement
+): Promise<boolean> {
+  if (!pdfSourceBytes?.length || !pdfDoc) return false;
 
   const scales = LEGACY_PDF
     ? [...new Set(LEGACY_RENDER_SCALES.map(s => Math.round(s * 100) / 100))]
     : [PDF_RENDER_SCALE];
 
-  let lastError: unknown;
-
   for (let attempt = 0; attempt < PDF_RENDER_RETRY_STRATEGIES.length; attempt++) {
     try {
       const strategy = PDF_RENDER_RETRY_STRATEGIES[attempt];
-      pdfDoc = await loadPdfBytes(pdfSourceBytes, strategy);
+      if (attempt > 0) {
+        pdfDoc = await loadPdfBytes(pdfSourceBytes, strategy);
+      }
 
       const page = await pdfDoc.getPage(pageNum);
-      let renderError: unknown;
 
       for (const scale of scales) {
         try {
@@ -423,26 +425,51 @@ async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement)
           });
           if (isCanvasMostlyBlank(rendered)) {
             releaseCanvasMemory(rendered);
-            throw new Error("PDF render blank");
+            continue;
           }
 
           copyCanvasTo(rendered, target);
           releaseCanvasMemory(rendered);
           const base = page.getViewport({ scale: 1 });
           pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
-          return;
-        } catch (err) {
-          renderError = err;
+          return true;
+        } catch {
+          /* try next scale */
         }
       }
-
-      throw renderError ?? new Error("PDF render blank");
-    } catch (err) {
-      lastError = err;
+    } catch {
+      /* try next load strategy */
     }
   }
 
-  throw lastError ?? new Error("PDF render blank");
+  return false;
+}
+
+async function applyPdfPagePlaceholder(pageNum: number, target: HTMLCanvasElement): Promise<void> {
+  if (!pdfDoc) return;
+  try {
+    const page = await pdfDoc.getPage(pageNum);
+    const base = page.getViewport({ scale: 1 });
+    pdfPageSizePts[pageNum - 1] = { width: base.width, height: base.height };
+    drawPdfPreviewPlaceholder(
+      target,
+      base.width,
+      base.height,
+      `${t("pdf_preview_unavailable")}\n${t("pdf_loaded_no_preview")}`
+    );
+  } catch {
+    drawPdfPreviewPlaceholder(target, 612, 792, t("pdf_preview_unavailable"));
+    pdfPageSizePts[pageNum - 1] = { width: 612, height: 792 };
+  }
+}
+
+/** @deprecated Use tryRenderPdfPageToTarget — kept for internal retry paths. */
+async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement): Promise<void> {
+  const ok = await tryRenderPdfPageToTarget(pageNum, target);
+  if (!ok) {
+    await applyPdfPagePlaceholder(pageNum, target);
+    pdfPreviewDegraded = true;
+  }
 }
 
 function canvasToThumbUrl(canvas: HTMLCanvasElement, quality = THUMB_JPEG_QUALITY): string {
@@ -551,6 +578,7 @@ function updatePageLabel() {
 }
 
 let thumbViewStart = 0;
+let pdfPreviewDegraded = false;
 
 async function refreshThumbForCurrentPage() {
   const store = pageStores[currentPage - 1];
@@ -769,6 +797,7 @@ function resetRedactState() {
   currentPage = 1;
   originalImageSnapshot = null;
   thumbViewStart = 0;
+  pdfPreviewDegraded = false;
 }
 
 async function loadPdfFile(file: File) {
@@ -800,7 +829,11 @@ async function loadPdfFile(file: File) {
       redoStack: [],
     }));
 
-    await renderPdfPageToTarget(1, pageStores[0].canvas);
+    const firstPageOk = await tryRenderPdfPageToTarget(1, pageStores[0].canvas);
+    if (!firstPageOk) {
+      await applyPdfPagePlaceholder(1, pageStores[0].canvas);
+      pdfPreviewDegraded = true;
+    }
     currentPage = 1;
     loadPageToMain(1);
 
@@ -855,6 +888,10 @@ async function handleFile(file: File) {
     console.error(err);
     resetRedactState();
     showWorkspace(false);
+    if (isPdfRenderRecoverableError(err)) {
+      console.warn("PDF preview degraded; file parse may still succeed on retry.");
+      return;
+    }
     showAppAlert(mapRedactLoadError(err));
   } finally {
     setRedactLoading(false);

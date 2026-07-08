@@ -152,9 +152,8 @@ function promiseWithTimeout<T>(
 }
 
 function legacyPdfRenderFlags(): Record<string, unknown> {
-  if (!LEGACY) return {};
   return {
-    // Force classic 2D canvas path — ImageBitmap/WebGL often blank on Win7 GPUs.
+    // Always force classic 2D canvas — ImageBitmap/WebGL crash on legacy GPUs.
     disableCreateImageBitmap: true,
     enableWebGL: false,
   };
@@ -178,6 +177,40 @@ function buildRenderParams(
     params.canvas = canvas;
   }
   return params;
+}
+
+export function drawPdfPreviewPlaceholder(
+  canvas: HTMLCanvasElement,
+  pageWidthPt: number,
+  pageHeightPt: number,
+  message: string,
+  displayScale?: number
+): void {
+  const scale =
+    displayScale ?? (LEGACY ? getPdfRenderScale(0.75) : getPdfRenderScale(1.1));
+  const w = Math.max(1, Math.floor(pageWidthPt * scale));
+  const h = Math.max(1, Math.floor(pageHeightPt * scale));
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = getCanvas2dContext(canvas);
+  ctx.fillStyle = "#f3f4f6";
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = "#d1d5db";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+
+  ctx.fillStyle = "#6b7280";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.max(12, Math.min(16, Math.floor(w / 24)));
+  ctx.font = `${fontSize}px sans-serif`;
+
+  const lines = message.split("\n");
+  const lineHeight = fontSize * 1.35;
+  const startY = h / 2 - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, w / 2, startY + i * lineHeight);
+  });
 }
 
 export async function renderPdfPageToCanvas(
