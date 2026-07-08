@@ -1,4 +1,4 @@
-import { loadPdfBytes, pdfjsLib } from "@/scripts/pdf-worker";
+import { loadPdfBytes, type PdfDocumentProxy } from "@/scripts/pdf-worker";
 import { canvasToJpegBlob, renderPdfPageToCanvas } from "@/scripts/pdf-render";
 import { t } from "@/scripts/i18n-client";
 import { openImageLightbox } from "@/scripts/image-lightbox";
@@ -60,7 +60,7 @@ async function renderPdfThumbnail(file: File, pageNum = 1, scale = 0.35): Promis
 }
 
 async function renderPdfPageThumbnail(
-  pdf: pdfjsLib.PDFDocumentProxy,
+  pdf: PdfDocumentProxy,
   pageNum: number,
   scale = 0.35
 ): Promise<string> {

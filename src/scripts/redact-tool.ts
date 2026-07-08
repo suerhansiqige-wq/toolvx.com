@@ -1,5 +1,5 @@
 import "@/scripts/legacy-polyfills";
-import { loadPdfBytes, pdfjsLib, ensurePdfWorker, isLegacyPdfEnvironment, clonePdfBytes, probeLocalPdfAssets } from "@/scripts/pdf-worker";
+import { loadPdfBytes, type PdfDocumentProxy, isLegacyPdfEnvironment, clonePdfBytes, probeLocalPdfAssets } from "@/scripts/pdf-worker";
 import {
   canvasToJpegBlob,
   copyCanvasTo,
@@ -17,8 +17,6 @@ import {
 } from "@/scripts/pdf-errors";
 import { onI18nReady, showAppAlert, showAppPrompt, t } from "@/scripts/i18n-client";
 import { openFileInput, prepareLegacyFileInput } from "@/scripts/file-input";
-
-ensurePdfWorker();
 
 type EffectType = "blackout" | "pixelate" | "blur";
 
@@ -46,7 +44,7 @@ let overlayCanvas: HTMLCanvasElement;
 let overlayCtx: CanvasRenderingContext2D;
 
 let isPdf = false;
-let pdfDoc: pdfjsLib.PDFDocumentProxy | null = null;
+let pdfDoc: PdfDocumentProxy | null = null;
 let pdfSourceBytes: Uint8Array | null = null;
 let pdfPageSizePts: { width: number; height: number }[] = [];
 let currentPage = 1;

@@ -16,6 +16,15 @@ const headers = `# Cloudflare Pages — pdf.js static assets
 
 /pdfjs/standard_fonts/*
   Content-Type: application/octet-stream
+
+/pdfjs-v3/*.js
+  Content-Type: text/javascript; charset=utf-8
+
+/pdfjs-v3/cmaps/*
+  Content-Type: application/octet-stream
+
+/pdfjs-v3/standard_fonts/*
+  Content-Type: application/octet-stream
 `;
 
 if (!fs.existsSync(dist)) {

@@ -1,5 +1,5 @@
 import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
-import { ensurePdfWorker, loadPdfBytes, pdfjsLib } from "@/scripts/pdf-worker";
+import { loadPdfBytes, type PdfDocumentProxy } from "@/scripts/pdf-worker";
 import {
   canvasToJpegBlob,
   HD_JPG_RENDER,
@@ -12,8 +12,6 @@ import {
   zipImageFilename,
   zipPageFilename,
 } from "@/scripts/export-filename";
-
-ensurePdfWorker();
 
 export type CompressionLevel = "balanced" | "strong" | "maximum";
 
@@ -44,7 +42,7 @@ export async function readPdfBytes(file: File): Promise<Uint8Array> {
 }
 
 async function rasterizePdfToBytes(
-  pdf: pdfjsLib.PDFDocumentProxy,
+  pdf: PdfDocumentProxy,
   scale: number,
   quality: number
 ): Promise<Uint8Array> {
@@ -737,7 +735,7 @@ export async function zipToBlob(zip: JSZip): Promise<Blob> {
 }
 
 export type ReaderState = {
-  pdf: pdfjsLib.PDFDocumentProxy;
+  pdf: PdfDocumentProxy;
   currentPage: number;
 };
 

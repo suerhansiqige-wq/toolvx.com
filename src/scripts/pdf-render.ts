@@ -1,5 +1,5 @@
-import { isLegacyPdfEnvironment } from "@/scripts/pdf-worker";
-import type { pdfjsLib } from "@/scripts/pdf-worker";
+import { getPdfjsEngineVersion, isLegacyPdfEnvironment } from "@/scripts/pdf-worker";
+import type { PdfPageProxy } from "@/scripts/pdf-engine-types";
 
 const LEGACY = isLegacyPdfEnvironment();
 const LEGACY_MAX_CANVAS_DIM = 4096;
@@ -16,7 +16,7 @@ export function getPdfRenderScale(modernScale = 1.5): number {
 }
 
 export function clampPdfRenderScale(
-  page: pdfjsLib.PDFPageProxy,
+  page: PdfPageProxy,
   scale: number
 ): number {
   const maxDim = LEGACY ? LEGACY_MAX_CANVAS_DIM : 8192;
@@ -105,7 +105,7 @@ function promiseWithTimeout<T>(
 }
 
 export async function renderPdfPageToCanvas(
-  page: pdfjsLib.PDFPageProxy,
+  page: PdfPageProxy,
   scale: number,
   opts?: { throwOnBlank?: boolean }
 ): Promise<HTMLCanvasElement> {
@@ -130,7 +130,7 @@ export async function renderPdfPageToCanvas(
 }
 
 async function renderPdfPageToCanvasOnce(
-  page: pdfjsLib.PDFPageProxy,
+  page: PdfPageProxy,
   scale: number,
   throwOnBlank: boolean
 ): Promise<HTMLCanvasElement> {
@@ -148,12 +148,21 @@ async function renderPdfPageToCanvasOnce(
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const renderTask = page.render({
+  const renderParams: {
+    canvasContext: CanvasRenderingContext2D;
+    viewport: { width: number; height: number };
+    canvas?: HTMLCanvasElement;
+    background?: string;
+  } = {
     canvasContext: ctx,
     viewport,
-    canvas,
     background: "#ffffff",
-  });
+  };
+  if (getPdfjsEngineVersion() === 6) {
+    renderParams.canvas = canvas;
+  }
+
+  const renderTask = page.render(renderParams);
 
   const timeoutMs = LEGACY ? 240_000 : 180_000;
   await promiseWithTimeout(renderTask.promise, timeoutMs, "PDF render timeout");
@@ -217,7 +226,7 @@ export async function canvasToJpegBlob(
 }
 
 export async function renderPdfPageToDataUrl(
-  page: pdfjsLib.PDFPageProxy,
+  page: PdfPageProxy,
   scale: number,
   quality = 0.85
 ): Promise<string> {

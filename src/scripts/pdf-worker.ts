@@ -1,7 +1,9 @@
 import "@/scripts/legacy-polyfills";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import { getAssetPath } from "@/utils/withBase";
 import { isPasswordPdfError } from "@/scripts/pdf-errors";
+import type { PdfDocumentProxy, PdfJsModule } from "@/scripts/pdf-engine-types";
+
+export type { PdfDocumentProxy, PdfPageProxy } from "@/scripts/pdf-engine-types";
 
 /** UA-based legacy flag (independent of main-thread polyfills). */
 const LEGACY_UA_FLAG = (() => {
@@ -10,13 +12,17 @@ const LEGACY_UA_FLAG = (() => {
   if (/Windows NT 6\.[01]/.test(ua)) return true;
   const chrome = ua.match(/(?:Chrome|CriOS)\/(\d+)/);
   if (chrome && Number(chrome[1]) < 110) return true;
+  const firefox = ua.match(/Firefox\/(\d+)/);
+  if (firefox && Number(firefox[1]) < 110) return true;
   return false;
 })();
 
-const PDFJS_VERSION = "6.1.200";
-const PDFJS_CDN = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}`;
+const PDFJS_V6_VERSION = "6.1.200";
+const PDFJS_V3_VERSION = "3.11.174";
 
-let configured = false;
+let engineVersion: 3 | 6 | null = null;
+let pdfjsModule: PdfJsModule | null = null;
+let initPromise: Promise<PdfJsModule> | null = null;
 let localAssetsPromise: Promise<boolean> | null = null;
 
 /** Keep a detached-safe copy of PDF bytes for retries and re-open. */
@@ -24,30 +30,58 @@ export function clonePdfBytes(data: Uint8Array): Uint8Array {
   return data.slice();
 }
 
-/** Check whether self-hosted pdf.js assets are reachable (cmaps/wasm/fonts). */
-export function probeLocalPdfAssets(): Promise<boolean> {
-  if (typeof window === "undefined") return Promise.resolve(true);
-  if (!localAssetsPromise) {
-    localAssetsPromise = (async () => {
-      try {
-        const urls = [
-          pdfjsAssetUrl("cmaps/LICENSE", false),
-          pdfjsAssetUrl("wasm/openjpeg.wasm", false),
-          pdfjsAssetUrl("wasm/jbig2.wasm", false),
-          pdfjsAssetUrl("pdf-worker-bootstrap.mjs", false),
-        ];
-        const results = await Promise.all(
-          urls.map(url =>
-            fetch(url, { method: "GET", cache: "force-cache" }).then(r => r.ok)
-          )
-        );
-        return results.every(Boolean);
-      } catch {
-        return false;
-      }
-    })();
+function usesPdfjsV3(): boolean {
+  return isLegacyPdfEnvironment();
+}
+
+function pdfjsAssetRoot(useCdn: boolean): string {
+  const v3 = usesPdfjsV3();
+  if (useCdn) {
+    return `https://cdn.jsdelivr.net/npm/pdfjs-dist@${v3 ? PDFJS_V3_VERSION : PDFJS_V6_VERSION}`;
   }
-  return localAssetsPromise;
+  return getAssetPath(v3 ? "pdfjs-v3" : "pdfjs");
+}
+
+function pdfjsAssetUrl(folder: string, useCdn: boolean): string {
+  if (useCdn) return `${pdfjsAssetRoot(true)}/${folder}/`;
+  const rel = `${pdfjsAssetRoot(false)}/${folder}/`;
+  if (typeof window === "undefined") return rel;
+  return new URL(rel, window.location.origin).href;
+}
+
+function pdfjsFileUrl(file: string, useCdn: boolean): string {
+  if (useCdn) return `${pdfjsAssetRoot(true)}/${file}`;
+  const rel = `${pdfjsAssetRoot(false)}/${file}`;
+  if (typeof window === "undefined") return rel;
+  return new URL(rel, window.location.origin).href;
+}
+
+function pdfjsWorkerSrcV6(): string {
+  const rel = getAssetPath("pdfjs/pdf-worker-bootstrap.mjs");
+  if (typeof window === "undefined") return rel;
+  return new URL(rel, window.location.origin).href;
+}
+
+function pdfjsWorkerSrcV3(): string {
+  const rel = getAssetPath("pdfjs-v3/pdf.worker.min.js");
+  if (typeof window === "undefined") return rel;
+  return new URL(rel, window.location.origin).href;
+}
+
+async function loadPdfjsModule(): Promise<PdfJsModule> {
+  if (usesPdfjsV3()) {
+    const mod = await import("pdfjs-dist-v3/legacy/build/pdf.js");
+    const pdfjs =
+      (mod as { default?: PdfJsModule }).default ?? (mod as unknown as PdfJsModule);
+    pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrcV3();
+    engineVersion = 3;
+    return pdfjs;
+  }
+
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrcV6();
+  engineVersion = 6;
+  return pdfjs as unknown as PdfJsModule;
 }
 
 /** Win7 Chrome 109+ still supports WebAssembly — required for many PDF image codecs. */
@@ -68,19 +102,78 @@ export function isLegacyPdfEnvironment(): boolean {
   return false;
 }
 
-function pdfjsAssetUrl(folder: string, useCdn: boolean): string {
-  if (useCdn) return `${PDFJS_CDN}/${folder}/`;
-  const rel = getAssetPath(`pdfjs/${folder}/`);
-  if (typeof window === "undefined") return rel;
-  return new URL(rel, window.location.origin).href;
+export function getPdfjsEngineVersion(): 3 | 6 {
+  return engineVersion ?? (usesPdfjsV3() ? 3 : 6);
 }
+
+/** Check whether self-hosted pdf.js assets are reachable (cmaps/wasm/fonts). */
+export function probeLocalPdfAssets(): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(true);
+  if (!localAssetsPromise) {
+    localAssetsPromise = (async () => {
+      try {
+        const v3 = usesPdfjsV3();
+        const urls = v3
+          ? [
+              pdfjsAssetUrl("cmaps/LICENSE", false),
+              pdfjsFileUrl("pdf.worker.min.js", false),
+            ]
+          : [
+              pdfjsAssetUrl("cmaps/LICENSE", false),
+              pdfjsAssetUrl("wasm/openjpeg.wasm", false),
+              pdfjsAssetUrl("wasm/jbig2.wasm", false),
+              pdfjsFileUrl("pdf-worker-bootstrap.mjs", false),
+            ];
+        const results = await Promise.all(
+          urls.map(url =>
+            fetch(url, { method: "GET", cache: "force-cache" }).then(r => r.ok)
+          )
+        );
+        return results.every(Boolean);
+      } catch {
+        return false;
+      }
+    })();
+  }
+  return localAssetsPromise;
+}
+
+/** Configure pdf.js worker once (v3 on Win7, v6 elsewhere). */
+export async function ensurePdfWorker(): Promise<PdfJsModule> {
+  if (pdfjsModule) return pdfjsModule;
+  if (!initPromise) initPromise = loadPdfjsModule();
+  pdfjsModule = await initPromise;
+  return pdfjsModule;
+}
+
+type LoadPdfOptions = {
+  password?: string;
+  useWasm?: boolean;
+  isOffscreenCanvasSupported?: boolean;
+  isImageDecoderSupported?: boolean;
+  useCdn?: boolean;
+};
 
 function buildDocumentInit(
   data: Uint8Array,
   options?: LoadPdfOptions & { useCdn?: boolean }
-): Parameters<typeof pdfjsLib.getDocument>[0] {
+): Record<string, unknown> {
   const legacy = isLegacyPdfEnvironment();
   const useCdn = options?.useCdn ?? false;
+  const v3 = usesPdfjsV3();
+
+  if (v3) {
+    return {
+      data,
+      password: options?.password,
+      cMapUrl: pdfjsAssetUrl("cmaps", useCdn),
+      cMapPacked: true,
+      standardFontDataUrl: pdfjsAssetUrl("standard_fonts", useCdn),
+      useSystemFonts: true,
+      disableFontFace: false,
+    };
+  }
+
   const wasmDefault = legacy ? supportsWebAssembly() : true;
   return {
     data,
@@ -97,45 +190,36 @@ function buildDocumentInit(
   };
 }
 
-function pdfjsWorkerSrc(): string {
-  const rel = getAssetPath("pdfjs/pdf-worker-bootstrap.mjs");
-  if (typeof window === "undefined") return rel;
-  return new URL(rel, window.location.origin).href;
-}
-
-/** Configure pdf.js worker once (legacy build + polyfilled worker for older browsers). */
-export function ensurePdfWorker(): typeof pdfjsLib {
-  if (!configured) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc();
-    configured = true;
-  }
-  return pdfjsLib;
-}
-
-export type PdfDocumentProxy = Awaited<
-  ReturnType<typeof pdfjsLib.getDocument>
->["promise"] extends Promise<infer T>
-  ? T
-  : never;
-
-type LoadPdfOptions = {
-  password?: string;
-  useWasm?: boolean;
-  isOffscreenCanvasSupported?: boolean;
-  isImageDecoderSupported?: boolean;
-  useCdn?: boolean;
-};
-
 /** Load a PDF from bytes with settings suited to local file previews. */
 export async function loadPdfBytes(
   data: Uint8Array,
   options?: LoadPdfOptions
 ): Promise<PdfDocumentProxy> {
-  const pdfjs = ensurePdfWorker();
+  const pdfjs = await ensurePdfWorker();
   const payload = clonePdfBytes(data);
   const wasm = supportsWebAssembly();
   const localAssets = await probeLocalPdfAssets();
   const legacy = isLegacyPdfEnvironment();
+  const v3 = usesPdfjsV3();
+
+  if (v3) {
+    const attempts: LoadPdfOptions[] = [
+      { ...options, useCdn: false },
+      { ...options, useCdn: true },
+    ];
+    const cdnOnly: LoadPdfOptions[] = [{ ...options, useCdn: true }];
+    const strategies = localAssets ? attempts : cdnOnly;
+    let lastError: unknown;
+    for (const attempt of strategies) {
+      try {
+        return await pdfjs.getDocument(buildDocumentInit(payload, attempt)).promise;
+      } catch (err) {
+        lastError = err;
+        if (isPasswordPdfError(err)) break;
+      }
+    }
+    throw lastError;
+  }
 
   const noWasmLocal: LoadPdfOptions = {
     ...options,
@@ -168,23 +252,11 @@ export async function loadPdfBytes(
 
   const preferred: LoadPdfOptions[] = legacy
     ? [noWasmLocal, wasmLocal, noWasmCdn, wasmCdn, { ...options, useWasm: true, useCdn: false }]
-    : [
-        wasmLocal,
-        wasmCdn,
-        { ...options, useWasm: true, useCdn: false },
-        { ...options, useWasm: true, useCdn: true },
-        { ...options, useWasm: wasm, useCdn: true },
-        noWasmLocal,
-        noWasmCdn,
-      ];
+    : [wasmLocal, wasmCdn, { ...options, useWasm: true, useCdn: false }, { ...options, useWasm: true, useCdn: true }, { ...options, useWasm: wasm, useCdn: true }, noWasmLocal, noWasmCdn];
 
   const cdnOnly: LoadPdfOptions[] = legacy
     ? [noWasmCdn, wasmCdn, { ...options, useWasm: true, useCdn: true }]
-    : [
-        wasmCdn,
-        { ...options, useWasm: true, useCdn: true },
-        noWasmCdn,
-      ];
+    : [wasmCdn, { ...options, useWasm: true, useCdn: true }, noWasmCdn];
 
   const attempts = localAssets ? preferred : cdnOnly;
 
@@ -201,4 +273,5 @@ export async function loadPdfBytes(
   throw lastError;
 }
 
-export { pdfjsLib };
+/** @deprecated Use ensurePdfWorker() — kept for type-only imports during migration. */
+export type pdfjsLib = PdfJsModule;

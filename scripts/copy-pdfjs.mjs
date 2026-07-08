@@ -75,3 +75,41 @@ import "./pdf.worker.min.mjs";
 
 fs.writeFileSync(path.join(dest, "pdf-worker-bootstrap.mjs"), bootstrap, "utf8");
 console.log("Wrote public/pdfjs/pdf-worker-bootstrap.mjs");
+
+const v3PkgRoot = path.join(root, "node_modules", "pdfjs-dist-v3");
+const v3Dest = path.join(root, "public", "pdfjs-v3");
+const v3AssetDirs = ["cmaps", "standard_fonts"];
+const v3WorkerFiles = [
+  { from: "legacy/build/pdf.worker.min.js", to: "pdf.worker.min.js" },
+  { from: "legacy/build/pdf.min.js", to: "pdf.min.js" },
+];
+
+if (!fs.existsSync(v3PkgRoot)) {
+  console.error("pdfjs-dist-v3 not found — run npm install first.");
+  process.exit(1);
+}
+
+fs.mkdirSync(v3Dest, { recursive: true });
+
+for (const dir of v3AssetDirs) {
+  const from = path.join(v3PkgRoot, dir);
+  const to = path.join(v3Dest, dir);
+  if (!fs.existsSync(from)) {
+    console.warn(`skip missing pdfjs-v3 asset dir: ${dir}`);
+    continue;
+  }
+  fs.rmSync(to, { recursive: true, force: true });
+  fs.cpSync(from, to, { recursive: true });
+}
+
+for (const { from: relFrom, to } of v3WorkerFiles) {
+  const from = path.join(v3PkgRoot, relFrom);
+  const destFile = path.join(v3Dest, to);
+  if (!fs.existsSync(from)) {
+    console.warn(`skip missing pdfjs-v3 file: ${relFrom}`);
+    continue;
+  }
+  fs.copyFileSync(from, destFile);
+}
+
+console.log(`Copied pdfjs-v3 ${v3AssetDirs.join(", ")} + worker → public/pdfjs-v3/`);
