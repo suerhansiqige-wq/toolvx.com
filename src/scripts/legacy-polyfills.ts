@@ -3,6 +3,10 @@
  * Safe to call multiple times; also runs on first import.
  */
 export function applyLegacyPolyfills(): void {
+  if (typeof globalThis === "undefined") {
+    (window as unknown as { globalThis: typeof window }).globalThis = window;
+  }
+
   if (typeof Promise.withResolvers !== "function") {
     Promise.withResolvers = function withResolvers<T>() {
       let resolve!: (value: T | PromiseLike<T>) => void;

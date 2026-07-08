@@ -31,7 +31,7 @@ export function clampPdfRenderScale(
   return 0.25;
 }
 
-function dataUrlToBlob(dataUrl: string): Blob {
+export function dataUrlToBlob(dataUrl: string): Blob {
   const comma = dataUrl.indexOf(",");
   const header = dataUrl.slice(0, comma);
   const body = dataUrl.slice(comma + 1);

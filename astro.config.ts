@@ -57,6 +57,22 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      // Downlevel client bundles for Win7 / legacy Chrome (ES2015 ≈ Chrome 51+).
+      target: "es2015",
+      cssTarget: "chrome50",
+    },
+    ssr: {
+      // Force PDF/image/UI deps through Vite's transpiler at build time (static + SSR prerender).
+      noExternal: [
+        "pdf-lib",
+        "pdfjs-dist",
+        "pdfjs-dist-v3",
+        "jszip",
+        "@pdf-lib/standard-fonts",
+        "pako",
+      ],
+    },
   },
   fonts: [
     {

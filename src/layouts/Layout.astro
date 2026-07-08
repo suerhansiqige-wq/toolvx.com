@@ -30,6 +30,37 @@ const rssHref = getRelativeLocaleUrl("en", "rss.xml");
 <!doctype html>
 <html lang="en" dir="ltr" class="overflow-y-scroll scroll-smooth">
   <head>
+    <!-- Legacy: globalThis before any other script (Win7 / IE11-era embeds). -->
+    <script is:inline>
+      (function () {
+        if (typeof globalThis === "undefined") {
+          window.globalThis = window;
+        }
+      })();
+    </script>
+
+    <!-- On-demand polyfills via cdnjs — skipped when the browser already supports features. -->
+    <script is:inline>
+      (function () {
+        var features = [];
+        if (typeof Promise !== "undefined" && typeof Promise.withResolvers !== "function") {
+          features.push("Promise.withResolvers");
+        }
+        if (!Array.prototype.at) features.push("Array.prototype.at");
+        if (!String.prototype.replaceAll) features.push("String.prototype.replaceAll");
+        if (!Object.fromEntries) features.push("Object.fromEntries");
+        if (!window.ResizeObserver) features.push("ResizeObserver");
+        if (features.length === 0) return;
+        var script = document.createElement("script");
+        script.src =
+          "https://cdnjs.cloudflare.com/ajax/libs/polyfill.io/3.111.0/polyfill.min.js?features=" +
+          encodeURIComponent(features.join(","));
+        script.crossOrigin = "anonymous";
+        script.defer = true;
+        document.head.appendChild(script);
+      })();
+    </script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href={getAssetPath("favicon.svg")} />
@@ -94,12 +125,14 @@ const rssHref = getRelativeLocaleUrl("en", "rss.xml");
     -->
     <script is:inline>
       (function () {
-        const stored = localStorage.getItem("theme");
-        const theme = stored ?? "light";
-        const root = document.firstElementChild;
-        root?.setAttribute("data-theme", theme);
-        root?.classList.toggle("dark", theme === "dark");
-        // Expose value so theme.ts can skip re-detection.
+        var stored = localStorage.getItem("theme");
+        var theme = stored !== null && stored !== undefined ? stored : "light";
+        var root = document.firstElementChild;
+        if (root) {
+          root.setAttribute("data-theme", theme);
+          if (theme === "dark") root.classList.add("dark");
+          else root.classList.remove("dark");
+        }
         window.__theme = { value: theme };
       })();
     </script>

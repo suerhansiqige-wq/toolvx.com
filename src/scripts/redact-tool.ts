@@ -3,6 +3,7 @@ import { loadPdfBytes, type PdfDocumentProxy, isLegacyPdfEnvironment, clonePdfBy
 import {
   canvasToJpegBlob,
   copyCanvasTo,
+  dataUrlToBlob,
   getPdfRenderScale,
   isCanvasMostlyBlank,
   renderPdfPageToCanvas,
@@ -17,6 +18,8 @@ import {
 } from "@/scripts/pdf-errors";
 import { onI18nReady, showAppAlert, showAppPrompt, t } from "@/scripts/i18n-client";
 import { openFileInput, prepareLegacyFileInput } from "@/scripts/file-input";
+import { clampImageDimensions, legacyAwareJpegQuality } from "@/utils/canvas-budget";
+import { generateCompatibleId } from "@/utils/compatible-id";
 
 type EffectType = "blackout" | "pixelate" | "blur";
 
@@ -35,7 +38,9 @@ const LEGACY_PDF = isLegacyPdfEnvironment();
 const CANVAS_MIN_HEIGHT = 320;
 const THUMBS_PER_VIEW = 5;
 const EXPORT_MAX_BYTES = 2 * 1024 * 1024;
-const MIN_JPEG_QUALITY = 0.22;
+const MIN_JPEG_QUALITY = LEGACY_PDF ? 0.18 : 0.22;
+const THUMB_JPEG_QUALITY = legacyAwareJpegQuality(0.55);
+const EXPORT_JPEG_QUALITY = legacyAwareJpegQuality(0.85);
 const EXPORT_SCALE_STEPS = [1, 0.92, 0.85, 0.75, 0.65, 0.55, 0.45, 0.35, 0.28];
 
 let canvas: HTMLCanvasElement;
@@ -437,7 +442,7 @@ async function renderPdfPageToTarget(pageNum: number, target: HTMLCanvasElement)
   throw lastError ?? new Error("PDF render blank");
 }
 
-function canvasToThumbUrl(canvas: HTMLCanvasElement, quality = 0.5): string {
+function canvasToThumbUrl(canvas: HTMLCanvasElement, quality = THUMB_JPEG_QUALITY): string {
   try {
     const dataUrl = canvas.toDataURL("image/jpeg", quality);
     if (dataUrl.length > 128) return dataUrl;
@@ -550,13 +555,13 @@ async function refreshThumbForCurrentPage() {
     `[data-redact-thumb="${currentPage}"]`
   );
   if (!store || !thumb) return;
-  const src = canvasToThumbUrl(store.canvas, 0.55);
+  const src = canvasToThumbUrl(store.canvas, THUMB_JPEG_QUALITY);
   if (src) {
     thumb.src = src;
     return;
   }
   try {
-    const blob = await canvasToJpegBlob(store.canvas, 0.55);
+    const blob = await canvasToJpegBlob(store.canvas, THUMB_JPEG_QUALITY);
     thumb.src = URL.createObjectURL(blob);
   } catch {
     /* ignore */
@@ -574,12 +579,12 @@ async function buildThumbnails() {
     btn.className = "redact-thumb-item";
     btn.dataset.page = String(i);
     const img = document.createElement("img");
-    const thumbSrc = canvasToThumbUrl(store.canvas, 0.5);
+    const thumbSrc = canvasToThumbUrl(store.canvas, THUMB_JPEG_QUALITY);
     if (thumbSrc) {
       img.src = thumbSrc;
     } else {
       try {
-        const blob = await canvasToJpegBlob(store.canvas, 0.5);
+        const blob = await canvasToJpegBlob(store.canvas, THUMB_JPEG_QUALITY);
         img.src = URL.createObjectURL(blob);
       } catch {
         img.src = "";
@@ -643,11 +648,12 @@ async function loadImageFile(file: File) {
   });
   URL.revokeObjectURL(url);
 
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
+  const { width, height } = clampImageDimensions(img.naturalWidth, img.naturalHeight);
+  canvas.width = width;
+  canvas.height = height;
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0, width, height);
 
   const snap = ctx.getImageData(0, 0, canvas.width, canvas.height);
   originalImageSnapshot = snap;
@@ -702,12 +708,12 @@ async function upsertThumbForPage(pageNum: number) {
 
   btn.innerHTML = "";
   const img = document.createElement("img");
-  const thumbSrc = canvasToThumbUrl(store.canvas, 0.5);
+  const thumbSrc = canvasToThumbUrl(store.canvas, THUMB_JPEG_QUALITY);
   if (thumbSrc) {
     img.src = thumbSrc;
   } else {
     try {
-      const blob = await canvasToJpegBlob(store.canvas, 0.5);
+      const blob = await canvasToJpegBlob(store.canvas, THUMB_JPEG_QUALITY);
       img.src = URL.createObjectURL(blob);
     } catch {
       img.src = "";
@@ -907,10 +913,7 @@ async function canvasToBlob(
         if (mime === "image/jpeg") {
           try {
             const dataUrl = source.toDataURL(mime, quality);
-            fetch(dataUrl)
-              .then(r => r.blob())
-              .then(resolve)
-              .catch(reject);
+            resolve(dataUrlToBlob(dataUrl));
           } catch (err) {
             reject(err);
           }
@@ -972,10 +975,10 @@ function mimeToExt(mime: string): string {
 }
 
 function nextExportFilename(baseName: string, ext: string): string {
-  const storageKey = `redact-export:${baseName}`;
+  const storageKey = "redact-export:" + baseName;
   const serial = Number(sessionStorage.getItem(storageKey) || "0") + 1;
   sessionStorage.setItem(storageKey, String(serial));
-  return `${baseName}${serial}.${ext.replace(/^\./, "")}`;
+  return baseName + serial + "." + ext.replace(/^\./, "");
 }
 
 async function binarySearchBlob(
@@ -1121,7 +1124,7 @@ async function buildPdfWithPerPageBudget(
 async function exportPdfUnderLimit(): Promise<Uint8Array> {
   for (const scale of EXPORT_SCALE_STEPS) {
     let low = MIN_JPEG_QUALITY;
-    let high = 0.98;
+    let high = EXPORT_JPEG_QUALITY;
     let best: Uint8Array | null = null;
 
     for (let i = 0; i < 12; i++) {
@@ -1207,9 +1210,13 @@ function downloadBytes(data: Blob | Uint8Array, filename: string, mime: string) 
       : new Blob([new Uint8Array(data)], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
+  a.id = generateCompatibleId("dl");
   a.href = url;
   a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
@@ -1457,18 +1464,19 @@ function initRedactTool() {
   }
 
   const controlPanel = $("redact-control-panel");
-  if (
-    controlPanel &&
-    controlPanel.dataset.redactObserved !== "1" &&
-    typeof ResizeObserver !== "undefined"
-  ) {
+  if (controlPanel && controlPanel.dataset.redactObserved !== "1") {
     controlPanel.dataset.redactObserved = "1";
-    const observer = new ResizeObserver(() => {
+    const onLayoutChange = function () {
       syncCanvasAreaHeight();
       fitCanvasToContainer();
       syncThumbSidebarHeight();
-    });
-    observer.observe(controlPanel);
+    };
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(onLayoutChange);
+      observer.observe(controlPanel);
+    } else {
+      window.addEventListener("resize", onLayoutChange);
+    }
   }
 
   if (pageStores.length === 0) {
