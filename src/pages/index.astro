@@ -32,6 +32,8 @@ const homePath = getRelativeLocaleUrl(locale, "");
     data-home-path={homePath}
     class="app-layout pb-16 pt-6 sm:pb-24 sm:pt-10"
   >
+    <HomeToolQuickNav locale={locale} />
+
     <section
       id="hero"
       class="card-surface shadow-elevated mb-16 p-8 sm:mb-20 sm:p-12 lg:p-16"
@@ -60,8 +62,6 @@ const homePath = getRelativeLocaleUrl(locale, "");
           <span class="sr-only" data-i18n="blog.hero.rssFeed">RSS Feed</span>
         </a>
       </div>
-
-      <HomeToolQuickNav locale={locale} />
 
       <p
         class="text-muted-foreground mt-8 max-w-3xl text-base leading-relaxed sm:text-lg"

@@ -77,49 +77,33 @@ const tiles: QuickTile[] = [
     comingSoon: true,
   },
 ];
-
-const [featured, ...gridTiles] = tiles;
 ---
 
 <nav class="home-tool-quick" aria-label={q.ariaLabel} data-i18n-aria-label="blog.home.toolQuick.ariaLabel">
-  {
-    featured.href && (
-      <a
-        href={featured.href}
-        class:list={["home-tool-quick__featured", `home-tool-quick__featured--${featured.accent}`]}
-      >
-        <ToolIconBadge icon={featured.icon} />
-        <div class="home-tool-quick__body">
-          <span class="home-tool-quick__title" data-i18n={featured.titleKey}>
-            {featured.title}
-          </span>
-          <span class="home-tool-quick__desc" data-i18n={featured.descKey}>
-            {featured.desc}
-          </span>
-        </div>
-        <IconArrowRight class="home-tool-quick__arrow rtl:-rotate-180" aria-hidden="true" />
-      </a>
-    )
-  }
-
   <div class="home-tool-quick__grid">
     {
-      gridTiles.map(tile => {
+      tiles.map(tile => {
         const className = [
           "home-tool-quick__tile",
           `home-tool-quick__tile--${tile.accent}`,
           tile.comingSoon && "home-tool-quick__tile--soon",
         ];
 
-        if (tile.comingSoon || !tile.href) {
-          return (
-            <div class:list={className} aria-disabled="true">
-              <div class="home-tool-quick__tile-head">
-                <ToolIconBadge icon={tile.icon} size="sm" />
-                <span class="home-tool-quick__soon" data-i18n="blog.home.toolQuick.comingSoon">
-                  {q.comingSoon}
-                </span>
-              </div>
+        const inner = (
+          <>
+            <div class="home-tool-quick__top">
+              <ToolIconBadge icon={tile.icon} />
+              {
+                tile.comingSoon ? (
+                  <span class="home-tool-quick__soon" data-i18n="blog.home.toolQuick.comingSoon">
+                    {q.comingSoon}
+                  </span>
+                ) : (
+                  <IconArrowRight class="home-tool-quick__arrow rtl:-rotate-180" aria-hidden="true" />
+                )
+              }
+            </div>
+            <div class="home-tool-quick__body">
               <span class="home-tool-quick__title" data-i18n={tile.titleKey}>
                 {tile.title}
               </span>
@@ -127,19 +111,20 @@ const [featured, ...gridTiles] = tiles;
                 {tile.desc}
               </span>
             </div>
+          </>
+        );
+
+        if (tile.comingSoon || !tile.href) {
+          return (
+            <div class:list={className} aria-disabled="true">
+              {inner}
+            </div>
           );
         }
 
         return (
           <a href={tile.href} class:list={className}>
-            <ToolIconBadge icon={tile.icon} size="sm" />
-            <span class="home-tool-quick__title" data-i18n={tile.titleKey}>
-              {tile.title}
-            </span>
-            <span class="home-tool-quick__desc" data-i18n={tile.descKey}>
-              {tile.desc}
-            </span>
-            <IconArrowRight class="home-tool-quick__arrow home-tool-quick__arrow--sm rtl:-rotate-180" aria-hidden="true" />
+            {inner}
           </a>
         );
       })
@@ -149,153 +134,171 @@ const [featured, ...gridTiles] = tiles;
 
 <style>
   .home-tool-quick {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-top: 2rem;
-  }
-
-  .home-tool-quick__featured,
-  .home-tool-quick__tile {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    overflow: hidden;
-    border-radius: 1.25rem;
-    border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
-    background: color-mix(in oklab, var(--card) 92%, var(--background));
-    text-decoration: none;
-    color: inherit;
-    transition:
-      transform 0.2s ease,
-      border-color 0.2s ease,
-      box-shadow 0.2s ease,
-      background-color 0.2s ease;
-  }
-
-  .home-tool-quick__featured {
-    min-height: 5.5rem;
-    padding: 1.15rem 1.25rem;
-    box-shadow:
-      inset 0 1px 0 color-mix(in oklab, white 50%, transparent),
-      0 8px 24px color-mix(in oklab, var(--accent) 8%, transparent);
-  }
-
-  .home-tool-quick__featured--redact {
-    border-color: color-mix(in oklab, #e11d48 28%, var(--border));
-    background:
-      linear-gradient(
-        135deg,
-        color-mix(in oklab, #e11d48 10%, var(--card)) 0%,
-        color-mix(in oklab, var(--card) 96%, var(--background)) 55%
-      ),
-      var(--card);
-  }
-
-  .home-tool-quick__featured:hover,
-  .home-tool-quick__tile:not(.home-tool-quick__tile--soon):hover {
-    transform: translateY(-2px);
-    border-color: color-mix(in oklab, var(--accent) 35%, var(--border));
-    box-shadow:
-      0 10px 28px color-mix(in oklab, var(--accent) 12%, transparent),
-      0 2px 8px color-mix(in oklab, black 6%, transparent);
-  }
-
-  .home-tool-quick__featured:focus-visible,
-  .home-tool-quick__tile:not(.home-tool-quick__tile--soon):focus-visible {
-    outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
-    outline-offset: 2px;
-  }
-
-  .home-tool-quick__body {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: 0.25rem;
+    margin-bottom: 1.25rem;
   }
 
   .home-tool-quick__grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
+    gap: 0.875rem;
   }
 
   .home-tool-quick__tile {
+    position: relative;
+    display: flex;
+    min-height: 9.5rem;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.55rem;
-    min-height: 8.5rem;
-    padding: 1rem 1.05rem 1.1rem;
+    justify-content: space-between;
+    gap: 0.85rem;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+    padding: 1.15rem 1.2rem 1.2rem;
+    text-decoration: none;
+    color: inherit;
+    transition:
+      transform 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .home-tool-quick__tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 1;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .home-tool-quick__tile--redact {
+    border-color: color-mix(in oklab, #e11d48 30%, var(--border));
+  }
+
+  .home-tool-quick__tile--redact::before {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, #e11d48 14%, var(--card)) 0%, transparent 58%),
+      linear-gradient(320deg, color-mix(in oklab, #fda4af 10%, var(--background)) 0%, transparent 45%),
+      var(--card);
   }
 
   .home-tool-quick__tile--pdf {
-    border-color: color-mix(in oklab, #8b5cf6 24%, var(--border));
+    border-color: color-mix(in oklab, #8b5cf6 28%, var(--border));
+  }
+
+  .home-tool-quick__tile--pdf::before {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, #8b5cf6 14%, var(--card)) 0%, transparent 58%),
+      linear-gradient(320deg, color-mix(in oklab, #c4b5fd 10%, var(--background)) 0%, transparent 45%),
+      var(--card);
   }
 
   .home-tool-quick__tile--image {
-    border-color: color-mix(in oklab, #ec4899 24%, var(--border));
+    border-color: color-mix(in oklab, #ec4899 28%, var(--border));
+  }
+
+  .home-tool-quick__tile--image::before {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, #ec4899 14%, var(--card)) 0%, transparent 58%),
+      linear-gradient(320deg, color-mix(in oklab, #f9a8d4 10%, var(--background)) 0%, transparent 45%),
+      var(--card);
   }
 
   .home-tool-quick__tile--audio {
-    border-color: color-mix(in oklab, #6366f1 20%, var(--border));
+    border-color: color-mix(in oklab, #6366f1 24%, var(--border));
+  }
+
+  .home-tool-quick__tile--audio::before {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, #6366f1 12%, var(--card)) 0%, transparent 58%),
+      linear-gradient(320deg, color-mix(in oklab, #a5b4fc 10%, var(--background)) 0%, transparent 45%),
+      var(--card);
   }
 
   .home-tool-quick__tile--ofd {
-    border-color: color-mix(in oklab, #2563eb 20%, var(--border));
+    border-color: color-mix(in oklab, #2563eb 24%, var(--border));
+  }
+
+  .home-tool-quick__tile--ofd::before {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, #2563eb 12%, var(--card)) 0%, transparent 58%),
+      linear-gradient(320deg, color-mix(in oklab, #93c5fd 10%, var(--background)) 0%, transparent 45%),
+      var(--card);
+  }
+
+  .home-tool-quick__tile:not(.home-tool-quick__tile--soon) {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 48%, transparent),
+      0 4px 18px color-mix(in oklab, black 5%, transparent);
+  }
+
+  .home-tool-quick__tile:not(.home-tool-quick__tile--soon):hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklab, var(--accent) 38%, var(--border));
+    box-shadow:
+      0 12px 28px color-mix(in oklab, var(--accent) 10%, transparent),
+      0 2px 8px color-mix(in oklab, black 6%, transparent);
+  }
+
+  .home-tool-quick__tile:not(.home-tool-quick__tile--soon):focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
+    outline-offset: 2px;
   }
 
   .home-tool-quick__tile--soon {
-    opacity: 0.72;
     cursor: not-allowed;
-    background: color-mix(in oklab, var(--muted) 35%, var(--card));
+    opacity: 0.7;
   }
 
-  .home-tool-quick__tile-head {
+  .home-tool-quick__tile--soon::before {
+    background: color-mix(in oklab, var(--muted) 38%, var(--card));
+  }
+
+  .home-tool-quick__top,
+  .home-tool-quick__body {
+    position: relative;
+    z-index: 1;
+  }
+
+  .home-tool-quick__top {
     display: flex;
     width: 100%;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 0.5rem;
   }
 
+  .home-tool-quick__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0.35rem;
+  }
+
   .home-tool-quick__title {
-    font-size: 1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     line-height: 1.3;
     letter-spacing: -0.01em;
     color: var(--foreground);
   }
 
-  .home-tool-quick__featured .home-tool-quick__title {
-    font-size: 1.125rem;
-  }
-
   .home-tool-quick__desc {
     font-size: 0.8125rem;
-    line-height: 1.45;
-    color: color-mix(in oklab, var(--muted-foreground) 92%, transparent);
+    line-height: 1.5;
+    color: color-mix(in oklab, var(--muted-foreground) 90%, transparent);
   }
 
   .home-tool-quick__arrow {
     flex-shrink: 0;
-    width: 1.25rem;
-    height: 1.25rem;
-    color: color-mix(in oklab, var(--accent) 80%, var(--foreground));
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.15rem;
+    color: color-mix(in oklab, var(--accent) 75%, var(--foreground));
     transition: transform 0.2s ease;
   }
 
-  .home-tool-quick__arrow--sm {
-    position: absolute;
-    right: 0.9rem;
-    bottom: 0.9rem;
-    width: 1rem;
-    height: 1rem;
-    opacity: 0.55;
-  }
-
-  .home-tool-quick__featured:hover .home-tool-quick__arrow,
   .home-tool-quick__tile:not(.home-tool-quick__tile--soon):hover .home-tool-quick__arrow {
     transform: translateX(3px);
   }
@@ -303,42 +306,69 @@ const [featured, ...gridTiles] = tiles;
   .home-tool-quick__soon {
     flex-shrink: 0;
     border-radius: 999px;
-    padding: 0.15rem 0.55rem;
+    padding: 0.2rem 0.55rem;
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.02em;
-    text-transform: uppercase;
     color: color-mix(in oklab, var(--muted-foreground) 88%, transparent);
-    background: color-mix(in oklab, var(--muted) 65%, var(--background));
+    background: color-mix(in oklab, var(--background) 55%, var(--muted));
     border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
   }
 
-  :global(.dark) .home-tool-quick__featured,
-  :global(.dark) .home-tool-quick__tile {
-    box-shadow: inset 0 1px 0 color-mix(in oklab, white 6%, transparent);
+  :global(.dark) .home-tool-quick__tile:not(.home-tool-quick__tile--soon) {
+    box-shadow: inset 0 1px 0 color-mix(in oklab, white 7%, transparent);
   }
 
-  :global(.dark) .home-tool-quick__featured--redact {
+  :global(.dark) .home-tool-quick__tile--redact::before {
     background:
-      linear-gradient(
-        135deg,
-        color-mix(in oklab, #e11d48 16%, var(--card)) 0%,
-        color-mix(in oklab, var(--card) 94%, var(--background)) 60%
-      ),
+      linear-gradient(145deg, color-mix(in oklab, #e11d48 22%, var(--card)) 0%, transparent 62%),
+      var(--card);
+  }
+
+  :global(.dark) .home-tool-quick__tile--pdf::before {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, #8b5cf6 20%, var(--card)) 0%, transparent 62%),
+      var(--card);
+  }
+
+  :global(.dark) .home-tool-quick__tile--image::before {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, #ec4899 20%, var(--card)) 0%, transparent 62%),
+      var(--card);
+  }
+
+  :global(.dark) .home-tool-quick__tile--audio::before {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, #6366f1 18%, var(--card)) 0%, transparent 62%),
+      var(--card);
+  }
+
+  :global(.dark) .home-tool-quick__tile--ofd::before {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, #2563eb 18%, var(--card)) 0%, transparent 62%),
       var(--card);
   }
 
   :global(.dark) .home-tool-quick__tile--soon {
-    opacity: 0.58;
+    opacity: 0.55;
   }
 
-  @media (max-width: 639px) {
+  @media (min-width: 640px) {
+    .home-tool-quick {
+      margin-bottom: 1.5rem;
+    }
+
     .home-tool-quick__grid {
-      grid-template-columns: 1fr;
+      gap: 1rem;
     }
 
     .home-tool-quick__tile {
-      min-height: auto;
+      min-height: 10.5rem;
+      padding: 1.25rem 1.35rem 1.3rem;
+    }
+
+    .home-tool-quick__title {
+      font-size: 1.125rem;
     }
   }
 </style>
