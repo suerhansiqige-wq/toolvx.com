@@ -19,11 +19,8 @@ import {
 import { transformerFileName } from "./src/utils/transformers/fileName";
 import config from "./astro-paper.config";
 
-const githubPagesBase = process.env.ASTRO_BASE ?? "/toolvx.com/";
-
 export default defineConfig({
   site: config.site.url,
-  base: githubPagesBase,
   integrations: [
     mdx(),
     sitemap({

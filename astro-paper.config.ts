@@ -1,15 +1,14 @@
 import { defineAstroPaperConfig } from "./src/types/config";
 
-/** GitHub Pages project site: https://suerhansiqige-wq.github.io/toolvx.com/ */
-const GITHUB_PAGES_SITE = "https://suerhansiqige-wq.github.io/toolvx.com/";
+const SITE_URL = "https://toolvx.com/";
 
 export default defineAstroPaperConfig({
   site: {
-    url: GITHUB_PAGES_SITE,
+    url: SITE_URL,
     title: "ToolVX",
     description: "Free online PDF tools — compress, merge, split, and more in your browser.",
     author: "ToolVX",
-    profile: GITHUB_PAGES_SITE,
+    profile: SITE_URL,
     ogImage: "default-og.jpg",
     lang: "en",
     timezone: "Asia/Shanghai",
