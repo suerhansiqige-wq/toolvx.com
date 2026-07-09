@@ -5,7 +5,6 @@ import {
   type LocaleCode,
 } from "@/i18n/messages";
 import {
-  detectToolUiLocale,
   getToolUiMessage,
   isFlatUiKey,
   type ToolUiLocale,
@@ -159,24 +158,8 @@ export function setLocale(locale: LocaleCode, persist = true): void {
 }
 
 export function detectBrowserLocale(): LocaleCode {
-  let stored: string | null = null;
-  try {
-    stored = localStorage.getItem(STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
-  if (stored) return resolveLocale(stored);
-
-  const userLang =
-    typeof navigator !== "undefined"
-      ? navigator.language ||
-        (navigator as Navigator & { userLanguage?: string }).userLanguage ||
-        "en"
-      : "en";
-
-  const flat = detectToolUiLocale();
-  if (flat !== "en") return resolveLocale(flat);
-  return resolveLocale(userLang);
+  // Site is English-only; always serve English strings regardless of browser locale.
+  return "en";
 }
 
 export function showAppAlert(message: string): void {
@@ -389,18 +372,10 @@ export function applyI18n(root: ParentNode = document): void {
 }
 
 export function initI18n(): void {
-  let stored: string | null = null;
-  try {
-    stored = localStorage.getItem(STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
-
-  const detected = detectBrowserLocale();
-
-  setLocale(detected, Boolean(stored));
+  // Force English catalog — the site is English-only per product requirements.
+  setLocale("en", false);
   applyI18n();
-  document.documentElement.setAttribute("data-locale", currentLocale);
+  document.documentElement.setAttribute("data-locale", "en");
 }
 
 export function onI18nReady(init: () => void): void {

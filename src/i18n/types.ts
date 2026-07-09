@@ -330,6 +330,7 @@ export type Messages = {
       progressCompressing: string;
       progressExtracting: string;
       progressDone: string;
+      progressPartialRaster: string;
       errorTimeout: string;
       error: string;
       errorInvalid: string;

@@ -47,7 +47,8 @@ const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
         accept=".ofd,application/ofd,application/octet-stream"
         multiple={tool.multiple ?? false}
         class="file-input-overlay"
-        aria-label={tool.multiple ? ws.uploadMultiHint : ws.uploadHint}
+        aria-label={ws.uploadHint}
+        data-i18n-aria-label={tool.multiple ? "ofd.workspace.uploadMultiHint" : "ofd.workspace.uploadHint"}
       />
 
       <div id="ofd-drop-empty" data-dropzone-empty class="dropzone-empty relative z-0">

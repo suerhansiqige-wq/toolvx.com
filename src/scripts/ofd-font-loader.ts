@@ -1,14 +1,21 @@
 /**
- * OFD 内嵌字体加载 — 解析 DocumentRes / PublicRes 中的 Font 定义并注册 FontFace
+ * OFD embedded font loader with resilient fallback.
+ * Registers FontFace from DocumentRes / PublicRes; on failure, maps families
+ * to safe system font stacks so text never renders invisible.
  */
 import JSZip from "jszip";
+import { injectFontFallbackStyle } from "@/scripts/ofd-render-utils";
 
 const FONT_EXT = /\.(ttf|otf|woff2?|eot)$/i;
 const FONT_FACE_TIMEOUT_MS = 6_000;
-const FONTS_READY_TIMEOUT_MS = 2_000;
-const FONT_BATCH_TIMEOUT_MS = 12_000;
+const FONTS_READY_TIMEOUT_MS = 2_500;
+const FONT_BATCH_TIMEOUT_MS = 14_000;
+
+const SYSTEM_FALLBACK_STACK =
+  '"Noto Sans SC", "Microsoft YaHei", "PingFang SC", "SimSun", system-ui, sans-serif';
 
 const loadedFontFileKeys = new Set<string>();
+const registeredFamilies = new Set<string>();
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -117,29 +124,44 @@ async function parseFontDescriptors(zip: JSZip): Promise<FontDescriptor[]> {
   return descriptors;
 }
 
-async function registerFontFace(names: string[], data: ArrayBuffer): Promise<void> {
-  if (typeof FontFace === "undefined" || !document.fonts) return;
+async function registerFontFace(names: string[], data: ArrayBuffer): Promise<boolean> {
+  if (typeof FontFace === "undefined" || !document.fonts) return false;
   const primary = names[0];
-  if (!primary) return;
+  if (!primary) return false;
 
-  const face = new FontFace(primary, data);
-  await withTimeout(face.load(), FONT_FACE_TIMEOUT_MS);
-  document.fonts.add(face);
+  try {
+    const face = new FontFace(primary, data);
+    await withTimeout(face.load(), FONT_FACE_TIMEOUT_MS);
+    document.fonts.add(face);
+    registeredFamilies.add(primary);
 
-  for (const alias of names.slice(1)) {
-    if (alias === primary) continue;
-    try {
-      const aliasFace = new FontFace(alias, data);
-      await withTimeout(aliasFace.load(), FONT_FACE_TIMEOUT_MS);
-      document.fonts.add(aliasFace);
-    } catch {
-      /* 别名注册失败可忽略 */
+    for (const alias of names.slice(1)) {
+      if (alias === primary) continue;
+      try {
+        const aliasFace = new FontFace(alias, data);
+        await withTimeout(aliasFace.load(), FONT_FACE_TIMEOUT_MS);
+        document.fonts.add(aliasFace);
+        registeredFamilies.add(alias);
+      } catch {
+        /* alias registration is best-effort */
+      }
     }
+    return true;
+  } catch {
+    return false;
   }
 }
 
+function registerSystemFallback(names: string[]): void {
+  for (const name of names) {
+    if (registeredFamilies.has(name)) continue;
+    registeredFamilies.add(name);
+  }
+  injectFontFallbackStyle(names);
+}
+
 export async function loadOfdEmbeddedFonts(file: File): Promise<void> {
-  if (typeof FontFace === "undefined" || !document.fonts) return;
+  if (typeof document === "undefined") return;
 
   const cacheKey = `${file.name}:${file.size}:${file.lastModified}`;
   if (loadedFontFileKeys.has(cacheKey)) return;
@@ -148,32 +170,62 @@ export async function loadOfdEmbeddedFonts(file: File): Promise<void> {
     await withTimeout(loadOfdEmbeddedFontsInner(file), FONT_BATCH_TIMEOUT_MS);
     loadedFontFileKeys.add(cacheKey);
   } catch {
-    /* 字体加载失败不阻断主流程 */
+    /* font loading must never block the render pipeline */
   }
 }
 
 async function loadOfdEmbeddedFontsInner(file: File): Promise<void> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
   const descriptors = await parseFontDescriptors(zip);
+  const fallbackNames: string[] = [];
   const loads: Promise<void>[] = [];
 
   for (const desc of descriptors) {
     const entry = zip.file(desc.filePath) ?? zip.file(desc.filePath.replace(/^\//, ""));
-    if (!entry || entry.dir) continue;
+    if (!entry || entry.dir) {
+      fallbackNames.push(...desc.names);
+      continue;
+    }
+
     loads.push(
       withTimeout(entry.async("arraybuffer"), FONT_FACE_TIMEOUT_MS)
-        .then(buf => registerFontFace(desc.names, buf))
-        .catch(() => undefined)
+        .then(async buf => {
+          const ok = await registerFontFace(desc.names, buf);
+          if (!ok) fallbackNames.push(...desc.names);
+        })
+        .catch(() => {
+          fallbackNames.push(...desc.names);
+        })
     );
   }
 
   await Promise.all(loads);
 
+  if (fallbackNames.length > 0) {
+    registerSystemFallback([...new Set(fallbackNames)]);
+  }
+
   if (document.fonts?.ready) {
     await withTimeout(document.fonts.ready, FONTS_READY_TIMEOUT_MS).catch(() => undefined);
   }
+
+  if (registeredFamilies.size === 0 && descriptors.length > 0) {
+    injectFontFallbackStyle(
+      descriptors.flatMap(d => d.names).length > 0
+        ? descriptors.flatMap(d => d.names)
+        : ["ofd-font"]
+    );
+  }
+
+  void SYSTEM_FALLBACK_STACK;
 }
 
 export function clearOfdFontCache(): void {
   loadedFontFileKeys.clear();
+  registeredFamilies.clear();
+  document.getElementById("ofd-font-fallback-style")?.remove();
+}
+
+export function getRegisteredFontFamilies(): string[] {
+  return [...registeredFamilies];
 }

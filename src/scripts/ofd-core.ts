@@ -1,11 +1,26 @@
+/**
+ * OFD core engine — parse, render, rasterize, and export.
+ *
+ * Rendering pipeline guarantees:
+ *  - Hi-DPI canvas sizing (devicePixelRatio-aware, budget-clamped)
+ *  - Z-index layer ordering and blend-mode mapping before rasterization
+ *  - Embedded font loading with system-font fallback
+ *  - Image/stamp hydration for transparent overlay layers
+ *  - Aggressive GC: Blob URL revocation, canvas release, buffer nullification
+ */
 import JSZip from "jszip";
 import { isCanvasMostlyBlank } from "@/scripts/pdf-render";
 import { loadOfdEmbeddedFonts } from "@/scripts/ofd-font-loader";
 import { hydratePagesMedia } from "@/scripts/ofd-image-hydrator";
+import { stitchLongImageInWorker, terminateOfdRasterWorker } from "@/scripts/ofd-raster-client";
 import {
   BlobUrlRegistry,
+  createHiDpiCanvas,
+  enforcePageLayerOrder,
   getAdaptiveCanvasScale,
   getAdaptiveRenderWidth,
+  getLongImageMaxDim,
+  releaseBuffer,
   releaseCanvas,
   releaseCanvases,
   triggerBlobDownload,
@@ -22,8 +37,9 @@ export type OfdProgressReporter = (percent: number, stageKey: string) => void;
 
 const PARSE_TIMEOUT_MS = 90_000;
 const RASTERIZE_TIMEOUT_MS = 45_000;
+const DEFAULT_RENDER_WIDTH = 794;
+const OFD_SCRIPT = "/vendor/ofd.umd.min.js";
 
-/** 会话级 Blob URL 注册表，页面卸载时统一释放 */
 const mediaUrlRegistry = new BlobUrlRegistry();
 
 function withTimeout<T>(promise: Promise<T>, ms: number, errorCode: string): Promise<T> {
@@ -41,8 +57,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, errorCode: string): Pro
     );
   });
 }
-const DEFAULT_RENDER_WIDTH = 794;
-const OFD_SCRIPT = "/vendor/ofd.umd.min.js";
 
 function renderWidth(): number {
   return getAdaptiveRenderWidth(DEFAULT_RENDER_WIDTH);
@@ -105,9 +119,7 @@ async function loadOfdModule(): Promise<OfdApi> {
       document.head.appendChild(script);
     });
 
-    if (!win.ofd?.parseOfdDocument) {
-      throw new Error("ofd-global-missing");
-    }
+    if (!win.ofd?.parseOfdDocument) throw new Error("ofd-global-missing");
     return win.ofd;
   })();
 
@@ -131,12 +143,67 @@ function parsePageSize(pageDiv: HTMLElement, fallbackWidth: number): { w: number
   return { w: w || fallbackWidth, h: h || Math.round(fallbackWidth * 1.414) };
 }
 
-async function rasterizeSvgToCanvas(svg: SVGElement, width: number, height: number): Promise<HTMLCanvasElement> {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
+const FONTS_READY_TIMEOUT_MS = 2_500;
+const IMAGE_EXT = /\.(jpe?g|png|bmp|gif|webp|tif{1,2})$/i;
+
+function naturalSort(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+}
+
+async function waitForPaint(): Promise<void> {
+  await new Promise<void>(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+async function waitForPageResources(pageDiv: HTMLElement): Promise<void> {
+  await waitForPaint();
+  enforcePageLayerOrder(pageDiv);
+
+  const images = Array.from(pageDiv.querySelectorAll("img"));
+  await Promise.all(
+    images.map(
+      img =>
+        new Promise<void>(resolve => {
+          if (img.complete && img.naturalWidth > 0) {
+            resolve();
+            return;
+          }
+          img.addEventListener("load", () => resolve(), { once: true });
+          img.addEventListener("error", () => resolve(), { once: true });
+        })
+    )
+  );
+
+  try {
+    if (document.fonts?.ready) {
+      await withTimeout(document.fonts.ready, FONTS_READY_TIMEOUT_MS, "fonts-ready-timeout").catch(
+        () => undefined
+      );
+    }
+  } catch {
+    /* non-fatal */
+  }
+  await waitForPaint();
+}
+
+function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
+  const clone = document.createElement("canvas");
+  clone.width = source.width;
+  clone.height = source.height;
+  const ctx = clone.getContext("2d");
   if (!ctx) throw new Error("canvas-context");
+  ctx.drawImage(source, 0, 0);
+  return clone;
+}
+
+/** Rasterize SVG with Hi-DPI backing store to avoid clipped edges. */
+async function rasterizeSvgToCanvas(svg: SVGElement, width: number, height: number): Promise<HTMLCanvasElement> {
+  const { canvas, ctx } = createHiDpiCanvas(width, height);
+
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+  if (!svg.getAttribute("xmlns")) svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
 
   const serialized = new XMLSerializer().serializeToString(svg);
   const blob = new Blob([serialized], { type: "image/svg+xml;charset=utf-8" });
@@ -161,73 +228,12 @@ async function rasterizeSvgToCanvas(svg: SVGElement, width: number, height: numb
   return canvas;
 }
 
-export type OfdPreviewResult = {
-  pages: HTMLElement[];
-  canvases: HTMLCanvasElement[];
-  docs: OfdParsedDocument[];
-  usedImageFallback: boolean;
-};
-
-const IMAGE_EXT = /\.(jpe?g|png|bmp|gif|webp|tif{1,2})$/i;
-const FONTS_READY_TIMEOUT_MS = 2_000;
-
-function naturalSort(a: string, b: string): number {
-  return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
-}
-
-function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
-  const clone = document.createElement("canvas");
-  clone.width = source.width;
-  clone.height = source.height;
-  const ctx = clone.getContext("2d");
-  if (!ctx) throw new Error("canvas-context");
-  ctx.drawImage(source, 0, 0);
-  return clone;
-}
-
-async function waitForPaint(): Promise<void> {
-  await new Promise<void>(resolve => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  });
-}
-
-async function waitForPageResources(pageDiv: HTMLElement): Promise<void> {
-  await waitForPaint();
-  const images = Array.from(pageDiv.querySelectorAll("img"));
-  await Promise.all(
-    images.map(
-      img =>
-        new Promise<void>(resolve => {
-          if (img.complete) {
-            resolve();
-            return;
-          }
-          img.addEventListener("load", () => resolve(), { once: true });
-          img.addEventListener("error", () => resolve(), { once: true });
-        })
-    )
-  );
-  try {
-    if (document.fonts?.ready) {
-      await withTimeout(document.fonts.ready, FONTS_READY_TIMEOUT_MS, "fonts-ready-timeout").catch(
-        () => undefined
-      );
-    }
-  } catch {
-    /* ignore */
-  }
-  await waitForPaint();
-}
-
-async function getOfdPageCount(file: File): Promise<number> {
-  return getOfdPageCountFromBuffer(await file.arrayBuffer());
-}
-
 async function rasterizePageDivWithHtml2Canvas(
   pageDiv: HTMLElement,
   width: number,
   height: number
 ): Promise<HTMLCanvasElement> {
+  enforcePageLayerOrder(pageDiv);
   const { default: html2canvas } = await import("html2canvas");
   return withTimeout(
     html2canvas(pageDiv, {
@@ -238,13 +244,68 @@ async function rasterizePageDivWithHtml2Canvas(
       allowTaint: true,
       logging: false,
       backgroundColor: "#ffffff",
+      onclone: (doc: Document) => {
+        const cloned = doc.body.querySelector("[data-ofd-page-clone]") ?? doc.body.firstElementChild;
+        if (cloned instanceof HTMLElement) enforcePageLayerOrder(cloned);
+      },
     }),
     RASTERIZE_TIMEOUT_MS,
     "timeout"
   );
 }
 
-/** Use embedded page images when DOM render is unavailable. */
+/**
+ * Layer-aware compositing: paint child layers in z-index order onto a Hi-DPI canvas.
+ * Used when native canvas / SVG paths produce blank or clipped output.
+ */
+async function compositePageLayers(
+  pageDiv: HTMLElement,
+  width: number,
+  height: number
+): Promise<HTMLCanvasElement | null> {
+  enforcePageLayerOrder(pageDiv);
+  const { canvas, ctx } = createHiDpiCanvas(width, height);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  const layers = Array.from(pageDiv.children) as HTMLElement[];
+  if (layers.length === 0) return null;
+
+  let painted = false;
+  for (const layer of layers) {
+    const tag = layer.tagName.toLowerCase();
+    if (tag === "canvas" && layer instanceof HTMLCanvasElement && layer.width > 0) {
+      ctx.drawImage(layer, 0, 0, width, height);
+      painted = true;
+      continue;
+    }
+    if (tag === "svg" && layer instanceof SVGSVGElement) {
+      try {
+        const sub = await rasterizeSvgToCanvas(layer, width, height);
+        ctx.drawImage(sub, 0, 0, width, height);
+        releaseCanvas(sub);
+        painted = true;
+      } catch {
+        /* try next layer */
+      }
+    }
+  }
+
+  return painted && !isCanvasMostlyBlank(canvas) ? canvas : null;
+}
+
+export type OfdPreviewResult = {
+  pages: HTMLElement[];
+  canvases: HTMLCanvasElement[];
+  docs: OfdParsedDocument[];
+  usedImageFallback: boolean;
+  partialRaster: boolean;
+};
+
+async function getOfdPageCount(file: File): Promise<number> {
+  return getOfdPageCountFromBuffer(await file.arrayBuffer());
+}
+
 async function tryEmbeddedImagesFallback(file: File): Promise<HTMLCanvasElement[] | null> {
   const [pageCount, images] = await Promise.all([getOfdPageCount(file), extractOfdImages(file)]);
   if (images.length === 0) return null;
@@ -261,32 +322,9 @@ async function tryEmbeddedImagesFallback(file: File): Promise<HTMLCanvasElement[
   if (canvases.length === 0) return null;
 
   canvases.sort((a, b) => b.width * b.height - a.width * a.height);
-
   if (pageCount <= 1) return [canvases[0]];
   if (canvases.length === pageCount) return canvases;
   if (canvases.length > pageCount) return canvases.slice(0, pageCount);
-  return canvases;
-}
-
-async function canvasesFromRenderedPages(
-  pages: HTMLElement[],
-  width = renderWidth(),
-  onProgress?: OfdProgressReporter
-): Promise<HTMLCanvasElement[]> {
-  const canvases: HTMLCanvasElement[] = [];
-  for (let i = 0; i < pages.length; i++) {
-    onProgress?.(
-      55 + Math.round(((i + 1) / pages.length) * 30),
-      "progressRasterizing"
-    );
-    try {
-      canvases.push(await pageDivToCanvas(pages[i], width));
-    } catch {
-      /* 单页失败可跳过 */
-    }
-    // 每页渲染后让出主线程，避免低配设备假死
-    await yieldToMain();
-  }
   return canvases;
 }
 
@@ -299,14 +337,12 @@ async function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
       image.onerror = () => reject(new Error("image-load-failed"));
       image.src = url;
     });
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth || img.width;
-    canvas.height = img.naturalHeight || img.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("canvas-context");
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    const { canvas, ctx } = createHiDpiCanvas(w, h);
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
     return canvas;
   } finally {
     URL.revokeObjectURL(url);
@@ -314,40 +350,18 @@ async function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
 }
 
 export async function extractOfdImages(file: File): Promise<Blob[]> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const buf = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(buf);
+  releaseBuffer(buf);
   const images: { path: string; blob: Blob }[] = [];
 
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir || !IMAGE_EXT.test(path)) continue;
-    const lower = path.toLowerCase();
-    if (lower.includes("/stamp") || lower.includes("/seal")) continue;
-    const mime = lower.endsWith(".png")
-      ? "image/png"
-      : lower.endsWith(".gif")
-        ? "image/gif"
-        : lower.endsWith(".webp")
-          ? "image/webp"
-          : "image/jpeg";
     images.push({ path, blob: await entry.async("blob") });
-    void mime;
   }
 
   images.sort((a, b) => naturalSort(a.path, b.path));
   return images.map(item => item.blob);
-}
-
-export async function canvasesFromOfdImages(file: File): Promise<HTMLCanvasElement[]> {
-  const blobs = await extractOfdImages(file);
-  if (blobs.length === 0) return [];
-  const canvases: HTMLCanvasElement[] = [];
-  for (const blob of blobs) {
-    try {
-      canvases.push(await blobToCanvas(blob));
-    } catch {
-      // skip broken assets
-    }
-  }
-  return canvases;
 }
 
 export async function pageDivToCanvas(
@@ -361,6 +375,7 @@ export async function pageDivToCanvas(
   if (existing instanceof HTMLCanvasElement && existing.width > 0 && existing.height > 0) {
     const cloned = cloneCanvas(existing);
     if (!isCanvasMostlyBlank(cloned)) return cloned;
+    releaseCanvas(cloned);
   }
 
   const svg = pageDiv.querySelector("svg");
@@ -368,22 +383,47 @@ export async function pageDivToCanvas(
     try {
       const rasterized = await rasterizeSvgToCanvas(svg, w, h);
       if (!isCanvasMostlyBlank(rasterized)) return rasterized;
+      releaseCanvas(rasterized);
     } catch {
-      /* try html2canvas next */
+      /* fall through */
     }
   }
+
+  const composited = await compositePageLayers(pageDiv, w, h);
+  if (composited) return composited;
 
   try {
     const domRaster = await rasterizePageDivWithHtml2Canvas(pageDiv, w, h);
     if (!isCanvasMostlyBlank(domRaster)) return domRaster;
+    releaseCanvas(domRaster);
   } catch {
-    /* no renderable output */
+    /* fall through */
   }
 
   throw new Error("no-renderable-page");
 }
 
-/** Fresh canvases for export — render off-screen without a visible preview. */
+async function canvasesFromRenderedPages(
+  pages: HTMLElement[],
+  width = renderWidth(),
+  onProgress?: OfdProgressReporter
+): Promise<{ canvases: HTMLCanvasElement[]; partial: boolean }> {
+  const canvases: HTMLCanvasElement[] = [];
+  let failures = 0;
+
+  for (let i = 0; i < pages.length; i++) {
+    onProgress?.(55 + Math.round(((i + 1) / pages.length) * 30), "progressRasterizing");
+    try {
+      canvases.push(await pageDivToCanvas(pages[i], width));
+    } catch {
+      failures += 1;
+    }
+    await yieldToMain();
+  }
+
+  return { canvases, partial: failures > 0 && canvases.length > 0 };
+}
+
 export async function resolveExportCanvases(
   file: File,
   onProgress?: OfdProgressReporter
@@ -396,18 +436,17 @@ export async function resolveExportCanvases(
 
   onProgress?.(28, "progressParsing");
   const width = renderWidth();
-  const { pages } = await parseAndRenderOfd(file, width, onProgress, {
-    skipFonts: true,
-  });
+  const { pages } = await parseAndRenderOfd(file, width, onProgress, { skipFonts: true });
 
   if (pages.length > 0) {
     onProgress?.(48, "progressRasterizing");
-    const fresh = await withPagesMounted(file, pages, () =>
+    const { canvases: fresh, partial } = await withPagesMounted(file, pages, () =>
       canvasesFromRenderedPages(pages, width, onProgress)
     );
     const valid = fresh.filter(c => !isCanvasMostlyBlank(c));
     if (valid.length > 0) {
       onProgress?.(92, "progressExporting");
+      if (partial) onProgress?.(90, "progressPartialRaster");
       return valid.map(cloneCanvas);
     }
   }
@@ -446,15 +485,17 @@ async function withPagesMounted<T>(
 
   const host = document.createElement("div");
   host.setAttribute("aria-hidden", "true");
-  // visibility:hidden 比 opacity:0 更利于 html2canvas / 字体测量
   host.style.cssText =
     "position:fixed;left:0;top:0;z-index:-1;visibility:hidden;pointer-events:none;overflow:hidden;width:1px;height:1px;";
-  for (const page of pages) host.appendChild(page);
+  for (const page of pages) {
+    page.dataset.ofdPageClone = "";
+    host.appendChild(page);
+  }
   document.body.appendChild(host);
 
   try {
     if (file) await hydratePagesMedia(file, pages, mediaUrlRegistry);
-    await waitForPageResources(pages[0]);
+    for (const page of pages) await waitForPageResources(page);
     return await fn();
   } finally {
     host.remove();
@@ -508,56 +549,34 @@ export async function loadOfdPreview(
   onProgress?: OfdProgressReporter,
   options?: { skipFonts?: boolean }
 ): Promise<OfdPreviewResult> {
-  if (!isOfdFile(file)) {
-    throw new Error("invalid-ofd");
-  }
+  if (!isOfdFile(file)) throw new Error("invalid-ofd");
 
   try {
     const { pages, docs } = await parseAndRenderOfd(file, width, onProgress, options);
 
     if (pages.length > 0) {
       onProgress?.(48, "progressRasterizing");
-      const canvases = await withPagesMounted(file, pages, () =>
+      const { canvases, partial } = await withPagesMounted(file, pages, () =>
         canvasesFromRenderedPages(pages, width, onProgress)
       );
       if (canvases.length > 0 && !canvases.every(isCanvasMostlyBlank)) {
-        return { pages, canvases, docs, usedImageFallback: false };
+        return { pages, canvases, docs, usedImageFallback: false, partialRaster: partial };
       }
     }
 
     const embedded = await tryEmbeddedImagesFallback(file);
     if (embedded?.length) {
-      return { pages: [], canvases: embedded, docs, usedImageFallback: true };
+      return { pages: [], canvases: embedded, docs, usedImageFallback: true, partialRaster: false };
     }
 
     throw new Error("no-visual");
   } catch {
     const embedded = await tryEmbeddedImagesFallback(file);
     if (embedded?.length) {
-      return { pages: [], canvases: embedded, docs: [], usedImageFallback: true };
+      return { pages: [], canvases: embedded, docs: [], usedImageFallback: true, partialRaster: false };
     }
     throw new Error("no-visual");
   }
-}
-
-export async function loadMultipleOfdPreviews(
-  files: File[],
-  width = DEFAULT_RENDER_WIDTH
-): Promise<{ pages: HTMLElement[]; canvases: HTMLCanvasElement[]; usedImageFallback: boolean }> {
-  const allPages: HTMLElement[] = [];
-  const allCanvases: HTMLCanvasElement[] = [];
-  let usedImageFallback = false;
-
-  for (const file of files) {
-    if (!isOfdFile(file)) continue;
-    const { pages, canvases, usedImageFallback: fallback } = await loadOfdPreview(file, width);
-    allPages.push(...pages);
-    allCanvases.push(...canvases);
-    usedImageFallback ||= fallback;
-  }
-
-  if (allCanvases.length === 0) throw new Error("no-visual");
-  return { pages: allPages, canvases: allCanvases, usedImageFallback };
 }
 
 export async function exportCanvasesToPdf(canvases: HTMLCanvasElement[]): Promise<Blob> {
@@ -583,9 +602,11 @@ export async function exportCanvasesToPdf(canvases: HTMLCanvasElement[]): Promis
     }
 
     pdf!.addImage(imgData, "JPEG", 0, 0, w, h, undefined, "FAST");
+    await yieldToMain();
   }
 
-  return pdf!.output("blob") as Blob;
+  const blob = pdf!.output("blob") as Blob;
+  return blob;
 }
 
 export async function exportCanvasesToPngZip(
@@ -598,6 +619,7 @@ export async function exportCanvasesToPngZip(
       canvases[i].toBlob(b => (b ? resolve(b) : reject(new Error("png-failed"))), "image/png");
     });
     zip.file(`${baseName}-page-${i + 1}.png`, blob);
+    await yieldToMain();
   }
   return zip.generateAsync({ type: "blob", compression: "DEFLATE" });
 }
@@ -606,39 +628,14 @@ export async function exportCanvasesToLongImage(canvases: HTMLCanvasElement[]): 
   if (canvases.length === 0) throw new Error("no-pages");
 
   const gap = 12;
-  let width = Math.max(...canvases.map(c => c.width));
-  let totalHeight = canvases.reduce((sum, c) => sum + c.height, 0) + gap * (canvases.length - 1);
+  const maxDim = getLongImageMaxDim();
 
-  // 多数浏览器单轴 Canvas 上限约 16384px，超出时等比缩小避免空白导出
-  const MAX_DIM = 16384;
-  const scale = Math.min(1, MAX_DIM / width, MAX_DIM / totalHeight);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.floor(width * scale));
-  canvas.height = Math.max(1, Math.floor(totalHeight * scale));
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("canvas-context");
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  let y = 0;
-  for (const page of canvases) {
-    const drawW = Math.floor(page.width * scale);
-    const drawH = Math.floor(page.height * scale);
-    const x = Math.floor((canvas.width - drawW) / 2);
-    ctx.drawImage(page, x, y, drawW, drawH);
-    y += drawH + Math.floor(gap * scale);
-    await yieldToMain();
+  try {
+    const blob = await stitchLongImageInWorker(canvases, gap, maxDim);
+    return blob;
+  } finally {
+    for (const c of canvases) releaseCanvas(c);
   }
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(b => {
-      releaseCanvas(canvas);
-      if (b) resolve(b);
-      else reject(new Error("png-failed"));
-    }, "image/png");
-  });
 }
 
 export async function exportPagesToSvgZip(pages: HTMLElement[], baseName: string): Promise<Blob> {
@@ -658,7 +655,7 @@ export async function exportPagesToSvgZip(pages: HTMLElement[], baseName: string
 }
 
 export async function exportPagesToHtml(
-  pages: HTMLElement[],
+  _pages: HTMLElement[],
   title: string,
   canvases: HTMLCanvasElement[]
 ): Promise<Blob> {
@@ -689,31 +686,17 @@ ${sections}
 }
 
 export async function extractOfdText(file: File): Promise<string> {
-  return extractOfdTextInWorker(await file.arrayBuffer());
-}
-
-export async function exportTextToDocx(text: string, title: string): Promise<Blob> {
-  const { Document, Packer, Paragraph, TextRun } = await import("docx");
-  const paragraphs = text
-    .split(/\n+/)
-    .filter(Boolean)
-    .map(line => new Paragraph({ children: [new TextRun(line)] }));
-
-  if (paragraphs.length === 0) {
-    paragraphs.push(new Paragraph({ children: [new TextRun("")] }));
-  }
-
-  const doc = new Document({
-    sections: [{ properties: {}, children: paragraphs }],
-    title,
-  });
-
-  return Packer.toBlob(doc);
+  const buf = await file.arrayBuffer();
+  const text = await extractOfdTextInWorker(buf);
+  releaseBuffer(buf);
+  return text;
 }
 
 export async function compressOfdFile(file: File): Promise<Blob> {
-  const buffer = await compressOfdInWorker(await file.arrayBuffer());
-  return new Blob([buffer], { type: "application/ofd" });
+  const buffer = await file.arrayBuffer();
+  const compressed = await compressOfdInWorker(buffer);
+  releaseBuffer(buffer);
+  return new Blob([compressed], { type: "application/ofd" });
 }
 
 export async function mergeOfdFiles(
@@ -722,9 +705,18 @@ export async function mergeOfdFiles(
 ): Promise<Blob> {
   if (files.length < 2) throw new Error("need-multiple");
   onProgress?.(15, "progressMerging");
-  const buffers = await Promise.all(files.map(f => f.arrayBuffer()));
+
+  const buffers: ArrayBuffer[] = [];
+  for (const f of files) {
+    const buf = await f.arrayBuffer();
+    buffers.push(buf);
+    await yieldToMain();
+  }
+
   onProgress?.(60, "progressMerging");
   const merged = await mergeOfdInWorker(buffers);
+  for (const buf of buffers) releaseBuffer(buf);
+
   onProgress?.(92, "progressExporting");
   return new Blob([merged], { type: "application/ofd" });
 }
@@ -741,10 +733,10 @@ export function downloadBlob(blob: Blob, filename: string) {
   triggerBlobDownload(blob, filename);
 }
 
-/** 释放 OFD 会话占用的 Blob URL 与 Canvas 缓存 */
 export function disposeOfdSession(canvases: HTMLCanvasElement[] = []): void {
   releaseCanvases(canvases);
   mediaUrlRegistry.revokeAll();
+  terminateOfdRasterWorker();
 }
 
 export function baseNameFromOfd(sourceName: string): string {
@@ -777,8 +769,11 @@ function scaleCanvasToDataUrl(canvas: HTMLCanvasElement, maxWidth: number): stri
   ctx.fillRect(0, 0, thumb.width, thumb.height);
   ctx.drawImage(canvas, 0, 0, thumb.width, thumb.height);
   try {
-    return thumb.toDataURL("image/jpeg", 0.85);
+    const url = thumb.toDataURL("image/jpeg", 0.85);
+    releaseCanvas(thumb);
+    return url;
   } catch {
+    releaseCanvas(thumb);
     return "";
   }
 }
@@ -786,7 +781,9 @@ function scaleCanvasToDataUrl(canvas: HTMLCanvasElement, maxWidth: number): stri
 async function renderOfdThumbnailInner(file: File, width: number): Promise<string> {
   const embedded = await tryEmbeddedImagesFallback(file);
   if (embedded?.[0] && !isCanvasMostlyBlank(embedded[0])) {
-    return scaleCanvasToDataUrl(embedded[0], width);
+    const url = scaleCanvasToDataUrl(embedded[0], width);
+    releaseCanvas(embedded[0]);
+    return url;
   }
 
   await loadOfdModule();
@@ -802,7 +799,12 @@ async function renderOfdThumbnailInner(file: File, width: number): Promise<strin
   return withPagesMounted(file, [pages[0]], async () => {
     try {
       const canvas = await pageDivToCanvas(pages[0], width);
-      if (!isCanvasMostlyBlank(canvas)) return scaleCanvasToDataUrl(canvas, width);
+      if (!isCanvasMostlyBlank(canvas)) {
+        const url = scaleCanvasToDataUrl(canvas, width);
+        releaseCanvas(canvas);
+        return url;
+      }
+      releaseCanvas(canvas);
     } catch {
       /* fall through */
     }
@@ -810,17 +812,14 @@ async function renderOfdThumbnailInner(file: File, width: number): Promise<strin
   });
 }
 
-/** Low-resolution first-page preview for dropzone thumbnails. */
 export async function renderOfdThumbnail(
   file: File,
   width = Math.round(DEFAULT_RENDER_WIDTH * 0.35)
 ): Promise<string> {
   if (!isOfdFile(file)) return "";
 
-  const THUMB_TIMEOUT_MS = 25_000;
-
   try {
-    return await withTimeout(renderOfdThumbnailInner(file, width), THUMB_TIMEOUT_MS, "timeout");
+    return await withTimeout(renderOfdThumbnailInner(file, width), 25_000, "timeout");
   } catch {
     return "";
   }

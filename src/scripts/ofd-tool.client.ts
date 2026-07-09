@@ -1,3 +1,8 @@
+/**
+ * OFD tool page client controller.
+ * Binds upload UI to ofd-core, syncs progress states, and applies data-i18n
+ * to every dynamically rendered element for seamless locale switching.
+ */
 import { applyI18n, onI18nReady, t } from "@/scripts/i18n-client";
 import {
   compressOfdFile,
@@ -31,6 +36,7 @@ let outputBlob: Blob | null = null;
 let busy = false;
 let thumbGeneration = 0;
 let lastExportCanvases: HTMLCanvasElement[] = [];
+let usedImageFallback = false;
 const downloadUrlRegistry = new BlobUrlRegistry();
 let activeDownloadUrl: string | null = null;
 
@@ -55,14 +61,13 @@ function wsKey(key: string) {
 }
 
 function setStatusMessage(message: string, isError = false) {
-  const apply = () => {
+  requestAnimationFrame(() => {
     const el = $("ofd-status");
     if (!el) return;
     el.textContent = message;
     el.classList.toggle("text-destructive", isError);
     el.classList.toggle("text-muted-foreground", !isError);
-  };
-  requestAnimationFrame(apply);
+  });
 }
 
 function getThumbCard(index = 0): HTMLElement | null {
@@ -83,7 +88,11 @@ function setProgress(percent: number, stageKey?: string, thumbIndex = 0) {
   area.classList.remove("hidden");
   bar.style.width = `${clamped}%`;
   track?.setAttribute("aria-valuenow", String(clamped));
-  label.textContent = stageKey ? t(wsKey(stageKey)) : "";
+
+  if (stageKey) {
+    label.setAttribute("data-i18n", wsKey(stageKey));
+    label.textContent = t(wsKey(stageKey));
+  }
 }
 
 function hideProgress(thumbIndex = 0) {
@@ -110,6 +119,7 @@ function setBusy(next: boolean) {
 
 function resetOutput() {
   outputBlob = null;
+  usedImageFallback = false;
   disposeOfdSession(lastExportCanvases);
   lastExportCanvases = [];
   const downloadBtn = $("ofd-download-btn") as HTMLAnchorElement | null;
@@ -133,7 +143,6 @@ function attachDownload(blob: Blob, filename: string) {
   downloadBtn.download = filename;
   downloadBtn.classList.remove("pointer-events-none", "opacity-45");
 
-  // 兼容部分浏览器：点击下载按钮时再次触发 Blob 下载
   downloadBtn.onclick = event => {
     event.preventDefault();
     triggerBlobDownload(blob, filename);
@@ -148,6 +157,7 @@ function createDeleteButton(onRemove: () => void): HTMLButtonElement {
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
   deleteBtn.className = "ofd-thumb-remove interactive";
+  deleteBtn.setAttribute("data-i18n-aria-label", wsKey("removeFile"));
   deleteBtn.setAttribute("aria-label", t(wsKey("removeFile")));
   deleteBtn.textContent = "×";
   deleteBtn.addEventListener("click", e => {
@@ -162,8 +172,9 @@ function createAddCard(): HTMLButtonElement {
   card.type = "button";
   card.id = "ofd-add-file-btn";
   card.className = "ofd-add-card interactive";
+  card.setAttribute("data-i18n", wsKey("addFile"));
+  card.setAttribute("data-i18n-aria-label", wsKey("addFile"));
   card.setAttribute("aria-label", t(wsKey("addFile")));
-  card.setAttribute("data-i18n", "ofd.workspace.addFile");
   card.textContent = t(wsKey("addFile"));
 
   card.addEventListener("click", e => {
@@ -181,7 +192,7 @@ function createProgressBlock(): HTMLElement {
     <div class="ofd-thumb-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
       <div class="ofd-thumb-progress__bar" style="width: 0%"></div>
     </div>
-    <p class="ofd-thumb-progress__label"></p>
+    <p class="ofd-thumb-progress__label" data-i18n="${wsKey("processing")}"></p>
   `;
   return wrap;
 }
@@ -290,7 +301,7 @@ function renderFileThumbs() {
     if (visual) void loadThumbPreview(file, visual, i, generation);
   }
 
-  applyI18n();
+  applyI18n(thumbs);
 }
 
 function removeFileAt(index: number) {
@@ -316,12 +327,14 @@ function mapErrorMessage(error: unknown): string {
   const code = error instanceof Error ? error.message : String(error);
   if (code === "invalid-ofd") return t(wsKey("errorInvalid"));
   if (code === "need-multiple") return t(wsKey("errorNeedMultiple"));
-  if (code === "merge-copy-failed") return t(wsKey("errorMergeFailed"));
+  if (code === "merge-copy-failed" || code === "document-pages-missing") {
+    return t(wsKey("errorMergeFailed"));
+  }
   if (code === "no-text") return t(wsKey("errorNoText"));
   if (code === "timeout" || code === "ofd-script-load-failed") {
     return t(wsKey("errorTimeout"));
   }
-  if (code === "no-visual" || code === "no-pages" || code === "no-svg") {
+  if (code === "no-visual" || code === "no-pages" || code === "no-svg" || code === "no-renderable-page") {
     return t(wsKey("errorNoVisual"));
   }
   return t(wsKey("error"));
@@ -351,6 +364,11 @@ function shouldAutoProcessOnUpload(): boolean {
   return mode === "to-text" || mode === "compress" || mode === "merge";
 }
 
+function successMessage(): string {
+  if (usedImageFallback) return t(wsKey("fallbackImages"));
+  return t(wsKey("success"));
+}
+
 async function handleFiles(files: FileList | File[]) {
   const list = Array.from(files);
   if (!mergeIncomingFiles(list)) {
@@ -367,6 +385,7 @@ async function handleFiles(files: FileList | File[]) {
 
   extractedText = "";
   outputBlob = null;
+  usedImageFallback = false;
   resetOutput();
   renderFileThumbs();
 
@@ -377,7 +396,7 @@ async function handleFiles(files: FileList | File[]) {
   }
 
   setBusy(true);
-  setStatusMessage("");
+  setStatusMessage(t(wsKey("processing")));
   setProgress(5, "progressReadingFile");
 
   const mode = getMode();
@@ -390,6 +409,7 @@ async function handleFiles(files: FileList | File[]) {
       for (let i = 0; i < currentFiles.length; i++) {
         setProgress(20 + Math.round(((i + 1) / currentFiles.length) * 65), "progressExtracting");
         chunks.push(await extractOfdText(currentFiles[i]));
+        await new Promise(r => setTimeout(r, 0));
       }
       extractedText = chunks.filter(Boolean).join("\n\n");
       if (!extractedText.trim()) throw new Error("no-text");
@@ -403,7 +423,7 @@ async function handleFiles(files: FileList | File[]) {
       setProgress(95, "progressExporting");
       attachDownload(outputBlob, outputFilename(file.name, "ofd"));
       setProgress(100, "progressDone");
-      setStatusMessage(t(wsKey("success")));
+      setStatusMessage(successMessage());
     } else if (mode === "merge") {
       setProgress(25, "progressMerging");
       outputBlob = await mergeOfdFiles(currentFiles, report);
@@ -412,14 +432,11 @@ async function handleFiles(files: FileList | File[]) {
         `${currentFiles[0].name.replace(/\.ofd$/i, "")}-merged.ofd`
       );
       setProgress(100, "progressDone");
-      setStatusMessage(t(wsKey("success")));
+      setStatusMessage(successMessage());
     }
   } catch (error) {
-    if (mode === "merge" || mode === "compress") {
-      currentFiles = [];
-      renderFileThumbs();
-    }
     extractedText = "";
+    outputBlob = null;
     hideProgress();
     setStatusMessage(mapErrorMessage(error), true);
   } finally {
@@ -456,6 +473,7 @@ function syncActionState() {
 
   const hasFiles = currentFiles.length > 0;
   actionBtn.disabled = busy || !hasFiles;
+  actionBtn.setAttribute("data-i18n", wsKey(actionLabelKey()));
   actionBtn.textContent = t(wsKey(actionLabelKey()));
 }
 
@@ -466,7 +484,7 @@ async function runAction() {
   if (!file) return;
 
   setBusy(true);
-  setStatusMessage("");
+  setStatusMessage(t(wsKey("processing")));
   setProgress(2, "progressReadingFile");
 
   const report = makeProgressReporter();
@@ -542,7 +560,7 @@ async function runAction() {
       attachDownload(blob, filename);
     }
     setProgress(100, "progressDone");
-    setStatusMessage(t(wsKey("success")));
+    setStatusMessage(successMessage());
   } catch (error) {
     resetOutput();
     hideProgress();
@@ -648,6 +666,7 @@ function initOfdTool() {
   currentFiles = [];
   extractedText = "";
   outputBlob = null;
+  usedImageFallback = false;
   busy = false;
 
   bindDropZone(ac.signal);
@@ -657,10 +676,13 @@ function initOfdTool() {
   hideAllProgress();
   syncActionState();
   setStatusMessage("");
-  applyI18n();
+  applyI18n(root);
 }
 
-onI18nReady(() => syncActionState());
+onI18nReady(() => {
+  syncActionState();
+  applyI18n(getRoot() ?? document);
+});
 initOfdTool();
 document.addEventListener("astro:page-load", initOfdTool);
 window.addEventListener("beforeunload", () => {

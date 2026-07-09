@@ -1,10 +1,12 @@
 /**
- * OFD 页面图片资源修复 — 将包内多媒体文件挂载为 Blob URL，防止预览/导出漏图
+ * OFD page media hydrator — maps ZIP image assets to Blob URLs.
+ * Includes stamps/seals (transparent PNG overlays) and preserves blend modes
+ * so official seals render above text without masking it.
  */
 import JSZip from "jszip";
-import { BlobUrlRegistry } from "@/scripts/ofd-render-utils";
+import { BlobUrlRegistry, mapBlendMode } from "@/scripts/ofd-render-utils";
 
-const IMAGE_EXT = /\.(jpe?g|png|bmp|gif|webp|tif{1,2})$/i;
+const IMAGE_EXT = /\.(jpe?g|png|bmp|gif|webp|tif{1,2}|svg)$/i;
 
 function naturalSort(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
@@ -12,6 +14,33 @@ function naturalSort(a: string, b: string): number {
 
 function basename(path: string): string {
   return path.split("/").pop() ?? path;
+}
+
+function dirname(path: string): string {
+  const idx = path.lastIndexOf("/");
+  return idx >= 0 ? path.slice(0, idx + 1) : "";
+}
+
+function resolveResPath(xmlPath: string, relative: string): string {
+  const base = dirname(xmlPath);
+  const parts = (base + relative).split("/");
+  const stack: string[] = [];
+  for (const part of parts) {
+    if (!part || part === ".") continue;
+    if (part === "..") stack.pop();
+    else stack.push(part);
+  }
+  return stack.join("/");
+}
+
+function mimeFromPath(path: string): string {
+  const lower = path.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".svg")) return "image/svg+xml";
+  if (lower.endsWith(".bmp")) return "image/bmp";
+  return "image/jpeg";
 }
 
 export async function buildOfdMediaUrlMap(
@@ -23,11 +52,14 @@ export async function buildOfdMediaUrlMap(
 
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir || !IMAGE_EXT.test(path)) continue;
-    const lower = path.toLowerCase();
-    if (lower.includes("/stamp") || lower.includes("/seal")) continue;
 
     const blob = await entry.async("blob");
-    const url = registry.create(blob);
+    const typed =
+      blob.type && blob.type.startsWith("image/")
+        ? blob
+        : new Blob([await entry.async("arraybuffer")], { type: mimeFromPath(path) });
+    const url = registry.create(typed);
+
     map.set(path, url);
     map.set(path.toLowerCase(), url);
     map.set(basename(path), url);
@@ -40,21 +72,31 @@ export async function buildOfdMediaUrlMap(
     if (!xml) continue;
 
     for (const block of xml.matchAll(
-      /<(?:[\w-]+:)?Res\b[^>]*Type="Image"[^>]*>[\s\S]*?<\/(?:[\w-]+:)?Res>/gi
+      /<(?:[\w-]+:)?(?:MultiMedia|Res)\b[^>]*(?:Type="Image"|Type\s*=\s*"Image")[^>]*>[\s\S]*?(?:\/>|<\/(?:[\w-]+:)?(?:MultiMedia|Res)>)/gi
     )) {
       const tag = block[0];
-      const mediaFile = tag.match(/<(?:[\w-]+:)?MediaFile[^>]*>([^<]+)<\/(?:[\w-]+:)?MediaFile>/i)?.[1];
+      const mediaFile =
+        tag.match(/<(?:[\w-]+:)?MediaFile[^>]*>([^<]+)<\/(?:[\w-]+:)?MediaFile>/i)?.[1] ??
+        tag.match(/\bMediaFile="([^"]+)"/)?.[1];
       if (!mediaFile) continue;
-      const fullPath = path.includes("/")
-        ? `${path.slice(0, path.lastIndexOf("/") + 1)}${mediaFile.trim()}`
-        : mediaFile.trim();
-      const entry = zip.file(fullPath);
+
+      const fullPath = resolveResPath(path, mediaFile.trim());
+      const entry = zip.file(fullPath) ?? zip.file(mediaFile.trim());
       if (!entry || entry.dir) continue;
+
       const blob = await entry.async("blob");
-      const url = registry.create(blob);
-      map.set(mediaFile.trim(), url);
-      map.set(basename(mediaFile), url);
+      const typed =
+        blob.type && blob.type.startsWith("image/")
+          ? blob
+          : new Blob([await entry.async("arraybuffer")], { type: mimeFromPath(fullPath) });
+      const url = registry.create(typed);
+
+      const trimmed = mediaFile.trim();
+      map.set(trimmed, url);
+      map.set(trimmed.toLowerCase(), url);
+      map.set(basename(trimmed), url);
       map.set(fullPath, url);
+      map.set(fullPath.toLowerCase(), url);
     }
   }
 
@@ -70,6 +112,7 @@ function resolveMediaUrl(src: string, map: Map<string, string>): string | null {
     basename(trimmed),
     basename(trimmed).toLowerCase(),
     decodeURIComponent(trimmed),
+    decodeURIComponent(trimmed).toLowerCase(),
   ];
   for (const key of candidates) {
     const hit = map.get(key);
@@ -78,6 +121,10 @@ function resolveMediaUrl(src: string, map: Map<string, string>): string | null {
   return null;
 }
 
+/**
+ * Hydrate a single page: fix image src, background-image, blend modes, z-order.
+ * Stamps and seals are included (not filtered) so they overlay text correctly.
+ */
 export function hydratePageMedia(pageDiv: HTMLElement, mediaMap: Map<string, string>): void {
   pageDiv.querySelectorAll("img").forEach(img => {
     const src = img.getAttribute("src") ?? "";
@@ -86,14 +133,39 @@ export function hydratePageMedia(pageDiv: HTMLElement, mediaMap: Map<string, str
       img.src = resolved;
       img.removeAttribute("crossorigin");
     }
+
+    const isStamp =
+      /stamp|seal|sign/i.test(src) ||
+      img.classList.contains("ofd-stamp") ||
+      img.dataset.ofdLayer === "stamp";
+    if (isStamp) {
+      img.style.mixBlendMode = img.style.mixBlendMode || "multiply";
+      img.style.zIndex = img.style.zIndex || "20";
+      img.style.pointerEvents = "none";
+    }
   });
 
-  pageDiv.querySelectorAll<HTMLElement>("[style*='background']").forEach(el => {
+  pageDiv.querySelectorAll<HTMLElement>("[style*='background'], [data-resource-id]").forEach(el => {
     const style = el.getAttribute("style") ?? "";
     const match = style.match(/url\(['"]?([^'")]+)['"]?\)/);
-    if (!match?.[1]) return;
-    const resolved = resolveMediaUrl(match[1], mediaMap);
-    if (resolved) el.style.backgroundImage = `url("${resolved}")`;
+    if (match?.[1]) {
+      const resolved = resolveMediaUrl(match[1], mediaMap);
+      if (resolved) el.style.backgroundImage = `url("${resolved}")`;
+    }
+
+    const blend = el.getAttribute("data-blend-mode") ?? el.getAttribute("blendmode");
+    if (blend) el.style.mixBlendMode = mapBlendMode(blend);
+  });
+
+  pageDiv.querySelectorAll<SVGElement>("image, use").forEach(node => {
+    const href =
+      node.getAttribute("href") ??
+      node.getAttributeNS("http://www.w3.org/1999/xlink", "href") ??
+      "";
+    const resolved = resolveMediaUrl(href, mediaMap);
+    if (!resolved) return;
+    node.setAttribute("href", resolved);
+    node.setAttributeNS("http://www.w3.org/1999/xlink", "href", resolved);
   });
 }
 
