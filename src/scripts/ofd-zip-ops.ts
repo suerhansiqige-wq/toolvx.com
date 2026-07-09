@@ -19,9 +19,8 @@ import {
   parseDocumentTemplates,
   parseOfdDocRoot,
   remapIdsInXml,
-  resolveRelativePath,
   singleDocOfdXml,
-} from "@/scripts/ofd-xml-utils";
+} from "./ofd-xml-utils";
 
 const PAGE_CONTENT_RE = /^Doc_\d+\/Pages\/Page_\d+\/Content\.xml$/i;
 
@@ -128,7 +127,7 @@ async function initMergeState(outZip: JSZip, docPrefix: string): Promise<MergeSt
   };
 }
 
-function allocateId(state: MergeState, oldId: number): number {
+function allocateId(state: MergeState): number {
   let next = maxNumericId(state.usedIds) + 1;
   while (state.usedIds.has(next)) next += 1;
   state.usedIds.add(next);
@@ -139,7 +138,7 @@ function buildIdMap(state: MergeState, sourceIds: Set<number>): Map<number, numb
   const map = new Map<number, number>();
   const sorted = [...sourceIds].sort((a, b) => a - b);
   for (const oldId of sorted) {
-    if (!map.has(oldId)) map.set(oldId, allocateId(state, oldId));
+    if (!map.has(oldId)) map.set(oldId, allocateId(state));
   }
   return map;
 }
@@ -176,8 +175,7 @@ async function mergeSourceIntoState(
   const newTemplateEntries: string[] = [];
 
   for (const tpl of srcTemplates) {
-    const newTplId = idMap.get(tpl.id) ?? allocateId(state, tpl.id);
-    templateIdMap.set(tpl.id, newTplId);
+    const newTplId = idMap.get(tpl.id) ?? allocateId(state);
 
     const srcTplFolder = dirnameUnderPrefix(tpl.baseLoc);
     const srcTplName = basename(tpl.baseLoc);
@@ -196,7 +194,7 @@ async function mergeSourceIntoState(
   const newPageEntries: string[] = [];
 
   for (const page of srcPages) {
-    const newPageId = allocateId(state, page.id);
+    const newPageId = allocateId(state);
     const srcPageFolder = dirnameUnderPrefix(page.baseLoc);
     const srcPageName = basename(page.baseLoc);
     const targetPageFolder = `Pages/Page_${state.nextPageIndex}/`;
