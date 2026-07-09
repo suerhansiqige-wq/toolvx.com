@@ -20,6 +20,8 @@ import {
   getAdaptiveCanvasScale,
   getAdaptiveRenderWidth,
   getLongImageMaxDim,
+  isCanvasRenderable,
+  measureCanvasInkRatio,
   releaseBuffer,
   releaseCanvas,
   releaseCanvases,
@@ -197,15 +199,18 @@ function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
   return clone;
 }
 
-/** Rasterize SVG with Hi-DPI backing store to avoid clipped edges. */
+/** Rasterize SVG with Hi-DPI backing store; inlines blob/data image refs first. */
 async function rasterizeSvgToCanvas(svg: SVGElement, width: number, height: number): Promise<HTMLCanvasElement> {
+  const prepared = await prepareSvgForRaster(svg);
   const { canvas, ctx } = createHiDpiCanvas(width, height);
 
-  svg.setAttribute("width", String(width));
-  svg.setAttribute("height", String(height));
-  if (!svg.getAttribute("xmlns")) svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  prepared.setAttribute("width", String(width));
+  prepared.setAttribute("height", String(height));
+  if (!prepared.getAttribute("xmlns")) {
+    prepared.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  }
 
-  const serialized = new XMLSerializer().serializeToString(svg);
+  const serialized = new XMLSerializer().serializeToString(prepared);
   const blob = new Blob([serialized], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
 
@@ -228,6 +233,59 @@ async function rasterizeSvgToCanvas(svg: SVGElement, width: number, height: numb
   return canvas;
 }
 
+const XLINK_NS = "http://www.w3.org/1999/xlink";
+
+async function blobUrlToDataUrl(url: string): Promise<string | null> {
+  try {
+    const blob = await fetch(url).then(r => r.blob());
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("dataurl-failed"));
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Clone SVG and inline blob/http image refs so rasterization keeps photos and stamps. */
+async function prepareSvgForRaster(svg: SVGElement): Promise<SVGSVGElement> {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  const images = clone.querySelectorAll("image");
+
+  await Promise.all(
+    Array.from(images).map(async node => {
+      const href =
+        node.getAttribute("href") ??
+        node.getAttributeNS(XLINK_NS, "href") ??
+        node.getAttribute("xlink:href");
+      if (!href || href.startsWith("data:")) return;
+
+      let dataUrl: string | null = null;
+      if (href.startsWith("blob:")) {
+        dataUrl = await blobUrlToDataUrl(href);
+      } else if (href.startsWith("http") || href.startsWith("/")) {
+        try {
+          dataUrl = await blobUrlToDataUrl(href);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (!dataUrl) return;
+      node.setAttribute("href", dataUrl);
+      node.setAttributeNS(XLINK_NS, "href", dataUrl);
+    })
+  );
+
+  return clone;
+}
+
+function acceptCanvas(canvas: HTMLCanvasElement, minInk = 0.004): HTMLCanvasElement | null {
+  return isCanvasRenderable(canvas, minInk) ? canvas : null;
+}
+
 async function rasterizePageDivWithHtml2Canvas(
   pageDiv: HTMLElement,
   width: number,
@@ -245,8 +303,17 @@ async function rasterizePageDivWithHtml2Canvas(
       logging: false,
       backgroundColor: "#ffffff",
       onclone: (doc: Document) => {
-        const cloned = doc.body.querySelector("[data-ofd-page-clone]") ?? doc.body.firstElementChild;
-        if (cloned instanceof HTMLElement) enforcePageLayerOrder(cloned);
+        const host = doc.querySelector("[data-ofd-offscreen-host]");
+        const cloned =
+          host?.querySelector("[data-ofd-page-clone]") ??
+          doc.body.querySelector("[data-ofd-page-clone]") ??
+          doc.body.firstElementChild;
+        if (cloned instanceof HTMLElement) {
+          cloned.style.transform = "none";
+          cloned.style.opacity = "1";
+          cloned.style.visibility = "visible";
+          enforcePageLayerOrder(cloned);
+        }
       },
     }),
     RASTERIZE_TIMEOUT_MS,
@@ -291,7 +358,7 @@ async function compositePageLayers(
     }
   }
 
-  return painted && !isCanvasMostlyBlank(canvas) ? canvas : null;
+  return painted && isCanvasRenderable(canvas) ? canvas : null;
 }
 
 export type OfdPreviewResult = {
@@ -314,15 +381,20 @@ async function tryEmbeddedImagesFallback(file: File): Promise<HTMLCanvasElement[
   for (const blob of images) {
     try {
       const canvas = await blobToCanvas(blob);
-      if (!isCanvasMostlyBlank(canvas)) canvases.push(canvas);
+      if (isCanvasRenderable(canvas)) canvases.push(canvas);
+      else releaseCanvas(canvas);
     } catch {
       /* skip broken asset */
     }
   }
   if (canvases.length === 0) return null;
 
-  canvases.sort((a, b) => b.width * b.height - a.width * a.height);
-  if (pageCount <= 1) return [canvases[0]];
+  canvases.sort(
+    (a, b) =>
+      measureCanvasInkRatio(b) * b.width * b.height -
+      measureCanvasInkRatio(a) * a.width * a.height
+  );
+  if (pageCount <= 1) return canvases[0] ? [canvases[0]] : null;
   if (canvases.length === pageCount) return canvases;
   if (canvases.length > pageCount) return canvases.slice(0, pageCount);
   return canvases;
@@ -370,36 +442,48 @@ export async function pageDivToCanvas(
 ): Promise<HTMLCanvasElement> {
   await waitForPageResources(pageDiv);
   const { w, h } = parsePageSize(pageDiv, fallbackWidth);
+  const minInk = pageDiv.querySelector("img, image") ? 0.008 : 0.004;
+
+  const attempts: HTMLCanvasElement[] = [];
 
   const existing = pageDiv.querySelector("canvas");
   if (existing instanceof HTMLCanvasElement && existing.width > 0 && existing.height > 0) {
     const cloned = cloneCanvas(existing);
-    if (!isCanvasMostlyBlank(cloned)) return cloned;
-    releaseCanvas(cloned);
+    const accepted = acceptCanvas(cloned, minInk);
+    if (accepted) return accepted;
+    attempts.push(cloned);
+  }
+
+  // html2canvas first for complex layered DOM (photos, stamps, absolute text)
+  try {
+    const domRaster = await rasterizePageDivWithHtml2Canvas(pageDiv, w, h);
+    const accepted = acceptCanvas(domRaster, minInk);
+    if (accepted) return accepted;
+    attempts.push(domRaster);
+  } catch {
+    /* fall through */
   }
 
   const svg = pageDiv.querySelector("svg");
   if (svg instanceof SVGSVGElement) {
     try {
       const rasterized = await rasterizeSvgToCanvas(svg, w, h);
-      if (!isCanvasMostlyBlank(rasterized)) return rasterized;
-      releaseCanvas(rasterized);
+      const accepted = acceptCanvas(rasterized, minInk);
+      if (accepted) return accepted;
+      attempts.push(rasterized);
     } catch {
       /* fall through */
     }
   }
 
   const composited = await compositePageLayers(pageDiv, w, h);
-  if (composited) return composited;
-
-  try {
-    const domRaster = await rasterizePageDivWithHtml2Canvas(pageDiv, w, h);
-    if (!isCanvasMostlyBlank(domRaster)) return domRaster;
-    releaseCanvas(domRaster);
-  } catch {
-    /* fall through */
+  if (composited) {
+    const accepted = acceptCanvas(composited, minInk);
+    if (accepted) return accepted;
+    attempts.push(composited);
   }
 
+  for (const canvas of attempts) releaseCanvas(canvas);
   throw new Error("no-renderable-page");
 }
 
@@ -443,8 +527,20 @@ export async function resolveExportCanvases(
     const { canvases: fresh, partial } = await withPagesMounted(file, pages, () =>
       canvasesFromRenderedPages(pages, width, onProgress)
     );
-    const valid = fresh.filter(c => !isCanvasMostlyBlank(c));
+    const valid = fresh.filter(c => isCanvasRenderable(c));
     if (valid.length > 0) {
+      const domInk = Math.max(...valid.map(measureCanvasInkRatio));
+      const embedded = await tryEmbeddedImagesFallback(file);
+      if (embedded?.length) {
+        const embInk = Math.max(...embedded.map(measureCanvasInkRatio));
+        // Prefer full-page embedded raster when DOM render is sparse (e.g. certificates)
+        if (embInk > domInk * 1.25) {
+          onProgress?.(92, "progressExporting");
+          for (const c of valid) releaseCanvas(c);
+          return embedded.filter(c => isCanvasRenderable(c)).map(cloneCanvas);
+        }
+        for (const c of embedded) releaseCanvas(c);
+      }
       onProgress?.(92, "progressExporting");
       if (partial) onProgress?.(90, "progressPartialRaster");
       return valid.map(cloneCanvas);
@@ -483,10 +579,32 @@ async function withPagesMounted<T>(
 ): Promise<T> {
   if (pages.length === 0) return fn();
 
+  let mountWidth = DEFAULT_RENDER_WIDTH;
+  let mountHeight = 0;
+  for (const page of pages) {
+    const { w, h } = parsePageSize(page, DEFAULT_RENDER_WIDTH);
+    mountWidth = Math.max(mountWidth, w);
+    mountHeight += h;
+  }
+
   const host = document.createElement("div");
   host.setAttribute("aria-hidden", "true");
-  host.style.cssText =
-    "position:fixed;left:0;top:0;z-index:-1;visibility:hidden;pointer-events:none;overflow:hidden;width:1px;height:1px;";
+  host.dataset.ofdOffscreenHost = "";
+  host.style.cssText = [
+    "position:fixed",
+    "left:0",
+    "top:0",
+    `width:${mountWidth}px`,
+    `min-height:${mountHeight}px`,
+    "transform:translateX(-100vw)",
+    "z-index:-1",
+    "opacity:1",
+    "visibility:visible",
+    "pointer-events:none",
+    "overflow:visible",
+    "background:#ffffff",
+  ].join(";");
+
   for (const page of pages) {
     page.dataset.ofdPageClone = "";
     host.appendChild(page);
@@ -780,7 +898,7 @@ function scaleCanvasToDataUrl(canvas: HTMLCanvasElement, maxWidth: number): stri
 
 async function renderOfdThumbnailInner(file: File, width: number): Promise<string> {
   const embedded = await tryEmbeddedImagesFallback(file);
-  if (embedded?.[0] && !isCanvasMostlyBlank(embedded[0])) {
+  if (embedded?.[0] && isCanvasRenderable(embedded[0])) {
     const url = scaleCanvasToDataUrl(embedded[0], width);
     releaseCanvas(embedded[0]);
     return url;
@@ -799,7 +917,7 @@ async function renderOfdThumbnailInner(file: File, width: number): Promise<strin
   return withPagesMounted(file, [pages[0]], async () => {
     try {
       const canvas = await pageDivToCanvas(pages[0], width);
-      if (!isCanvasMostlyBlank(canvas)) {
+      if (isCanvasRenderable(canvas)) {
         const url = scaleCanvasToDataUrl(canvas, width);
         releaseCanvas(canvas);
         return url;

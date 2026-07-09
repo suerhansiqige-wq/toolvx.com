@@ -4,6 +4,7 @@
  * and aggressive GC hooks for low-end hardware.
  */
 import { clampImageDimensions, getMaxCanvasDim } from "@/utils/canvas-budget";
+import { isCanvasMostlyBlank } from "@/scripts/pdf-render";
 
 /** Yield to the main thread — prevents UI freezes on legacy Chromium / 360 Browser. */
 export function yieldToMain(): Promise<void> {
@@ -267,4 +268,69 @@ export function triggerBlobDownload(blob: Blob, filename: string): void {
 /** Max dimension for stitched long images — respects canvas-budget. */
 export function getLongImageMaxDim(): number {
   return Math.min(16384, getMaxCanvasDim() * 2);
+}
+
+/**
+ * Estimate non-white ink coverage (0–1) via grid sampling.
+ * Used to reject sparse renders that pass isCanvasMostlyBlank but lack real content.
+ */
+export function measureCanvasInkRatio(canvas: HTMLCanvasElement): number {
+  const ctx = canvas.getContext("2d");
+  if (!ctx || canvas.width < 2 || canvas.height < 2) return 0;
+
+  const grid = 16;
+  let contentPixels = 0;
+  let totalPixels = 0;
+  const cellW = Math.max(1, Math.floor(canvas.width / grid));
+  const cellH = Math.max(1, Math.floor(canvas.height / grid));
+  const sampleW = Math.min(32, cellW);
+  const sampleH = Math.min(32, cellH);
+
+  for (let gy = 0; gy < grid; gy++) {
+    for (let gx = 0; gx < grid; gx++) {
+      const x = Math.min(gx * cellW, Math.max(0, canvas.width - sampleW));
+      const y = Math.min(gy * cellH, Math.max(0, canvas.height - sampleH));
+      let data: ImageData;
+      try {
+        data = ctx.getImageData(x, y, sampleW, sampleH);
+      } catch {
+        return 0;
+      }
+      for (let i = 0; i < data.data.length; i += 4) {
+        totalPixels++;
+        const alpha = data.data[i + 3];
+        if (alpha < 8) continue;
+        const r = data.data[i];
+        const g = data.data[i + 1];
+        const b = data.data[i + 2];
+        if (r < 248 || g < 248 || b < 248) contentPixels++;
+      }
+    }
+  }
+
+  return totalPixels > 0 ? contentPixels / totalPixels : 0;
+}
+
+/** True when the canvas has enough visible ink to be a meaningful page export. */
+export function isCanvasRenderable(
+  canvas: HTMLCanvasElement,
+  minInkRatio = 0.004
+): boolean {
+  if (isCanvasMostlyBlank(canvas)) return false;
+  return measureCanvasInkRatio(canvas) >= minInkRatio;
+}
+
+/** Pick the canvas with the highest ink coverage (most complete render). */
+export function pickBestCanvas(canvases: HTMLCanvasElement[]): HTMLCanvasElement | null {
+  let best: HTMLCanvasElement | null = null;
+  let bestInk = 0;
+  for (const canvas of canvases) {
+    if (isCanvasMostlyBlank(canvas)) continue;
+    const ink = measureCanvasInkRatio(canvas);
+    if (ink > bestInk) {
+      bestInk = ink;
+      best = canvas;
+    }
+  }
+  return best;
 }
