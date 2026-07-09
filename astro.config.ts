@@ -56,7 +56,8 @@ export default defineConfig({
     },
   },
   vite: {
-    plugins: [tailwindcss()],
+    // Tailwind resolves Vite types from a nested pnpm copy; cast avoids duplicate-Vite TS errors in CI.
+    plugins: [tailwindcss() as never],
     build: {
       // Downlevel client bundles for Win7 / legacy Chrome (ES2015 ≈ Chrome 51+).
       target: "es2015",
