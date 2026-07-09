@@ -9,6 +9,7 @@ import {
   parseDocumentPages,
   parseOfdBox,
   parseOfdDocRoot,
+  resolveOfdMediaPath,
   resolveRelativePath,
 } from "@/scripts/ofd-xml-utils";
 import {
@@ -151,15 +152,16 @@ export async function buildOfdMediaIdMap(
     if (!xml) continue;
 
     for (const block of xml.matchAll(
-      /<(?:[\w-]+:)?(?:MultiMedia|Res)\b[^>]*(?:Type="Image"|Type\s*=\s*"Image")[^>]*>[\s\S]*?(?:\/>|<\/(?:[\w-]+:)?(?:MultiMedia|Res)>)/gi
+      /<(?:[\w-]+:)?MultiMedia\b[^>]*>[\s\S]*?<\/(?:[\w-]+:)?MultiMedia>/gi
     )) {
       const tag = block[0];
+      if (!/Type\s*=\s*"Image"/i.test(tag)) continue;
       const id = Number(attr(tag, "ID"));
       const mediaFile =
         tag.match(/<(?:[\w-]+:)?MediaFile[^>]*>([^<]+)<\/(?:[\w-]+:)?MediaFile>/i)?.[1] ??
         attr(tag, "MediaFile");
       if (!Number.isFinite(id) || !mediaFile) continue;
-      const fullPath = resolveRelativePath(path, mediaFile.trim());
+      const fullPath = resolveOfdMediaPath(path, xml, mediaFile.trim());
       await registerImage(fullPath, id);
     }
   }

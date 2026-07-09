@@ -338,32 +338,96 @@ async function paintLayerXml(
   imageCache: ImageCache
 ): Promise<void> {
   const portraitIdx = { value: 0 };
+  const objectRe =
+    /<(?:[\w-]+:)?(PathObject|ImageObject|TextObject)\b[\s\S]*?(?:\/>|<\/(?:[\w-]+:)?(?:PathObject|ImageObject|TextObject)>)/gi;
 
-  for (const match of layerXml.matchAll(
-    /<(?:[\w-]+:)?PathObject\b[\s\S]*?(?:\/>|<\/(?:[\w-]+:)?PathObject>)/gi
-  )) {
-    paintPathObject(g, match[0], scaleX, scaleY);
+  for (const match of layerXml.matchAll(objectRe)) {
+    const type = match[1];
+    const tag = match[0];
+    if (type === "PathObject") paintPathObject(g, tag, scaleX, scaleY);
+    else if (type === "TextObject") paintTextObject(g, tag, scaleX, scaleY, fontIdMap);
+    else if (type === "ImageObject") {
+      await paintImageObject(
+        g,
+        tag,
+        scaleX,
+        scaleY,
+        mediaMap,
+        portraitAssets,
+        imageCache,
+        portraitIdx
+      );
+    }
   }
+}
 
-  for (const match of layerXml.matchAll(
-    /<(?:[\w-]+:)?TextObject\b[\s\S]*?<\/(?:[\w-]+:)?TextObject>/gi
-  )) {
-    paintTextObject(g, match[0], scaleX, scaleY, fontIdMap);
+function extractPngBlobFromSeal(data: Uint8Array): Blob | null {
+  const pngSig = [0x89, 0x50, 0x4e, 0x47];
+  let start = -1;
+  for (let i = 0; i <= data.length - 4; i++) {
+    if (data[i] === pngSig[0] && data[i + 1] === pngSig[1] && data[i + 2] === pngSig[2] && data[i + 3] === pngSig[3]) {
+      start = i;
+      break;
+    }
   }
+  if (start < 0) return null;
 
-  for (const match of layerXml.matchAll(
-    /<(?:[\w-]+:)?ImageObject\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[\w-]+:)?ImageObject>)/gi
-  )) {
-    await paintImageObject(
-      g,
-      match[0],
-      scaleX,
-      scaleY,
-      mediaMap,
-      portraitAssets,
-      imageCache,
-      portraitIdx
-    );
+  const iend = [0x49, 0x45, 0x4e, 0x44];
+  let end = data.length;
+  for (let i = start + 8; i <= data.length - 4; i++) {
+    if (data[i] === iend[0] && data[i + 1] === iend[1] && data[i + 2] === iend[2] && data[i + 3] === iend[3]) {
+      end = Math.min(data.length, i + 8);
+      break;
+    }
+  }
+  return new Blob([data.slice(start, end)], { type: "image/png" });
+}
+
+async function paintSignatureStamps(
+  zip: JSZip,
+  g: CanvasRenderingContext2D,
+  scale: number,
+  registry: BlobUrlRegistry
+): Promise<void> {
+  for (const path of Object.keys(zip.files)) {
+    if (!/\/Signs\/Sign_\d+\/Signature\.xml$/i.test(path)) continue;
+    const xml = await readZipText(zip, path);
+    if (!xml) continue;
+
+    const boundaryRaw = xml.match(
+      /<(?:[\w-]+:)?StampAnnot\b[^>]*\bBoundary\s*=\s*"([^"]+)"/i
+    )?.[1];
+    const sealLoc =
+      xml.match(/<(?:[\w-]+:)?Seal\b[^>]*>[\s\S]*?<(?:[\w-]+:)?BaseLoc[^>]*>([^<]+)</i)?.[1]?.trim() ??
+      xml.match(/<(?:[\w-]+:)?BaseLoc[^>]*>([^<]+)</i)?.[1]?.trim();
+    if (!boundaryRaw || !sealLoc) continue;
+
+    const boundary = parseOfdBox(boundaryRaw);
+    if (!boundary) continue;
+
+    const sealPath = sealLoc.replace(/^\//, "");
+    const entry = zip.file(sealPath) ?? zip.file(sealPath.replace(/^\//, ""));
+    if (!entry || entry.dir) continue;
+
+    const sealBytes = await entry.async("uint8array");
+    const pngBlob = extractPngBlobFromSeal(sealBytes);
+    if (!pngBlob) continue;
+
+    let img: HTMLImageElement;
+    try {
+      img = await loadImage(registry.create(pngBlob));
+    } catch {
+      continue;
+    }
+
+    const left = boundary[0] * scale;
+    const top = boundary[1] * scale;
+    const width = boundary[2] * scale;
+    const height = boundary[3] * scale;
+    drawOfdImageInBoundary(g, img, left, top, width, height, null, {
+      stamp: true,
+      forceContain: true,
+    });
   }
 }
 
@@ -446,7 +510,8 @@ async function renderPage(
   templateMap: Map<number, string>,
   targetWidthPx: number,
   fontIdMap: Map<number, string>,
-  mediaPack: { map: Map<number, MediaAsset>; portraitAssets: MediaAsset[] }
+  mediaPack: { map: Map<number, MediaAsset>; portraitAssets: MediaAsset[] },
+  registry: BlobUrlRegistry
 ): Promise<HTMLCanvasElement | null> {
   const { layers, pageXml } = await collectPageLayers(
     zip,
@@ -484,6 +549,8 @@ async function renderPage(
       );
     }
   }
+
+  await paintSignatureStamps(zip, ctx, scale, registry);
 
   return isCanvasRenderable(canvas) ? canvas : null;
 }
@@ -542,7 +609,8 @@ export async function renderOfdToCanvasesNative(
       templateMap,
       options.targetWidthPx,
       fontIdMap,
-      mediaPack
+      mediaPack,
+      registry
     );
     if (canvas) canvases.push(canvas);
     await yieldToMain();

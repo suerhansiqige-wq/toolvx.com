@@ -563,7 +563,7 @@ async function tryNativeExportCanvases(
   try {
     const canvases = await renderOfdToCanvasesNative(file, mediaUrlRegistry, {
       targetWidthPx: width,
-      onProgress: pct => onProgress?.(pct, "progressRasterizing"),
+      onProgress: (pct: number) => onProgress?.(pct, "progressRasterizing"),
     });
     const valid = canvases.filter(c => isCanvasRenderable(c));
     return valid.length > 0 ? valid : null;

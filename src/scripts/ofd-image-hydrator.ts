@@ -5,6 +5,7 @@
  */
 import JSZip from "jszip";
 import { BlobUrlRegistry, mapBlendMode } from "@/scripts/ofd-render-utils";
+import { resolveOfdMediaPath } from "@/scripts/ofd-xml-utils";
 
 const IMAGE_EXT = /\.(jpe?g|png|bmp|gif|webp|tif{1,2}|svg)$/i;
 
@@ -19,18 +20,6 @@ function basename(path: string): string {
 function dirname(path: string): string {
   const idx = path.lastIndexOf("/");
   return idx >= 0 ? path.slice(0, idx + 1) : "";
-}
-
-function resolveResPath(xmlPath: string, relative: string): string {
-  const base = dirname(xmlPath);
-  const parts = (base + relative).split("/");
-  const stack: string[] = [];
-  for (const part of parts) {
-    if (!part || part === ".") continue;
-    if (part === "..") stack.pop();
-    else stack.push(part);
-  }
-  return stack.join("/");
 }
 
 function mimeFromPath(path: string): string {
@@ -72,16 +61,17 @@ export async function buildOfdMediaUrlMap(
     if (!xml) continue;
 
     for (const block of xml.matchAll(
-      /<(?:[\w-]+:)?(?:MultiMedia|Res)\b[^>]*(?:Type="Image"|Type\s*=\s*"Image")[^>]*>[\s\S]*?(?:\/>|<\/(?:[\w-]+:)?(?:MultiMedia|Res)>)/gi
+      /<(?:[\w-]+:)?MultiMedia\b[^>]*>[\s\S]*?<\/(?:[\w-]+:)?MultiMedia>/gi
     )) {
       const tag = block[0];
+      if (!/Type\s*=\s*"Image"/i.test(tag)) continue;
       const mediaId = tag.match(/\bID\s*=\s*"(\d+)"/i)?.[1];
       const mediaFile =
         tag.match(/<(?:[\w-]+:)?MediaFile[^>]*>([^<]+)<\/(?:[\w-]+:)?MediaFile>/i)?.[1] ??
         tag.match(/\bMediaFile="([^"]+)"/)?.[1];
       if (!mediaFile) continue;
 
-      const fullPath = resolveResPath(path, mediaFile.trim());
+      const fullPath = resolveOfdMediaPath(path, xml, mediaFile.trim());
       const entry = zip.file(fullPath) ?? zip.file(mediaFile.trim());
       if (!entry || entry.dir) continue;
 

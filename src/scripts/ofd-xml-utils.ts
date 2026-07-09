@@ -70,6 +70,23 @@ export function resolveRelativePath(basePath: string, relative: string): string 
   return stack.join("/");
 }
 
+/** Resolve MultiMedia MediaFile path using Res BaseLoc (e.g. Doc_0/Res/IMAGE_3.png). */
+export function resolveOfdMediaPath(
+  resXmlPath: string,
+  resXml: string,
+  mediaFile: string
+): string {
+  const trimmed = mediaFile.trim();
+  const baseLoc =
+    resXml.match(/<(?:[\w-]+:)?Res\b[^>]*\bBaseLoc\s*=\s*"([^"]+)"/i)?.[1]?.trim() ??
+    resXml.match(/\bBaseLoc\s*=\s*"([^"]+)"/i)?.[1]?.trim();
+  if (baseLoc) {
+    const docDir = dirname(resXmlPath);
+    return resolveRelativePath(docDir, `${baseLoc.replace(/\/$/, "")}/${trimmed}`);
+  }
+  return resolveRelativePath(resXmlPath, trimmed);
+}
+
 /** Collect every numeric ID declared or referenced in OFD XML fragments. */
 export function collectNumericIds(...xmlChunks: string[]): Set<number> {
   const ids = new Set<number>();
