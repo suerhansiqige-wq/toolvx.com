@@ -6,7 +6,6 @@ import {
   exportCanvasesToPngZip,
   exportPagesToHtml,
   exportPagesToSvgZip,
-  exportTextToDocx,
   extractOfdText,
   isOfdFile,
   loadMultipleOfdPreviews,
@@ -14,6 +13,7 @@ import {
   mergeOfdFiles,
   outputFilename,
   pdfFilenameFromOfd,
+  resolveExportCanvases,
 } from "@/scripts/ofd-core";
 
 type OfdToolMode = string;
@@ -92,8 +92,12 @@ async function renderPreview(pages: HTMLElement[], canvases: HTMLCanvasElement[]
   for (const canvas of canvases) {
     const wrap = document.createElement("div");
     wrap.className = "ofd-preview__page";
-    canvas.classList.add("ofd-preview__fallback-canvas");
-    wrap.appendChild(canvas);
+    const display = document.createElement("canvas");
+    display.width = canvas.width;
+    display.height = canvas.height;
+    display.classList.add("ofd-preview__fallback-canvas");
+    display.getContext("2d")?.drawImage(canvas, 0, 0);
+    wrap.appendChild(display);
     preview.appendChild(wrap);
   }
 }
@@ -145,7 +149,7 @@ async function handleFiles(files: FileList | File[]) {
   const mode = getMode();
 
   try {
-    if (mode === "to-text" || mode === "to-word") {
+    if (mode === "to-text") {
       const chunks: string[] = [];
       for (const file of currentFiles) {
         chunks.push(await extractOfdText(file));
@@ -249,22 +253,27 @@ async function runAction() {
     let blob: Blob | null = null;
     let filename = "";
 
+    const exportCanvases =
+      mode === "to-pdf" ||
+      mode === "to-image" ||
+      mode === "to-long-image" ||
+      mode === "to-web"
+        ? await resolveExportCanvases(file, currentPages, currentCanvases)
+        : currentCanvases;
+
     switch (mode) {
       case "to-pdf": {
-        if (currentCanvases.length === 0) throw new Error("no-visual");
-        blob = await exportCanvasesToPdf(currentCanvases);
+        blob = await exportCanvasesToPdf(exportCanvases);
         filename = pdfFilenameFromOfd(file.name);
         break;
       }
       case "to-image": {
-        if (currentCanvases.length === 0) throw new Error("no-visual");
-        blob = await exportCanvasesToPngZip(currentCanvases, file.name.replace(/\.ofd$/i, ""));
+        blob = await exportCanvasesToPngZip(exportCanvases, file.name.replace(/\.ofd$/i, ""));
         filename = outputFilename(file.name, "zip");
         break;
       }
       case "to-long-image": {
-        if (currentCanvases.length === 0) throw new Error("no-visual");
-        blob = await exportCanvasesToLongImage(currentCanvases);
+        blob = await exportCanvasesToLongImage(exportCanvases);
         filename = outputFilename(file.name, "png");
         break;
       }
@@ -275,19 +284,13 @@ async function runAction() {
         break;
       }
       case "to-web": {
-        if (currentCanvases.length === 0) throw new Error("no-visual");
-        blob = await exportPagesToHtml(currentPages, file.name.replace(/\.ofd$/i, ""), currentCanvases);
+        blob = await exportPagesToHtml(currentPages, file.name.replace(/\.ofd$/i, ""), exportCanvases);
         filename = outputFilename(file.name, "html");
         break;
       }
       case "to-text": {
         blob = new Blob([extractedText], { type: "text/plain;charset=utf-8" });
         filename = outputFilename(file.name, "txt");
-        break;
-      }
-      case "to-word": {
-        blob = await exportTextToDocx(extractedText, file.name.replace(/\.ofd$/i, ""));
-        filename = outputFilename(file.name, "docx");
         break;
       }
       case "merge": {

@@ -18,7 +18,6 @@ export type OfdToolMode =
   | "to-web"
   | "to-text"
   | "compress"
-  | "to-word"
   | "reader"
   | "to-long-image";
 
@@ -102,13 +101,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "rose",
     icon: "compress",
     mode: "compress",
-  },
-  {
-    slug: "ofd-to-word",
-    i18nKey: "ofdToWord",
-    accent: "amber",
-    icon: "word",
-    mode: "to-word",
   },
   {
     slug: "ofd-reader",

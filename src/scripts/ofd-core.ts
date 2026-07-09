@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { isCanvasMostlyBlank } from "@/scripts/pdf-render";
 
 const OFD_ACCEPT = ".ofd,application/ofd,application/octet-stream";
 const DEFAULT_RENDER_WIDTH = 794;
@@ -142,6 +143,22 @@ function decodeXmlText(value: string): string {
     .trim();
 }
 
+function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
+  const clone = document.createElement("canvas");
+  clone.width = source.width;
+  clone.height = source.height;
+  const ctx = clone.getContext("2d");
+  if (!ctx) throw new Error("canvas-context");
+  ctx.drawImage(source, 0, 0);
+  return clone;
+}
+
+async function waitForPaint(): Promise<void> {
+  await new Promise<void>(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
 async function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
   const url = URL.createObjectURL(blob);
   try {
@@ -206,18 +223,53 @@ export async function pageDivToCanvas(
   pageDiv: HTMLElement,
   fallbackWidth = DEFAULT_RENDER_WIDTH
 ): Promise<HTMLCanvasElement> {
+  await waitForPaint();
+
   const existing = pageDiv.querySelector("canvas");
-  if (existing instanceof HTMLCanvasElement) {
-    return existing;
+  if (existing instanceof HTMLCanvasElement && existing.width > 0 && existing.height > 0) {
+    const cloned = cloneCanvas(existing);
+    if (!isCanvasMostlyBlank(cloned)) return cloned;
   }
 
   const svg = pageDiv.querySelector("svg");
   if (svg instanceof SVGSVGElement) {
     const { w, h } = parsePageSize(pageDiv, fallbackWidth);
-    return rasterizeSvgToCanvas(svg, w, h);
+    const rasterized = await rasterizeSvgToCanvas(svg, w, h);
+    if (!isCanvasMostlyBlank(rasterized)) return rasterized;
   }
 
   throw new Error("no-renderable-page");
+}
+
+/** Fresh canvases for export — re-rasterize pages or fall back to embedded images. */
+export async function resolveExportCanvases(
+  file: File,
+  pages: HTMLElement[],
+  cached: HTMLCanvasElement[]
+): Promise<HTMLCanvasElement[]> {
+  if (pages.length > 0) {
+    const fresh: HTMLCanvasElement[] = [];
+    for (const page of pages) {
+      try {
+        fresh.push(await pageDivToCanvas(page));
+      } catch {
+        // try next page
+      }
+    }
+    if (fresh.length > 0 && !fresh.every(isCanvasMostlyBlank)) return fresh;
+  }
+
+  const validCached = cached.filter(c => c.width > 0 && c.height > 0 && !isCanvasMostlyBlank(c));
+  if (validCached.length > 0) return validCached.map(cloneCanvas);
+
+  const { canvases } = await loadOfdPreview(file);
+  const validReloaded = canvases.filter(c => !isCanvasMostlyBlank(c));
+  if (validReloaded.length > 0) return validReloaded.map(cloneCanvas);
+
+  const imageCanvases = await canvasesFromOfdImages(file);
+  if (imageCanvases.length > 0) return imageCanvases;
+
+  throw new Error("no-visual");
 }
 
 export async function parseAndRenderOfd(
@@ -262,9 +314,23 @@ export async function loadOfdPreview(
     const { pages, docs } = await parseAndRenderOfd(file, width);
     const canvases: HTMLCanvasElement[] = [];
     for (const page of pages) {
-      canvases.push(await pageDivToCanvas(page, width));
+      try {
+        canvases.push(await pageDivToCanvas(page, width));
+      } catch {
+        // page may lack raster output
+      }
     }
-    return { pages, canvases, docs, usedImageFallback: false };
+    if (canvases.length > 0 && !canvases.every(isCanvasMostlyBlank)) {
+      return { pages, canvases, docs, usedImageFallback: false };
+    }
+    const fallback = await canvasesFromOfdImages(file);
+    if (fallback.length > 0) {
+      return { pages, canvases: fallback, docs, usedImageFallback: true };
+    }
+    if (canvases.length > 0) {
+      return { pages, canvases, docs, usedImageFallback: false };
+    }
+    throw new Error("no-visual");
   } catch {
     const canvases = await canvasesFromOfdImages(file);
     if (canvases.length === 0) throw new Error("no-visual");
