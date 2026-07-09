@@ -1,0 +1,148 @@
+---
+import { ofdToolIconPaths, type OfdToolAccent } from "@/data/ofdToolsRegistry";
+
+type Props = {
+  icon: string;
+  accent: OfdToolAccent;
+  size?: "sm" | "md";
+};
+
+const { icon, accent, size = "md" } = Astro.props;
+---
+
+<span
+  class:list={[
+    "ofd-icon-badge",
+    `ofd-icon-badge--${accent}`,
+    size === "sm" && "ofd-icon-badge--sm",
+  ]}
+  aria-hidden="true"
+>
+  <span class="ofd-icon-badge__shine"></span>
+  <span class="ofd-icon-badge__floor"></span>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2.25"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="ofd-icon-badge__svg"
+    set:html={ofdToolIconPaths[icon] ?? ofdToolIconPaths.pdf}
+  />
+</span>
+
+<style>
+  .ofd-icon-badge {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.7rem;
+    transform: translateZ(0);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 58%, transparent),
+      inset 0 -2px 0 color-mix(in oklab, black 14%, transparent),
+      0 1px 2px color-mix(in oklab, black 10%, transparent),
+      0 6px 14px color-mix(in oklab, black 16%, transparent);
+  }
+
+  .ofd-icon-badge--sm {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.6rem;
+  }
+
+  .ofd-icon-badge__shine {
+    position: absolute;
+    inset: 1px 2px auto;
+    height: 46%;
+    border-radius: 0.55rem 0.55rem 45% 45%;
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, white 64%, transparent) 0%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  .ofd-icon-badge--sm .ofd-icon-badge__shine {
+    border-radius: 0.45rem 0.45rem 45% 45%;
+  }
+
+  .ofd-icon-badge__floor {
+    position: absolute;
+    inset: auto 3px 2px;
+    height: 3px;
+    border-radius: 999px;
+    background: color-mix(in oklab, black 20%, transparent);
+    filter: blur(2px);
+    opacity: 0.38;
+    pointer-events: none;
+  }
+
+  .ofd-icon-badge__svg {
+    position: relative;
+    z-index: 1;
+    width: 0.95rem;
+    height: 0.95rem;
+    color: white;
+    filter: drop-shadow(0 1px 1px color-mix(in oklab, black 30%, transparent));
+  }
+
+  .ofd-icon-badge--sm .ofd-icon-badge__svg {
+    width: 0.82rem;
+    height: 0.82rem;
+  }
+
+  :global(.dark) .ofd-icon-badge {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 18%, transparent),
+      inset 0 -2px 0 color-mix(in oklab, black 30%, transparent),
+      0 4px 12px color-mix(in oklab, black 38%, transparent);
+  }
+
+  .ofd-icon-badge--sky {
+    background: linear-gradient(145deg, #7dd3fc 0%, #0284c7 45%, #075985 100%);
+  }
+
+  .ofd-icon-badge--blue {
+    background: linear-gradient(145deg, #93c5fd 0%, #2563eb 45%, #1e3a8a 100%);
+  }
+
+  .ofd-icon-badge--indigo {
+    background: linear-gradient(145deg, #a5b4fc 0%, #4f46e5 45%, #312e81 100%);
+  }
+
+  .ofd-icon-badge--cyan {
+    background: linear-gradient(145deg, #67e8f9 0%, #0891b2 45%, #155e75 100%);
+  }
+
+  .ofd-icon-badge--teal {
+    background: linear-gradient(145deg, #5eead4 0%, #0d9488 45%, #115e59 100%);
+  }
+
+  .ofd-icon-badge--violet {
+    background: linear-gradient(145deg, #c4b5fd 0%, #7c3aed 45%, #4c1d95 100%);
+  }
+
+  .ofd-icon-badge--rose {
+    background: linear-gradient(145deg, #fda4af 0%, #e11d48 45%, #9f1239 100%);
+  }
+
+  .ofd-icon-badge--amber {
+    background: linear-gradient(145deg, #fcd34d 0%, #d97706 45%, #92400e 100%);
+  }
+
+  .ofd-icon-badge--emerald {
+    background: linear-gradient(145deg, #6ee7b7 0%, #059669 45%, #065f46 100%);
+  }
+
+  .ofd-icon-badge--slate {
+    background: linear-gradient(145deg, #94a3b8 0%, #475569 45%, #1e293b 100%);
+  }
+</style>
