@@ -41,6 +41,7 @@ import {
   mergeOfdInWorker,
 } from "@/scripts/ofd-zip-client";
 import { getOfdPageCountFromBuffer } from "@/scripts/ofd-zip-ops";
+import { renderOfdToCanvasesNative } from "@/scripts/ofd-native-renderer";
 
 export type OfdProgressReporter = (percent: number, stageKey: string) => void;
 
@@ -554,18 +555,42 @@ async function canvasesFromRenderedPages(
   return { canvases, partial: failures > 0 && canvases.length > 0 };
 }
 
+async function tryNativeExportCanvases(
+  file: File,
+  width: number,
+  onProgress?: OfdProgressReporter
+): Promise<HTMLCanvasElement[] | null> {
+  try {
+    const canvases = await renderOfdToCanvasesNative(file, mediaUrlRegistry, {
+      targetWidthPx: width,
+      onProgress: pct => onProgress?.(pct, "progressRasterizing"),
+    });
+    const valid = canvases.filter(c => isCanvasRenderable(c));
+    return valid.length > 0 ? valid : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveExportCanvases(
   file: File,
   onProgress?: OfdProgressReporter
 ): Promise<HTMLCanvasElement[]> {
-  onProgress?.(8, "progressLoadingLib");
-  await withTimeout(loadOfdModule(), 30_000, "ofd-script-load-failed");
-
-  onProgress?.(18, "progressFonts");
+  onProgress?.(12, "progressFonts");
   await loadOfdEmbeddedFonts(file);
 
-  onProgress?.(28, "progressParsing");
+  onProgress?.(22, "progressParsing");
   const width = renderWidth();
+
+  const native = await tryNativeExportCanvases(file, width, onProgress);
+  if (native?.length) {
+    onProgress?.(92, "progressExporting");
+    return native.map(cloneCanvas);
+  }
+
+  onProgress?.(28, "progressLoadingLib");
+  await withTimeout(loadOfdModule(), 30_000, "ofd-script-load-failed");
+
   const { pages } = await parseAndRenderOfd(file, width, onProgress, { skipFonts: true });
 
   if (pages.length > 0) {
@@ -722,8 +747,24 @@ export async function loadOfdPreview(
 ): Promise<OfdPreviewResult> {
   if (!isOfdFile(file)) throw new Error("invalid-ofd");
 
+  if (!options?.skipFonts) {
+    onProgress?.(12, "progressFonts");
+    await loadOfdEmbeddedFonts(file);
+  }
+
   const metas = await loadPageContentMeta(file);
   const dynamicItems = metas.reduce((n, m) => n + countDynamicContentItems(m.contentXml), 0);
+
+  const native = await tryNativeExportCanvases(file, width, onProgress);
+  if (native?.length) {
+    return {
+      pages: [],
+      canvases: native.map(cloneCanvas),
+      docs: [],
+      usedImageFallback: false,
+      partialRaster: false,
+    };
+  }
 
   try {
     const { pages, docs } = await parseAndRenderOfd(file, width, onProgress, options);
@@ -957,9 +998,16 @@ function scaleCanvasToDataUrl(canvas: HTMLCanvasElement, maxWidth: number): stri
 }
 
 async function renderOfdThumbnailInner(file: File, width: number): Promise<string> {
-  await loadOfdModule();
   await loadOfdEmbeddedFonts(file);
 
+  const native = await tryNativeExportCanvases(file, width);
+  if (native?.[0]) {
+    const dataUrl = scaleCanvasToDataUrl(native[0], width);
+    for (const c of native) releaseCanvas(c);
+    if (dataUrl) return dataUrl;
+  }
+
+  await loadOfdModule();
   const { pages } = await withTimeout(
     parseAndRenderOfd(file, width, undefined, { skipFonts: true }),
     20_000,
