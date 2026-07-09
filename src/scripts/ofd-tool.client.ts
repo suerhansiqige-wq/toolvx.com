@@ -197,32 +197,28 @@ async function loadThumbPreview(
   index: number,
   generation: number
 ) {
+  let src = "";
   try {
-    const src = await renderOfdThumbnail(file);
-    if (generation !== thumbGeneration) return;
-
-    visual.replaceChildren();
-    if (src) {
-      const img = document.createElement("img");
-      img.src = src;
-      img.alt = file.name;
-      img.className = "size-full object-contain object-center";
-      img.draggable = false;
-      visual.appendChild(img);
-    } else {
-      const iconWrap = document.createElement("div");
-      iconWrap.innerHTML = ofdFileIcon();
-      visual.appendChild(iconWrap.firstElementChild ?? iconWrap);
-    }
-    visual.appendChild(createDeleteButton(() => removeFileAt(index)));
+    src = await renderOfdThumbnail(file);
   } catch {
-    if (generation !== thumbGeneration) return;
-    visual.replaceChildren();
+    src = "";
+  }
+
+  if (generation !== thumbGeneration) return;
+
+  visual.replaceChildren();
+  if (src) {
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = file.name;
+    img.draggable = false;
+    visual.appendChild(img);
+  } else {
     const iconWrap = document.createElement("div");
     iconWrap.innerHTML = ofdFileIcon();
     visual.appendChild(iconWrap.firstElementChild ?? iconWrap);
-    visual.appendChild(createDeleteButton(() => removeFileAt(index)));
   }
+  visual.appendChild(createDeleteButton(() => removeFileAt(index)));
 }
 
 function renderFileThumbs() {

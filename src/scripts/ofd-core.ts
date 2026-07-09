@@ -858,6 +858,61 @@ export function outputFilename(sourceName: string, ext: string): string {
   return `${baseNameFromOfd(sourceName)}.${ext}`;
 }
 
+function scaleCanvasToDataUrl(canvas: HTMLCanvasElement, maxWidth: number): string {
+  if (canvas.width <= 0 || canvas.height <= 0) return "";
+  try {
+    if (canvas.width <= maxWidth) return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return "";
+  }
+
+  const scale = maxWidth / canvas.width;
+  const thumb = document.createElement("canvas");
+  thumb.width = maxWidth;
+  thumb.height = Math.max(1, Math.round(canvas.height * scale));
+  const ctx = thumb.getContext("2d");
+  if (!ctx) return "";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, thumb.width, thumb.height);
+  ctx.drawImage(canvas, 0, 0, thumb.width, thumb.height);
+  try {
+    return thumb.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return "";
+  }
+}
+
+async function rasterizeFirstPageQuick(
+  pageDiv: HTMLElement,
+  width: number
+): Promise<HTMLCanvasElement | null> {
+  await waitForPageResources(pageDiv);
+
+  const existing = pageDiv.querySelector("canvas");
+  if (existing instanceof HTMLCanvasElement && existing.width > 0 && existing.height > 0) {
+    const cloned = cloneCanvas(existing);
+    if (!isCanvasMostlyBlank(cloned)) return cloned;
+  }
+
+  const svg = pageDiv.querySelector("svg");
+  if (svg instanceof SVGSVGElement) {
+    const { w, h } = parsePageSize(pageDiv, width);
+    try {
+      const rasterized = await rasterizeSvgToCanvas(svg, w, h);
+      if (!isCanvasMostlyBlank(rasterized)) return rasterized;
+    } catch {
+      /* try html2canvas next */
+    }
+  }
+
+  try {
+    const { w, h } = parsePageSize(pageDiv, width);
+    return await rasterizePageDivWithHtml2Canvas(pageDiv, w, h);
+  } catch {
+    return null;
+  }
+}
+
 /** Low-resolution first-page preview for dropzone thumbnails. */
 export async function renderOfdThumbnail(
   file: File,
@@ -865,16 +920,42 @@ export async function renderOfdThumbnail(
 ): Promise<string> {
   if (!isOfdFile(file)) return "";
 
+  const THUMB_TIMEOUT_MS = 25_000;
+
   try {
-    await withTimeout(loadOfdModule(), 30_000, "ofd-script-load-failed");
-    await loadOfdEmbeddedFonts(file);
-    const { canvases } = await loadOfdPreview(file, width);
-    const canvas = canvases.find(c => !isCanvasMostlyBlank(c));
-    if (!canvas) return "";
-    return canvas.toDataURL("image/jpeg", 0.85);
+    return await withTimeout(renderOfdThumbnailInner(file, width), THUMB_TIMEOUT_MS, "timeout");
   } catch {
     return "";
   }
+}
+
+async function renderOfdThumbnailInner(file: File, width: number): Promise<string> {
+  try {
+    const images = await extractOfdImages(file);
+    if (images.length > 0) {
+      const canvas = await blobToCanvas(images[0]);
+      if (!isCanvasMostlyBlank(canvas)) return scaleCanvasToDataUrl(canvas, width);
+    }
+  } catch {
+    /* continue with OFD render */
+  }
+
+  await loadOfdModule();
+  await loadOfdEmbeddedFonts(file);
+
+  const { pages } = await withTimeout(parseAndRenderOfd(file, width), 20_000, "timeout");
+  if (pages.length === 0) {
+    const singleImage = await trySingleImageFallback(file);
+    const canvas = singleImage?.[0];
+    if (canvas && !isCanvasMostlyBlank(canvas)) return scaleCanvasToDataUrl(canvas, width);
+    return "";
+  }
+
+  return withPagesMounted([pages[0]], async () => {
+    const canvas = await rasterizeFirstPageQuick(pages[0], width);
+    if (!canvas || isCanvasMostlyBlank(canvas)) return "";
+    return scaleCanvasToDataUrl(canvas, width);
+  });
 }
 
 export { DEFAULT_RENDER_WIDTH };
