@@ -46,6 +46,7 @@ export type UIStrings = {
     search: string;
     tools: string;
     redact: string;
+    ofdTools: string;
   };
   post: {
     publishedAt: string;
@@ -129,6 +130,7 @@ export type Messages = {
       search: string;
       tools: string;
       redact: string;
+      ofdTools: string;
     };
     footer: {
       copyright: string;
@@ -298,4 +300,13 @@ export type Messages = {
     seoFaqHeading: string;
   };
   tools: Record<string, ToolMessages>;
+  ofd: {
+    hub: {
+      title: string;
+      description: string;
+      ariaLabel: string;
+      localBadge: string;
+    };
+    tools: Record<string, { title: string; desc: string }>;
+  };
 };

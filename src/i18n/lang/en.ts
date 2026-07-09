@@ -10,6 +10,7 @@ export default {
     search: "Search",
     tools: "PDF Tools",
     redact: "Redact",
+    ofdTools: "OFD Tools",
   },
   post: {
     publishedAt: "Published on",

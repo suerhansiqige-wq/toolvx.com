@@ -1,0 +1,346 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import {
+  ofdToolIconPaths,
+  ofdToolsRegistry,
+  type OfdToolAccent,
+} from "@/data/ofdToolsRegistry";
+import { catalogs, type LocaleCode } from "@/i18n/messages";
+
+type Props = {
+  locale?: string;
+};
+
+const { locale = "en" } = Astro.props;
+const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
+const hub = catalog.ofd.hub;
+---
+
+<nav class="ofd-hub" aria-label={hub.ariaLabel} data-i18n-aria-label="ofd.hub.ariaLabel">
+  <div class="ofd-hub__grid">
+    {
+      ofdToolsRegistry.map(tool => {
+        const copy = catalog.ofd.tools[tool.i18nKey as keyof typeof catalog.ofd.tools];
+        const href = getRelativeLocaleUrl(locale, `ofd-tools/${tool.slug}`);
+        const titleKey = `ofd.tools.${tool.i18nKey}.title`;
+        const descKey = `ofd.tools.${tool.i18nKey}.desc`;
+
+        return (
+          <a
+            href={href}
+            class:list={["ofd-hub__tile", `ofd-hub__tile--${tool.accent as OfdToolAccent}`]}
+          >
+            <span class="ofd-hub__pattern" aria-hidden="true"></span>
+            <span class="ofd-hub__depth" aria-hidden="true"></span>
+            <span class="ofd-hub__flash" aria-hidden="true"></span>
+            <span class="ofd-hub__gloss" aria-hidden="true"></span>
+            <span class="ofd-hub__art">
+              <span class="ofd-hub__icon-plinth">
+                <svg
+                  class="ofd-hub__icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.85"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  set:html={ofdToolIconPaths[tool.icon]}
+                />
+              </span>
+              <span class="ofd-hub__label" data-i18n={titleKey}>
+                {copy.title}
+              </span>
+              <span class="ofd-hub__desc" data-i18n={descKey}>
+                {copy.desc}
+              </span>
+            </span>
+          </a>
+        );
+      })
+    }
+  </div>
+</nav>
+
+<style>
+  .ofd-hub {
+    perspective: 900px;
+  }
+
+  .ofd-hub__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .ofd-hub__tile {
+    position: relative;
+    display: flex;
+    min-height: 8.5rem;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1rem;
+    padding: 1rem 0.65rem 1.05rem;
+    text-decoration: none;
+    color: #fff;
+    cursor: pointer;
+    isolation: isolate;
+    transform: translateZ(0);
+    box-shadow:
+      inset 0 2px 0 color-mix(in oklab, white 42%, transparent),
+      inset 0 -4px 8px color-mix(in oklab, black 22%, transparent),
+      0 4px 0 color-mix(in oklab, black 18%, transparent),
+      0 10px 22px color-mix(in oklab, black 28%, transparent);
+    transition:
+      transform 0.22s ease,
+      box-shadow 0.22s ease;
+  }
+
+  .ofd-hub__tile--sky {
+    background: linear-gradient(155deg, #7dd3fc 0%, #0284c7 48%, #075985 100%);
+  }
+
+  .ofd-hub__tile--blue {
+    background: linear-gradient(155deg, #93c5fd 0%, #2563eb 48%, #1e3a8a 100%);
+  }
+
+  .ofd-hub__tile--indigo {
+    background: linear-gradient(155deg, #a5b4fc 0%, #4f46e5 48%, #312e81 100%);
+  }
+
+  .ofd-hub__tile--cyan {
+    background: linear-gradient(155deg, #67e8f9 0%, #0891b2 48%, #155e75 100%);
+  }
+
+  .ofd-hub__tile--teal {
+    background: linear-gradient(155deg, #5eead4 0%, #0d9488 48%, #115e59 100%);
+  }
+
+  .ofd-hub__tile--violet {
+    background: linear-gradient(155deg, #c4b5fd 0%, #7c3aed 48%, #4c1d95 100%);
+  }
+
+  .ofd-hub__tile--rose {
+    background: linear-gradient(155deg, #fda4af 0%, #e11d48 48%, #9f1239 100%);
+  }
+
+  .ofd-hub__tile--amber {
+    background: linear-gradient(155deg, #fcd34d 0%, #d97706 48%, #92400e 100%);
+  }
+
+  .ofd-hub__tile--emerald {
+    background: linear-gradient(155deg, #6ee7b7 0%, #059669 48%, #065f46 100%);
+  }
+
+  .ofd-hub__tile--slate {
+    background: linear-gradient(155deg, #94a3b8 0%, #475569 48%, #1e293b 100%);
+  }
+
+  .ofd-hub__tile--sky .ofd-hub__pattern,
+  .ofd-hub__tile--blue .ofd-hub__pattern,
+  .ofd-hub__tile--cyan .ofd-hub__pattern {
+    background-image:
+      linear-gradient(color-mix(in oklab, white 8%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklab, white 8%, transparent) 1px, transparent 1px);
+    background-size: 12px 12px;
+  }
+
+  .ofd-hub__tile--indigo .ofd-hub__pattern,
+  .ofd-hub__tile--violet .ofd-hub__pattern {
+    background-image: radial-gradient(
+      circle,
+      color-mix(in oklab, white 11%, transparent) 1.5px,
+      transparent 1.5px
+    );
+    background-size: 16px 16px;
+  }
+
+  .ofd-hub__tile--teal .ofd-hub__pattern,
+  .ofd-hub__tile--emerald .ofd-hub__pattern {
+    background-image: repeating-linear-gradient(
+      -40deg,
+      transparent,
+      transparent 9px,
+      color-mix(in oklab, white 7%, transparent) 9px,
+      color-mix(in oklab, white 7%, transparent) 10px
+    );
+  }
+
+  .ofd-hub__tile--rose .ofd-hub__pattern,
+  .ofd-hub__tile--amber .ofd-hub__pattern,
+  .ofd-hub__tile--slate .ofd-hub__pattern {
+    background-image:
+      radial-gradient(circle at 80% 20%, color-mix(in oklab, white 18%, transparent) 0%, transparent 30%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 7px,
+        color-mix(in oklab, white 7%, transparent) 7px,
+        color-mix(in oklab, white 7%, transparent) 8px
+      );
+  }
+
+  .ofd-hub__pattern {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .ofd-hub__depth {
+    position: absolute;
+    inset: auto 0 0;
+    height: 40%;
+    background: linear-gradient(180deg, transparent 0%, color-mix(in oklab, black 30%, transparent) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .ofd-hub__gloss {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      148deg,
+      color-mix(in oklab, white 34%, transparent) 0%,
+      transparent 40%,
+      color-mix(in oklab, black 10%, transparent) 100%
+    );
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .ofd-hub__flash {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      115deg,
+      transparent 30%,
+      color-mix(in oklab, white 55%, transparent) 50%,
+      transparent 70%
+    );
+    opacity: 0;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  .ofd-hub__tile:hover .ofd-hub__flash,
+  .ofd-hub__tile:focus-visible .ofd-hub__flash {
+    animation: ofd-hub-flash 0.7s ease-in-out;
+  }
+
+  .ofd-hub__tile:hover,
+  .ofd-hub__tile:focus-visible {
+    transform: translateY(-4px) rotateX(3deg) scale(1.015);
+    box-shadow:
+      inset 0 2px 0 color-mix(in oklab, white 48%, transparent),
+      0 6px 0 color-mix(in oklab, black 16%, transparent),
+      0 16px 28px color-mix(in oklab, black 32%, transparent);
+  }
+
+  .ofd-hub__tile:focus-visible {
+    outline: 2px solid color-mix(in oklab, white 78%, transparent);
+    outline-offset: 3px;
+  }
+
+  @keyframes ofd-hub-flash {
+    0% {
+      opacity: 0;
+      transform: translateX(-30%);
+    }
+    22% {
+      opacity: 0.75;
+    }
+    45% {
+      opacity: 0.12;
+      transform: translateX(10%);
+    }
+    68% {
+      opacity: 0.55;
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(35%);
+    }
+  }
+
+  .ofd-hub__art {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    text-align: center;
+  }
+
+  .ofd-hub__icon-plinth {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.8rem;
+    background: linear-gradient(
+      145deg,
+      color-mix(in oklab, white 38%, transparent) 0%,
+      color-mix(in oklab, white 8%, transparent) 100%
+    );
+    box-shadow:
+      inset 0 2px 5px color-mix(in oklab, white 55%, transparent),
+      inset 0 -3px 6px color-mix(in oklab, black 18%, transparent),
+      0 6px 14px color-mix(in oklab, black 28%, transparent);
+  }
+
+  .ofd-hub__icon {
+    width: 58%;
+    height: 58%;
+    color: #fff;
+    filter: drop-shadow(0 2px 4px color-mix(in oklab, black 30%, transparent));
+  }
+
+  .ofd-hub__label {
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 3px color-mix(in oklab, black 28%, transparent);
+  }
+
+  .ofd-hub__desc {
+    font-size: 0.7rem;
+    line-height: 1.35;
+    color: color-mix(in oklab, white 88%, transparent);
+    text-shadow: 0 1px 2px color-mix(in oklab, black 22%, transparent);
+  }
+
+  @media (min-width: 640px) {
+    .ofd-hub__grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+
+    .ofd-hub__tile {
+      min-height: 9.25rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .ofd-hub__grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.9rem;
+    }
+
+    .ofd-hub__tile {
+      min-height: 10rem;
+      padding: 1.1rem 0.7rem 1.15rem;
+    }
+
+    .ofd-hub__label {
+      font-size: 0.98rem;
+    }
+  }
+</style>

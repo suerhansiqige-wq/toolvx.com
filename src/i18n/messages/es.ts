@@ -18,6 +18,7 @@ export const es: Messages = {
       search: "Buscar",
       tools: "Herramientas PDF",
       redact: "Redactar",
+      ofdTools: "Herramientas OFD",
     },
     footer: {
       copyright: "Copyright",

@@ -1,5 +1,6 @@
 import type { Messages } from "@/i18n/types";
 import { blogZh } from "./blog";
+import { ofdZh } from "./ofd";
 import { attachSeoRich } from "@/i18n/seo-rich/attach";
 import { seoRichZh } from "@/i18n/seo-rich/zh";
 
@@ -52,6 +53,7 @@ export const zh: Messages = {
       search: "搜索",
       tools: "PDF工具",
       redact: "脱敏",
+      ofdTools: "OFD 工具箱",
     },
     footer: {
       copyright: "版权",
@@ -531,4 +533,5 @@ export const zh: Messages = {
     seoRichZh,
     { locale: "zh" }
   ),
+  ofd: ofdZh,
 };
