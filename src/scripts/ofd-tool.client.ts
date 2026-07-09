@@ -11,18 +11,24 @@ import {
   mergeOfdFiles,
   outputFilename,
   pdfFilenameFromOfd,
+  renderOfdThumbnail,
   resolveExportCanvases,
   type OfdProgressReporter,
 } from "@/scripts/ofd-core";
+import { createLegacyFilePicker } from "@/scripts/file-input";
 import { formatBytes } from "@/scripts/tools";
-import { openFileInput } from "@/scripts/file-input";
 
 type OfdToolMode = string;
+
+const THUMB_ITEM_WIDTH = "w-[132px]";
+const THUMB_ROW_CLASS =
+  "dropzone-thumbs-scroll flex min-h-[12rem] min-w-0 w-full flex-1 flex-nowrap items-stretch gap-4 overflow-x-auto px-1 pt-1";
 
 let currentFiles: File[] = [];
 let extractedText = "";
 let outputBlob: Blob | null = null;
 let busy = false;
+let thumbGeneration = 0;
 
 function $(id: string) {
   return document.getElementById(id);
@@ -52,11 +58,18 @@ function setStatusMessage(message: string, isError = false) {
   el.classList.toggle("text-muted-foreground", !isError);
 }
 
-function setProgress(percent: number, stageKey?: string) {
-  const area = $("ofd-progress-area");
-  const bar = $("ofd-progress-bar");
-  const track = $("ofd-progress-track");
-  const label = $("ofd-progress-label");
+function getThumbCard(index = 0): HTMLElement | null {
+  return document.querySelector(`[data-ofd-thumb-index="${index}"]`);
+}
+
+function setProgress(percent: number, stageKey?: string, thumbIndex = 0) {
+  const card = getThumbCard(thumbIndex);
+  if (!card) return;
+
+  const area = card.querySelector<HTMLElement>(".ofd-thumb-progress");
+  const bar = card.querySelector<HTMLElement>(".ofd-thumb-progress__bar");
+  const track = card.querySelector<HTMLElement>(".ofd-thumb-progress__track");
+  const label = card.querySelector<HTMLElement>(".ofd-thumb-progress__label");
   if (!area || !bar || !label) return;
 
   const clamped = Math.min(100, Math.max(0, Math.round(percent)));
@@ -66,22 +79,24 @@ function setProgress(percent: number, stageKey?: string) {
   label.textContent = stageKey ? t(wsKey(stageKey)) : "";
 }
 
-function hideProgress() {
-  $("ofd-progress-area")?.classList.add("hidden");
+function hideProgress(thumbIndex = 0) {
+  getThumbCard(thumbIndex)?.querySelector(".ofd-thumb-progress")?.classList.add("hidden");
 }
 
-function makeProgressReporter(): OfdProgressReporter {
-  return (percent, stageKey) => setProgress(percent, stageKey);
+function hideAllProgress() {
+  document.querySelectorAll(".ofd-thumb-progress").forEach(el => el.classList.add("hidden"));
+}
+
+function makeProgressReporter(thumbIndex = 0): OfdProgressReporter {
+  return (percent, stageKey) => setProgress(percent, stageKey, thumbIndex);
 }
 
 function setBusy(next: boolean) {
   busy = next;
   const actionBtn = $("ofd-action-btn") as HTMLButtonElement | null;
   const input = $("ofd-file-input") as HTMLInputElement | null;
-  const addBtn = $("ofd-add-file-btn") as HTMLButtonElement | null;
   if (actionBtn) actionBtn.disabled = next || currentFiles.length === 0;
   if (input) input.disabled = next;
-  if (addBtn) addBtn.disabled = next;
 }
 
 function resetOutput() {
@@ -93,66 +108,184 @@ function resetOutput() {
   }
 }
 
-function renderFileChips() {
+function ofdFileIcon(): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-10 text-violet-500" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M10 13h4M10 17h2"/></svg>`;
+}
+
+function createDeleteButton(onRemove: () => void): HTMLButtonElement {
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className =
+    "dropzone-thumb-remove interactive absolute end-1 top-1 z-30 flex size-8 items-center justify-center rounded-full border-2 border-white bg-rose-500 font-bold text-white shadow-lg ring-2 ring-rose-500/35 transition hover:scale-110 hover:bg-rose-600 dark:border-rose-950";
+  deleteBtn.setAttribute("aria-label", t(wsKey("removeFile")));
+  deleteBtn.textContent = "×";
+  deleteBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    onRemove();
+  });
+  return deleteBtn;
+}
+
+function createAddCard(): HTMLButtonElement {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.id = "ofd-add-file-btn";
+  card.className = `dropzone-add-card interactive flex min-h-[12rem] ${THUMB_ITEM_WIDTH} shrink-0 flex-col items-center justify-center gap-2 self-stretch rounded-xl border-2 border-dashed border-accent/45 bg-accent/5 px-3 py-6 text-center transition-all duration-300 hover:border-accent hover:bg-accent/10`;
+  card.setAttribute("aria-label", t(wsKey("addFile")));
+  card.setAttribute("data-i18n", "ofd.workspace.addFile");
+
+  card.innerHTML = `
+    <span class="bg-accent text-accent-foreground flex size-11 items-center justify-center rounded-full shadow-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="size-6" aria-hidden="true">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </span>
+    <span class="text-foreground text-xs font-semibold">${t(wsKey("addFile"))}</span>
+  `;
+
+  card.addEventListener("click", e => {
+    e.stopPropagation();
+    if (busy) return;
+    promptAddOfdFiles();
+  });
+  return card;
+}
+
+function createProgressBlock(): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "ofd-thumb-progress hidden w-full px-1";
+  wrap.innerHTML = `
+    <div class="ofd-thumb-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="ofd-thumb-progress__bar" style="width: 0%"></div>
+    </div>
+    <p class="ofd-thumb-progress__label"></p>
+  `;
+  return wrap;
+}
+
+function createThumbPlaceholder(): HTMLElement {
+  const placeholder = document.createElement("div");
+  placeholder.className = `border-border bg-muted/40 flex min-h-[10rem] ${THUMB_ITEM_WIDTH} shrink-0 flex-1 animate-pulse items-center justify-center rounded-xl border`;
+  placeholder.innerHTML =
+    '<div class="border-accent size-6 animate-spin rounded-full border-2 border-t-transparent"></div>';
+  return placeholder;
+}
+
+function createFileThumb(file: File, index: number): HTMLElement {
+  const card = document.createElement("div");
+  card.className = `dropzone-thumb-item relative flex h-full min-h-[12rem] ${THUMB_ITEM_WIDTH} shrink-0 flex-col items-center gap-2 overflow-visible`;
+  card.dataset.ofdThumbIndex = String(index);
+
+  if (isMultipleMode() && currentFiles.length > 1) {
+    const orderBadge = document.createElement("span");
+    orderBadge.className =
+      "bg-accent text-accent-foreground absolute start-1.5 top-1.5 z-10 flex size-6 items-center justify-center rounded-full text-[10px] font-bold shadow-sm";
+    orderBadge.textContent = String(index + 1);
+    card.appendChild(orderBadge);
+  }
+
+  const visualWrap = document.createElement("div");
+  visualWrap.className = `flex min-h-[10rem] ${THUMB_ITEM_WIDTH} w-full flex-1 shrink-0`;
+
+  const visual = document.createElement("div");
+  visual.className =
+    "border-border bg-card relative flex size-full min-h-[10rem] w-full flex-1 items-center justify-center overflow-hidden rounded-xl border shadow-sm";
+  visual.dataset.ofdThumbVisual = "";
+  visual.innerHTML =
+    '<div class="border-accent size-6 animate-spin rounded-full border-2 border-t-transparent"></div>';
+  visualWrap.appendChild(visual);
+
+  const name = document.createElement("p");
+  name.className =
+    "text-foreground w-full truncate px-1 text-center text-xs font-medium";
+  name.textContent = file.name;
+  name.title = file.name;
+
+  const size = document.createElement("p");
+  size.className = "text-muted-foreground text-[10px]";
+  size.textContent = formatBytes(file.size);
+
+  card.append(visualWrap, name, size, createProgressBlock());
+  return card;
+}
+
+async function loadThumbPreview(
+  file: File,
+  visual: HTMLElement,
+  index: number,
+  generation: number
+) {
+  try {
+    const src = await renderOfdThumbnail(file);
+    if (generation !== thumbGeneration) return;
+
+    visual.replaceChildren();
+    if (src) {
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = file.name;
+      img.className = "size-full object-contain object-center";
+      img.draggable = false;
+      visual.appendChild(img);
+    } else {
+      const iconWrap = document.createElement("div");
+      iconWrap.innerHTML = ofdFileIcon();
+      visual.appendChild(iconWrap.firstElementChild ?? iconWrap);
+    }
+    visual.appendChild(createDeleteButton(() => removeFileAt(index)));
+  } catch {
+    if (generation !== thumbGeneration) return;
+    visual.replaceChildren();
+    const iconWrap = document.createElement("div");
+    iconWrap.innerHTML = ofdFileIcon();
+    visual.appendChild(iconWrap.firstElementChild ?? iconWrap);
+    visual.appendChild(createDeleteButton(() => removeFileAt(index)));
+  }
+}
+
+function renderFileThumbs() {
   const zone = $("ofd-drop-zone");
   const empty = $("ofd-drop-empty");
   const filled = $("ofd-drop-filled");
-  const chips = $("ofd-file-chips");
+  const thumbs = $("ofd-file-chips");
   const input = $("ofd-file-input") as HTMLInputElement | null;
-  if (!zone || !empty || !filled || !chips) return;
+  if (!zone || !empty || !filled || !thumbs) return;
 
-  chips.replaceChildren();
+  thumbGeneration += 1;
+  const generation = thumbGeneration;
+  thumbs.replaceChildren();
 
   if (currentFiles.length === 0) {
     empty.classList.remove("hidden");
     filled.classList.add("hidden");
-    zone.classList.remove("ofd-drop-zone--has-files");
-    hideProgress();
+    zone.classList.remove("has-files", "ofd-drop-zone--active");
+    hideAllProgress();
     if (input) input.value = "";
     return;
   }
 
   empty.classList.add("hidden");
   filled.classList.remove("hidden");
-  zone.classList.add("ofd-drop-zone--has-files");
+  zone.classList.add("has-files");
+  thumbs.className = THUMB_ROW_CLASS;
+
+  if (isMultipleMode()) {
+    thumbs.appendChild(createAddCard());
+  }
 
   for (let i = 0; i < currentFiles.length; i++) {
     const file = currentFiles[i];
-    const chip = document.createElement("div");
-    chip.className = "ofd-file-chip";
+    const placeholder = createThumbPlaceholder();
+    thumbs.appendChild(placeholder);
 
-    const icon = document.createElement("span");
-    icon.className = "ofd-file-chip__icon";
-    icon.setAttribute("aria-hidden", "true");
-    icon.textContent = "📄";
+    const card = createFileThumb(file, i);
+    thumbs.replaceChild(card, placeholder);
 
-    const meta = document.createElement("div");
-    meta.className = "ofd-file-chip__meta";
-
-    const name = document.createElement("span");
-    name.className = "ofd-file-chip__name";
-    name.textContent = file.name;
-    name.title = file.name;
-
-    const size = document.createElement("span");
-    size.className = "ofd-file-chip__size";
-    size.textContent = formatBytes(file.size);
-
-    meta.append(name, size);
-
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "ofd-file-chip__remove";
-    remove.setAttribute("aria-label", t(wsKey("removeFile")));
-    remove.textContent = "×";
-    remove.addEventListener("click", event => {
-      event.stopPropagation();
-      removeFileAt(i);
-    });
-
-    chip.append(icon, meta, remove);
-    chips.appendChild(chip);
+    const visual = card.querySelector<HTMLElement>("[data-ofd-thumb-visual]");
+    if (visual) void loadThumbPreview(file, visual, i, generation);
   }
+
+  applyI18n();
 }
 
 function removeFileAt(index: number) {
@@ -160,7 +293,7 @@ function removeFileAt(index: number) {
   extractedText = "";
   outputBlob = null;
   resetOutput();
-  renderFileChips();
+  renderFileThumbs();
   if (currentFiles.length === 0) {
     setStatusMessage("");
     syncActionState();
@@ -208,6 +341,11 @@ function mergeIncomingFiles(list: File[]) {
   return true;
 }
 
+function shouldAutoProcessOnUpload(): boolean {
+  const mode = getMode();
+  return mode === "to-text" || mode === "compress" || mode === "merge";
+}
+
 async function handleFiles(files: FileList | File[]) {
   const list = Array.from(files);
   if (!mergeIncomingFiles(list)) {
@@ -216,7 +354,7 @@ async function handleFiles(files: FileList | File[]) {
   }
 
   if (isMultipleMode() && currentFiles.length < 2) {
-    renderFileChips();
+    renderFileThumbs();
     setStatusMessage(t(wsKey("errorNeedMultiple")), true);
     syncActionState();
     return;
@@ -225,7 +363,14 @@ async function handleFiles(files: FileList | File[]) {
   extractedText = "";
   outputBlob = null;
   resetOutput();
-  renderFileChips();
+  renderFileThumbs();
+
+  if (!shouldAutoProcessOnUpload()) {
+    setStatusMessage(t(wsKey("fileReady")));
+    syncActionState();
+    return;
+  }
+
   setBusy(true);
   setStatusMessage("");
   setProgress(5, "progressReadingFile");
@@ -263,14 +408,11 @@ async function handleFiles(files: FileList | File[]) {
       );
       setProgress(100, "progressDone");
       setStatusMessage(t(wsKey("success")));
-    } else {
-      setProgress(100, "progressDone");
-      setStatusMessage(t(wsKey("fileReady")));
     }
   } catch (error) {
     if (mode === "merge" || mode === "compress") {
       currentFiles = [];
-      renderFileChips();
+      renderFileThumbs();
     }
     extractedText = "";
     hideProgress();
@@ -408,33 +550,28 @@ async function runAction() {
   }
 }
 
+function promptAddOfdFiles() {
+  const picker = createLegacyFilePicker({
+    accept: ".ofd,application/ofd,application/octet-stream",
+    multiple: isMultipleMode(),
+    onChange: files => void handleFiles(files),
+  });
+  picker.click();
+}
+
 function bindDropZone(signal: AbortSignal) {
   const zone = $("ofd-drop-zone");
   const input = $("ofd-file-input") as HTMLInputElement | null;
-  const addBtn = $("ofd-add-file-btn");
   if (!zone || !input) return;
-
-  addBtn?.addEventListener(
-    "click",
-    event => {
-      event.stopPropagation();
-      if (busy) return;
-      openFileInput(input);
-    },
-    { signal }
-  );
 
   zone.addEventListener(
     "click",
     event => {
-      if (busy) return;
       const target = event.target as HTMLElement;
-      if (
-        target.closest("#ofd-add-file-btn, .ofd-file-chip__remove, button, a") ||
-        currentFiles.length > 0
-      ) {
-        return;
-      }
+      if (target === input || target.closest(".file-input-overlay")) return;
+      if (target.closest("button, a")) return;
+      if (zone.classList.contains("has-files")) return;
+      if (busy) return;
       openFileInput(input);
     },
     { signal }
@@ -476,6 +613,11 @@ function bindDropZone(signal: AbortSignal) {
   );
 }
 
+function openFileInput(input: HTMLInputElement) {
+  input.value = "";
+  input.click();
+}
+
 function bindActions(signal: AbortSignal) {
   $("ofd-action-btn")?.addEventListener(
     "click",
@@ -502,8 +644,8 @@ function initOfdTool() {
   bindDropZone(ac.signal);
   bindActions(ac.signal);
   resetOutput();
-  renderFileChips();
-  hideProgress();
+  renderFileThumbs();
+  hideAllProgress();
   syncActionState();
   setStatusMessage("");
   applyI18n();

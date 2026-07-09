@@ -858,4 +858,23 @@ export function outputFilename(sourceName: string, ext: string): string {
   return `${baseNameFromOfd(sourceName)}.${ext}`;
 }
 
+/** Low-resolution first-page preview for dropzone thumbnails. */
+export async function renderOfdThumbnail(
+  file: File,
+  width = Math.round(DEFAULT_RENDER_WIDTH * 0.35)
+): Promise<string> {
+  if (!isOfdFile(file)) return "";
+
+  try {
+    await withTimeout(loadOfdModule(), 30_000, "ofd-script-load-failed");
+    await loadOfdEmbeddedFonts(file);
+    const { canvases } = await loadOfdPreview(file, width);
+    const canvas = canvases.find(c => !isCanvasMostlyBlank(c));
+    if (!canvas) return "";
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return "";
+  }
+}
+
 export { DEFAULT_RENDER_WIDTH };
