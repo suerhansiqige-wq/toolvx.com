@@ -170,49 +170,72 @@ async function runAction() {
   }
 }
 
-function bindDropZone() {
+function bindDropZone(signal: AbortSignal) {
   const zone = $("ofd-drop-zone");
   const input = $("ofd-file-input") as HTMLInputElement | null;
   if (!zone || !input) return;
 
-  zone.addEventListener("click", () => input.click());
-  zone.addEventListener("dragover", event => {
-    event.preventDefault();
-    zone.classList.add("ofd-drop-zone--active");
-  });
-  zone.addEventListener("dragleave", () => {
-    zone.classList.remove("ofd-drop-zone--active");
-  });
-  zone.addEventListener("drop", event => {
-    event.preventDefault();
-    zone.classList.remove("ofd-drop-zone--active");
-    const file = event.dataTransfer?.files?.[0];
-    if (file) void handleFile(file);
-  });
+  zone.addEventListener(
+    "dragover",
+    event => {
+      event.preventDefault();
+      zone.classList.add("ofd-drop-zone--active");
+    },
+    { signal }
+  );
+  zone.addEventListener(
+    "dragleave",
+    () => {
+      zone.classList.remove("ofd-drop-zone--active");
+    },
+    { signal }
+  );
+  zone.addEventListener(
+    "drop",
+    event => {
+      event.preventDefault();
+      zone.classList.remove("ofd-drop-zone--active");
+      const file = event.dataTransfer?.files?.[0];
+      if (file) void handleFile(file);
+    },
+    { signal }
+  );
 
-  input.addEventListener("change", () => {
-    const file = input.files?.[0];
-    if (file) void handleFile(file);
-  });
+  input.addEventListener(
+    "change",
+    () => {
+      const file = input.files?.[0];
+      if (file) void handleFile(file);
+    },
+    { signal }
+  );
 }
 
-function bindActions() {
-  $("ofd-action-btn")?.addEventListener("click", () => {
-    void runAction();
-  });
+function bindActions(signal: AbortSignal) {
+  $("ofd-action-btn")?.addEventListener(
+    "click",
+    () => {
+      void runAction();
+    },
+    { signal }
+  );
 }
 
 function initOfdTool() {
-  const root = getRoot();
+  const root = getRoot() as (HTMLElement & { __ofdToolAbort?: AbortController }) | null;
   if (!root) return;
+
+  root.__ofdToolAbort?.abort();
+  const ac = new AbortController();
+  root.__ofdToolAbort = ac;
 
   currentFile = null;
   currentCanvases = [];
   outputBlob = null;
   busy = false;
 
-  bindDropZone();
-  bindActions();
+  bindDropZone(ac.signal);
+  bindActions(ac.signal);
   resetOutput();
   syncActionState();
   setStatusMessage("");
@@ -220,5 +243,5 @@ function initOfdTool() {
 }
 
 onI18nReady(() => syncActionState());
+initOfdTool();
 document.addEventListener("astro:page-load", initOfdTool);
-document.addEventListener("astro:after-swap", initOfdTool);
