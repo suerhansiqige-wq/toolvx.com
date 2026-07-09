@@ -71,10 +71,11 @@ export function drawOfdImageInBoundary(
   boxW: number,
   boxH: number,
   ctm: OfdCtm | null,
-  options?: { stamp?: boolean; forceContain?: boolean }
+  options?: { stamp?: boolean; forceContain?: boolean; mmScale?: number }
 ): void {
   const forceContain = options?.forceContain ?? needsAspectCorrection(boxW, boxH, img);
   const stamp = options?.stamp ?? false;
+  const mmScale = options?.mmScale;
 
   g.save();
   g.translate(left, top);
@@ -84,6 +85,11 @@ export function drawOfdImageInBoundary(
   if (forceContain || !ctm) {
     const fit = fitImageContain(img.naturalWidth, img.naturalHeight, boxW, boxH);
     g.drawImage(img, fit.x, fit.y, fit.w, fit.h);
+  } else if (mmScale && mmScale > 0) {
+    // CTM is defined in mm; canvas coordinates are CSS pixels (mm × scale).
+    g.scale(mmScale, mmScale);
+    g.transform(ctm[0], ctm[1], ctm[2], ctm[3], ctm[4], ctm[5]);
+    g.drawImage(img, 0, 0, boxW / mmScale, boxH / mmScale);
   } else {
     g.transform(ctm[0], ctm[1], ctm[2], ctm[3], ctm[4], ctm[5]);
     g.drawImage(img, 0, 0, boxW, boxH);

@@ -394,6 +394,7 @@ async function paintImageObject(
   drawOfdImageInBoundary(g, img, left, top, width, height, ctm, {
     stamp,
     forceContain: forceRepaint || isPortraitImage(img),
+    mmScale: scaleX,
   });
   return true;
 }

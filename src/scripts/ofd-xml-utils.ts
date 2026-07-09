@@ -15,6 +15,9 @@ export function naturalSort(a: string, b: string): number {
 
 /** Decode OFD TextCode entity references and strip nested tags. */
 export function decodeXmlText(value: string): string {
+  const cdata = value.match(/<!\[CDATA\[([\s\S]*?)\]\]>/);
+  if (cdata) return cdata[1].trim();
+
   return value
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
