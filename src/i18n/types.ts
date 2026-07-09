@@ -316,58 +316,12 @@ export type Messages = {
       previewAria: string;
       processing: string;
       success: string;
-      fileReady: string;
-      addFile: string;
-      removeFile: string;
-      progressReadingFile: string;
-      progressLoadingLib: string;
-      progressParsing: string;
-      progressFonts: string;
-      progressRendering: string;
-      progressRasterizing: string;
-      progressExporting: string;
-      progressMerging: string;
-      progressCompressing: string;
-      progressExtracting: string;
-      progressDone: string;
-      progressPartialRaster: string;
-      errorTimeout: string;
       error: string;
       errorInvalid: string;
-      errorNeedMultiple: string;
-      errorMergeFailed: string;
-      errorNoVisual: string;
-      errorNoText: string;
-      fallbackImages: string;
       convert: string;
       download: string;
-      actionMerge: string;
-      actionCompress: string;
-      actionExtract: string;
-      actionView: string;
+      comingSoonAction: string;
       readerReady: string;
-      trustTitle: string;
-      trustSub: string;
-      trustCheck1: string;
-      trustCheck2: string;
-      trustCheck3: string;
     };
-    seoHeadings: {
-      howTo: string;
-      whyChoose: string;
-      faq: string;
-    };
-    seoRich: Record<
-      string,
-      {
-        whatIsHeading: string;
-        whatIs: string;
-        scenarios: string[];
-        steps: string[];
-        whyChoose: string;
-        whyChoosePoints: string[];
-        faqs: SeoFaqMessages[];
-      }
-    >;
   };
 };
