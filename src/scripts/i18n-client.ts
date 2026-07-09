@@ -4,6 +4,7 @@ import {
   resolveLocale,
   type LocaleCode,
 } from "@/i18n/messages";
+import { getLocaleBundleMessage } from "@/locales";
 import {
   getToolUiMessage,
   isFlatUiKey,
@@ -21,6 +22,8 @@ declare global {
 }
 
 const STORAGE_KEY = "site-locale";
+
+export const LOCALE_CHANGE_EVENT = "site:localechange";
 
 const HTML_LANG: Record<LocaleCode, string> = {
   en: "en",
@@ -118,16 +121,27 @@ export function t(key: string, vars?: Record<string, string | number>): string {
     value = getToolUiMessage(flatLocale(), FLAT_ALIASES[key]);
   }
 
+  // Runtime locale bundle (src/locales/*.json) — reactive to currentLocale
   if (!value) {
-    value =
-      getNestedMessage(messages, key) ?? getNestedMessage(catalogs.en, key);
+    value = getLocaleBundleMessage(currentLocale, key);
   }
 
+  // Site-wide Astro catalogs
+  if (!value) {
+    value = getNestedMessage(messages, key) ?? getNestedMessage(catalogs.en, key);
+  }
+
+  // Flat UI + English fallbacks
   if (!value && FLAT_ALIASES[key]) {
     value = getToolUiMessage("en", FLAT_ALIASES[key]);
   }
   if (!value && isFlatUiKey(key)) {
     value = getToolUiMessage("en", key);
+  }
+
+  // Locale bundle English fallback for any remaining missing keys
+  if (!value) {
+    value = getLocaleBundleMessage("en", key);
   }
 
   value = value ?? key;
@@ -155,11 +169,51 @@ export function setLocale(locale: LocaleCode, persist = true): void {
   if (typeof window !== "undefined") {
     window.__siteT = t;
   }
+  applyI18n();
+  document.dispatchEvent(
+    new CustomEvent(LOCALE_CHANGE_EVENT, { detail: { locale: currentLocale } })
+  );
 }
 
+/**
+ * Detect the user's preferred locale from localStorage or browser languages.
+ * Falls back to English when the language is not in our dictionary.
+ */
 export function detectBrowserLocale(): LocaleCode {
-  // Site is English-only; always serve English strings regardless of browser locale.
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  if (stored) return resolveLocale(stored);
+
+  if (typeof navigator === "undefined") return "en";
+
+  const candidates = [
+    ...(navigator.languages ?? []),
+    navigator.language,
+    (navigator as Navigator & { userLanguage?: string }).userLanguage,
+  ].filter((v): v is string => Boolean(v));
+
+  for (const lang of candidates) {
+    const code = resolveLocale(lang);
+    const bundleHit = getLocaleBundleMessage(code, "ofd.workspace.convert");
+    if (bundleHit && code !== "en") return code;
+  }
+
+  for (const lang of candidates) {
+    const normalized = lang.toLowerCase().replace(/_/g, "-");
+    const code = resolveLocale(lang);
+    if (code !== "en" || normalized.startsWith("en")) return code;
+  }
+
   return "en";
+}
+
+export function onLocaleChange(listener: () => void): () => void {
+  document.addEventListener(LOCALE_CHANGE_EVENT, listener);
+  return () => document.removeEventListener(LOCALE_CHANGE_EVENT, listener);
 }
 
 export function showAppAlert(message: string): void {
@@ -313,12 +367,10 @@ export function applyI18n(root: ParentNode = document): void {
     el.innerHTML = t(key, vars);
   });
 
-  root.querySelectorAll<HTMLInputElement>("[data-i18n-placeholder]").forEach(
-    el => {
-      const key = el.getAttribute("data-i18n-placeholder");
-      if (key) el.placeholder = t(key);
-    }
-  );
+  root.querySelectorAll<HTMLInputElement>("[data-i18n-placeholder]").forEach(el => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    if (key) el.placeholder = t(key);
+  });
 
   root.querySelectorAll<HTMLElement>("[data-i18n-title]").forEach(el => {
     const key = el.getAttribute("data-i18n-title");
@@ -355,27 +407,30 @@ export function applyI18n(root: ParentNode = document): void {
     el.setAttribute("aria-label", t(key, vars));
   });
 
-  root.querySelectorAll<HTMLButtonElement>("[data-label-open-key]").forEach(
-    btn => {
-      const openKey = btn.getAttribute("data-label-open-key");
-      const closeKey = btn.getAttribute("data-label-close-key");
-      if (openKey) btn.dataset.labelOpen = t(openKey);
-      if (closeKey) btn.dataset.labelClose = t(closeKey);
+  root.querySelectorAll<HTMLButtonElement>("[data-label-open-key]").forEach(btn => {
+    const openKey = btn.getAttribute("data-label-open-key");
+    const closeKey = btn.getAttribute("data-label-close-key");
+    if (openKey) btn.dataset.labelOpen = t(openKey);
+    if (closeKey) btn.dataset.labelClose = t(closeKey);
 
-      const expanded = btn.getAttribute("aria-expanded") === "true";
-      const label = expanded ? btn.dataset.labelClose : btn.dataset.labelOpen;
-      if (label) btn.setAttribute("aria-label", label);
-    }
-  );
+    const expanded = btn.getAttribute("aria-expanded") === "true";
+    const label = expanded ? btn.dataset.labelClose : btn.dataset.labelOpen;
+    if (label) btn.setAttribute("aria-label", label);
+  });
 
   syncToolSidebarWidth(root);
 }
 
 export function initI18n(): void {
-  // Force English catalog — the site is English-only per product requirements.
-  setLocale("en", false);
-  applyI18n();
-  document.documentElement.setAttribute("data-locale", "en");
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+
+  const detected = stored ? resolveLocale(stored) : detectBrowserLocale();
+  setLocale(detected, Boolean(stored));
 }
 
 export function onI18nReady(init: () => void): void {

@@ -3,7 +3,7 @@
  * Binds upload UI to ofd-core, syncs progress states, and applies data-i18n
  * to every dynamically rendered element for seamless locale switching.
  */
-import { applyI18n, onI18nReady, t } from "@/scripts/i18n-client";
+import { applyI18n, onI18nReady, onLocaleChange, t } from "@/scripts/i18n-client";
 import {
   compressOfdFile,
   disposeOfdSession,
@@ -467,6 +467,13 @@ function actionLabelKey(): string {
   }
 }
 
+function refreshWorkspaceI18n() {
+  const root = getRoot();
+  if (!root) return;
+  syncActionState();
+  applyI18n(root);
+}
+
 function syncActionState() {
   const actionBtn = $("ofd-action-btn") as HTMLButtonElement | null;
   if (!actionBtn) return;
@@ -680,8 +687,10 @@ function initOfdTool() {
 }
 
 onI18nReady(() => {
-  syncActionState();
-  applyI18n(getRoot() ?? document);
+  refreshWorkspaceI18n();
+});
+onLocaleChange(() => {
+  refreshWorkspaceI18n();
 });
 initOfdTool();
 document.addEventListener("astro:page-load", initOfdTool);

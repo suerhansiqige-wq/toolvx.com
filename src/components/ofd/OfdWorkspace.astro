@@ -1,7 +1,7 @@
 ---
 import type { OfdToolDefinition } from "@/data/ofdToolsRegistry";
 import OfdTrustBadge from "@/components/ofd/OfdTrustBadge.astro";
-import { catalogs, type LocaleCode } from "@/i18n/messages";
+import { catalogs } from "@/i18n/messages";
 
 type Props = {
   tool: OfdToolDefinition;
@@ -9,11 +9,18 @@ type Props = {
 };
 
 const { tool, locale = "en" } = Astro.props;
-const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
-const copy = catalog.ofd.tools[tool.i18nKey as keyof typeof catalog.ofd.tools];
-const ws = catalog.ofd.workspace;
+
+/** English source strings — SSR fallback before client i18n hydrates. */
+const en = catalogs.en;
+const copy = en.ofd.tools[tool.i18nKey as keyof typeof en.ofd.tools];
+const ws = en.ofd.workspace;
+
 const titleKey = `ofd.tools.${tool.i18nKey}.title`;
 const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
+const uploadHintKey = tool.multiple
+  ? "ofd.workspace.uploadMultiHint"
+  : "ofd.workspace.uploadHint";
+const uploadHintText = tool.multiple ? ws.uploadMultiHint : ws.uploadHint;
 ---
 
 <section class="card-surface shadow-elevated mb-10 p-6 sm:p-10" data-pagefind-body>
@@ -47,13 +54,13 @@ const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
         accept=".ofd,application/ofd,application/octet-stream"
         multiple={tool.multiple ?? false}
         class="file-input-overlay"
-        aria-label={ws.uploadHint}
-        data-i18n-aria-label={tool.multiple ? "ofd.workspace.uploadMultiHint" : "ofd.workspace.uploadHint"}
+        aria-label={uploadHintText}
+        data-i18n-aria-label={uploadHintKey}
       />
 
       <div id="ofd-drop-empty" data-dropzone-empty class="dropzone-empty relative z-0">
-        <p class="text-foreground text-base font-medium" data-i18n="ofd.workspace.uploadHint">
-          {tool.multiple ? ws.uploadMultiHint : ws.uploadHint}
+        <p class="text-foreground text-base font-medium" data-i18n={uploadHintKey}>
+          {uploadHintText}
         </p>
         <p class="text-muted-foreground mt-2 text-sm" data-i18n="ofd.workspace.uploadSubhint">
           {ws.uploadSubhint}
@@ -74,8 +81,8 @@ const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
       </div>
     </div>
 
-    <p id="ofd-status" class="text-muted-foreground mt-3 min-h-[1.25rem] text-sm" aria-live="polite"
-    ></p>
+    <p id="ofd-status" class="text-muted-foreground mt-3 min-h-[1.25rem] text-sm" aria-live="polite">
+    </p>
 
     <div class="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
       <button
@@ -83,16 +90,18 @@ const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
         type="button"
         class="interactive bg-accent text-accent-foreground h-14 rounded-[1rem] border-2 border-transparent px-4 text-base font-bold disabled:cursor-not-allowed disabled:opacity-45"
         disabled
+        data-i18n="ofd.workspace.convert"
       >
-        <span data-i18n="ofd.workspace.convert">{ws.convert}</span>
+        {ws.convert}
       </button>
       <a
         id="ofd-download-btn"
         href="#"
         download
         class="interactive pointer-events-none flex h-14 items-center justify-center rounded-[1rem] border-2 border-border bg-card px-4 text-base font-bold opacity-45"
+        data-i18n="ofd.workspace.download"
       >
-        <span data-i18n="ofd.workspace.download">{ws.download}</span>
+        {ws.download}
       </a>
     </div>
   </div>
