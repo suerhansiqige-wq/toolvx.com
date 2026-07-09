@@ -9,11 +9,9 @@ import { getOfdToolSeo } from "@/data/ofdToolsSeo";
 import config from "@/config";
 
 /** Static route at `ofd-to-pdf.astro` owns `/ofd-tools/ofd-to-pdf`. */
-const STATIC_PAGE_SLUGS = new Set(["ofd-to-pdf"]);
-
 export function getStaticPaths() {
   return ofdToolsRegistry
-    .filter(tool => !STATIC_PAGE_SLUGS.has(tool.slug))
+    .filter(tool => tool.slug !== "ofd-to-pdf")
     .map(tool => ({
       params: { slug: tool.slug },
       props: { tool },

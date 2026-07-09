@@ -858,4 +858,4 @@ export function outputFilename(sourceName: string, ext: string): string {
   return `${baseNameFromOfd(sourceName)}.${ext}`;
 }
 
-export { OFD_ACCEPT, DEFAULT_RENDER_WIDTH };
+export { DEFAULT_RENDER_WIDTH };

@@ -1,6 +1,8 @@
 import type { Messages } from "@/i18n/types";
 
-export const ofdEn: Messages["ofd"] = {
+type OfdBaseMessages = Omit<Messages["ofd"], "seoHeadings" | "seoRich">;
+
+export const ofdEn: OfdBaseMessages = {
   hub: {
     title: "OFD Toolbox",
     description:
@@ -73,7 +75,7 @@ export const ofdEn: Messages["ofd"] = {
   },
 };
 
-export const ofdZh: Messages["ofd"] = {
+export const ofdZh: OfdBaseMessages = {
   hub: {
     title: "OFD 工具箱",
     description:
