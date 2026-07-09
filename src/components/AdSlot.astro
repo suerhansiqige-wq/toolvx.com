@@ -1,15 +1,19 @@
 ---
 import type { HTMLAttributes } from "astro/types";
 
-type AdVariant = "leaderboard" | "skyscraper";
+type AdVariant = "leaderboard" | "skyscraper" | "rectangle" | "in-article";
 
 type Props = {
+  /** Visual layout preset for the placeholder / future ad unit. */
   variant?: AdVariant;
+  /** Google AdSense `data-ad-slot` ID — placeholder until approval. */
+  slotId?: string;
   class?: string;
 } & HTMLAttributes<"div">;
 
 const {
   variant = "leaderboard",
+  slotId,
   class: className,
   ...attrs
 } = Astro.props;
@@ -17,21 +21,29 @@ const {
 const variantClass: Record<AdVariant, string> = {
   leaderboard: "min-h-[90px] w-full",
   skyscraper: "mx-auto min-h-[600px] w-full max-w-[300px]",
+  rectangle: "mx-auto min-h-[250px] w-full max-w-[336px] lg:max-w-none",
+  "in-article": "my-8 min-h-[120px] w-full",
 };
+
+const label = slotId
+  ? `[Google AdSense Slot: ${slotId}]`
+  : `[Google AdSense Slot: ${variant}]`;
 ---
 
 <!--
   AdSense pre-approval placeholder.
-  After Google AdSense approval, replace the inner content below with your
-  <ins class="adsbygoogle" ...></ins> snippet and the matching (adsbygoogle = window.adsbygoogle || []).push({}); script.
+  After approval, replace inner content with:
+  <ins class="adsbygoogle" data-ad-client="ca-pub-XXXX" data-ad-slot={slotId} ...></ins>
+  and (adsbygoogle = window.adsbygoogle || []).push({});
 -->
 <div
   role="complementary"
   aria-label="Advertisement placeholder"
   data-i18n-aria-label="ad_aria"
-  data-ad-slot={variant}
+  data-ad-slot={slotId ?? variant}
+  data-ad-variant={variant}
   class:list={[
-    "ad-slot flex items-center justify-center rounded-xl",
+    "ad-slot flex items-center justify-center rounded-xl px-4 py-3 text-center",
     "border border-dashed border-gray-200 bg-gray-50/50",
     "dark:border-gray-800 dark:bg-gray-900/30",
     variantClass[variant],
@@ -40,9 +52,8 @@ const variantClass: Record<AdVariant, string> = {
   {...attrs}
 >
   <span
-    class="pointer-events-none select-none text-xs font-medium tracking-wider text-gray-400"
-    data-i18n="ad_text"
+    class="pointer-events-none select-none text-xs font-medium tracking-wide text-gray-400"
   >
-    ADVERTISEMENT PLACEHOLDER
+    {label}
   </span>
 </div>

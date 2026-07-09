@@ -317,6 +317,20 @@ export type Messages = {
       processing: string;
       success: string;
       fileReady: string;
+      addFile: string;
+      removeFile: string;
+      progressReadingFile: string;
+      progressLoadingLib: string;
+      progressParsing: string;
+      progressFonts: string;
+      progressRendering: string;
+      progressRasterizing: string;
+      progressExporting: string;
+      progressMerging: string;
+      progressCompressing: string;
+      progressExtracting: string;
+      progressDone: string;
+      errorTimeout: string;
       error: string;
       errorInvalid: string;
       errorNeedMultiple: string;
@@ -337,5 +351,22 @@ export type Messages = {
       trustCheck2: string;
       trustCheck3: string;
     };
+    seoHeadings: {
+      howTo: string;
+      whyChoose: string;
+      faq: string;
+    };
+    seoRich: Record<
+      string,
+      {
+        whatIsHeading: string;
+        whatIs: string;
+        scenarios: string[];
+        steps: string[];
+        whyChoose: string;
+        whyChoosePoints: string[];
+        faqs: SeoFaqMessages[];
+      }
+    >;
   };
 };

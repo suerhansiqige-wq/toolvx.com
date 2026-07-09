@@ -6,6 +6,7 @@ import OfdMobileNav from "@/components/ofd/OfdMobileNav.astro";
 import OfdSidebarNav from "@/components/ofd/OfdSidebarNav.astro";
 import { resolveDefaultOgImagePath } from "@/utils/resolveDefaultOgImagePath";
 import config from "@/config";
+import type { FAQItem } from "@/data/toolsSeo";
 
 type Props = {
   title: string;
@@ -14,6 +15,8 @@ type Props = {
   ogImage?: string;
   canonicalURL?: string;
   appName?: string;
+  faqs?: FAQItem[];
+  steps?: string[];
 };
 
 const {
@@ -23,6 +26,8 @@ const {
   ogImage = resolveDefaultOgImagePath(config),
   canonicalURL = new URL(Astro.url.pathname, Astro.site).href,
   appName,
+  faqs = [],
+  steps = [],
 } = Astro.props;
 
 const structuredData = {
@@ -40,6 +45,37 @@ const structuredData = {
   },
   inLanguage: "en",
 };
+
+const faqStructuredData =
+  faqs.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqs.map(faq => ({
+          "@type": "Question",
+          name: faq.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: faq.answer,
+          },
+        })),
+      }
+    : null;
+
+const howToStructuredData =
+  steps.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        name: `How to use ${appName ?? "this OFD tool"}`,
+        description,
+        step: steps.map((text, index) => ({
+          "@type": "HowToStep",
+          position: index + 1,
+          text,
+        })),
+      }
+    : null;
 ---
 
 <Layout {title} {description} {ogImage} {canonicalURL}>
@@ -49,6 +85,16 @@ const structuredData = {
     <meta name="language" content="English" />
     <meta name="robots" content="index, follow" />
     <script type="application/ld+json" is:inline set:html={JSON.stringify(structuredData)} />
+    {
+      faqStructuredData && (
+        <script type="application/ld+json" is:inline set:html={JSON.stringify(faqStructuredData)} />
+      )
+    }
+    {
+      howToStructuredData && (
+        <script type="application/ld+json" is:inline set:html={JSON.stringify(howToStructuredData)} />
+      )
+    }
     <slot name="head" />
   </Fragment>
 

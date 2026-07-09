@@ -1,7 +1,26 @@
 import JSZip from "jszip";
 import { isCanvasMostlyBlank } from "@/scripts/pdf-render";
 
-const OFD_ACCEPT = ".ofd,application/ofd,application/octet-stream";
+export type OfdProgressReporter = (percent: number, stageKey: string) => void;
+
+const PARSE_TIMEOUT_MS = 90_000;
+const RASTERIZE_TIMEOUT_MS = 45_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, errorCode: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(errorCode)), ms);
+    promise.then(
+      value => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      error => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
 const DEFAULT_RENDER_WIDTH = 794;
 const OFD_SCRIPT = "/vendor/ofd.umd.min.js";
 
@@ -233,15 +252,19 @@ async function rasterizePageDivWithHtml2Canvas(
   height: number
 ): Promise<HTMLCanvasElement> {
   const { default: html2canvas } = await import("html2canvas");
-  return html2canvas(pageDiv, {
-    scale: Math.max(1, window.devicePixelRatio || 1),
-    width,
-    height,
-    useCORS: true,
-    allowTaint: true,
-    logging: false,
-    backgroundColor: "#ffffff",
-  });
+  return withTimeout(
+    html2canvas(pageDiv, {
+      scale: Math.max(1, window.devicePixelRatio || 1),
+      width,
+      height,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+    }),
+    RASTERIZE_TIMEOUT_MS,
+    "timeout"
+  );
 }
 
 /** Only use raw zip images when the document is a single-page scan with one asset. */
@@ -259,12 +282,17 @@ async function trySingleImageFallback(file: File): Promise<HTMLCanvasElement[] |
 
 async function canvasesFromRenderedPages(
   pages: HTMLElement[],
-  width = DEFAULT_RENDER_WIDTH
+  width = DEFAULT_RENDER_WIDTH,
+  onProgress?: OfdProgressReporter
 ): Promise<HTMLCanvasElement[]> {
   const canvases: HTMLCanvasElement[] = [];
-  for (const page of pages) {
+  for (let i = 0; i < pages.length; i++) {
+    onProgress?.(
+      55 + Math.round(((i + 1) / pages.length) * 30),
+      "progressRasterizing"
+    );
     try {
-      canvases.push(await pageDivToCanvas(page, width));
+      canvases.push(await pageDivToCanvas(pages[i], width));
     } catch {
       /* page may lack raster output */
     }
@@ -362,11 +390,21 @@ export async function pageDivToCanvas(
 }
 
 /** Fresh canvases for export — render off-screen without a visible preview. */
-export async function resolveExportCanvases(file: File): Promise<HTMLCanvasElement[]> {
+export async function resolveExportCanvases(
+  file: File,
+  onProgress?: OfdProgressReporter
+): Promise<HTMLCanvasElement[]> {
+  onProgress?.(8, "progressLoadingLib");
+  await withTimeout(loadOfdModule(), 30_000, "ofd-script-load-failed");
+
+  onProgress?.(18, "progressFonts");
   await loadOfdEmbeddedFonts(file);
-  const { pages, canvases } = await loadOfdPreview(file);
+
+  onProgress?.(28, "progressParsing");
+  const { pages, canvases } = await loadOfdPreview(file, DEFAULT_RENDER_WIDTH, onProgress);
 
   if (pages.length === 0) {
+    onProgress?.(85, "progressExporting");
     const valid = canvases.filter(c => !isCanvasMostlyBlank(c));
     if (valid.length > 0) return valid.map(cloneCanvas);
     const singleImage = await trySingleImageFallback(file);
@@ -375,8 +413,11 @@ export async function resolveExportCanvases(file: File): Promise<HTMLCanvasEleme
   }
 
   return withPagesMounted(pages, async () => {
-    const fresh = await canvasesFromRenderedPages(pages);
-    if (fresh.length > 0 && !fresh.every(isCanvasMostlyBlank)) return fresh.map(cloneCanvas);
+    const fresh = await canvasesFromRenderedPages(pages, DEFAULT_RENDER_WIDTH, onProgress);
+    if (fresh.length > 0 && !fresh.every(isCanvasMostlyBlank)) {
+      onProgress?.(92, "progressExporting");
+      return fresh.map(cloneCanvas);
+    }
     const valid = canvases.filter(c => !isCanvasMostlyBlank(c));
     if (valid.length > 0) return valid.map(cloneCanvas);
     const singleImage = await trySingleImageFallback(file);
@@ -385,10 +426,19 @@ export async function resolveExportCanvases(file: File): Promise<HTMLCanvasEleme
   });
 }
 
-export async function exportFileToSvgZip(file: File, baseName: string): Promise<Blob> {
+export async function exportFileToSvgZip(
+  file: File,
+  baseName: string,
+  onProgress?: OfdProgressReporter
+): Promise<Blob> {
+  onProgress?.(10, "progressLoadingLib");
+  await withTimeout(loadOfdModule(), 30_000, "ofd-script-load-failed");
+  onProgress?.(25, "progressFonts");
   await loadOfdEmbeddedFonts(file);
-  const { pages } = await loadOfdPreview(file);
+  onProgress?.(40, "progressParsing");
+  const { pages } = await loadOfdPreview(file, DEFAULT_RENDER_WIDTH, onProgress);
   if (pages.length === 0) throw new Error("no-svg");
+  onProgress?.(75, "progressExporting");
   return withPagesMounted(pages, () => exportPagesToSvgZip(pages, baseName));
 }
 
@@ -451,49 +501,57 @@ function remapZipPath(path: string, sourcePrefix: string, targetPrefix: string):
 
 export async function parseAndRenderOfd(
   file: File | ArrayBuffer,
-  width = DEFAULT_RENDER_WIDTH
+  width = DEFAULT_RENDER_WIDTH,
+  onProgress?: OfdProgressReporter
 ): Promise<{ pages: HTMLElement[]; docs: OfdParsedDocument[] }> {
   if (file instanceof File) {
     await loadOfdEmbeddedFonts(file);
   }
 
   const ofd = await loadOfdModule();
+  onProgress?.(38, "progressRendering");
 
-  return new Promise((resolve, reject) => {
-    ofd.parseOfdDocument({
-      ofd: file,
-      success(res) {
-        try {
-          const docs = normalizeDocs(res);
-          const pages: HTMLElement[] = [];
-          for (const doc of docs) {
-            const rendered = normalizePageDivs(ofd.renderOfd(width, doc));
-            pages.push(...rendered);
+  return withTimeout(
+    new Promise<{ pages: HTMLElement[]; docs: OfdParsedDocument[] }>((resolve, reject) => {
+      ofd.parseOfdDocument({
+        ofd: file,
+        success(res) {
+          try {
+            const docs = normalizeDocs(res);
+            const pages: HTMLElement[] = [];
+            for (const doc of docs) {
+              const rendered = normalizePageDivs(ofd.renderOfd(width, doc));
+              pages.push(...rendered);
+            }
+            if (pages.length === 0) throw new Error("no-pages");
+            resolve({ pages, docs });
+          } catch (error) {
+            reject(error instanceof Error ? error : new Error(String(error)));
           }
-          if (pages.length === 0) throw new Error("no-pages");
-          resolve({ pages, docs });
-        } catch (error) {
+        },
+        fail(error) {
           reject(error instanceof Error ? error : new Error(String(error)));
-        }
-      },
-      fail(error) {
-        reject(error instanceof Error ? error : new Error(String(error)));
-      },
-    });
-  });
+        },
+      });
+    }),
+    PARSE_TIMEOUT_MS,
+    "timeout"
+  );
 }
 
 export async function loadOfdPreview(
   file: File,
-  width = DEFAULT_RENDER_WIDTH
+  width = DEFAULT_RENDER_WIDTH,
+  onProgress?: OfdProgressReporter
 ): Promise<OfdPreviewResult> {
   if (!isOfdFile(file)) {
     throw new Error("invalid-ofd");
   }
 
   try {
-    const { pages, docs } = await parseAndRenderOfd(file, width);
-    const canvases = await canvasesFromRenderedPages(pages, width);
+    const { pages, docs } = await parseAndRenderOfd(file, width, onProgress);
+    onProgress?.(48, "progressRasterizing");
+    const canvases = await canvasesFromRenderedPages(pages, width, onProgress);
     if (canvases.length > 0 && !canvases.every(isCanvasMostlyBlank)) {
       return { pages, canvases, docs, usedImageFallback: false };
     }
@@ -720,9 +778,13 @@ function appendDocBody(ofdXml: string, docRoot: string, signatures?: string): st
   return ofdXml.replace("</ofd:OFD>", `${body}</ofd:OFD>`);
 }
 
-export async function mergeOfdFiles(files: File[]): Promise<Blob> {
+export async function mergeOfdFiles(
+  files: File[],
+  onProgress?: OfdProgressReporter
+): Promise<Blob> {
   if (files.length < 2) throw new Error("need-multiple");
 
+  onProgress?.(15, "progressMerging");
   const outZip = await JSZip.loadAsync(await files[0].arrayBuffer());
   let ofdXml = await outZip.file("OFD.xml")?.async("string");
   if (!ofdXml) throw new Error("invalid-ofd");
@@ -734,6 +796,7 @@ export async function mergeOfdFiles(files: File[]): Promise<Blob> {
   }
 
   for (let i = 1; i < files.length; i++) {
+    onProgress?.(15 + Math.round((i / files.length) * 70), "progressMerging");
     const srcZip = await JSZip.loadAsync(await files[i].arrayBuffer());
     const srcOfdXml = await srcZip.file("OFD.xml")?.async("string");
     if (!srcOfdXml) throw new Error("invalid-ofd");
@@ -762,6 +825,7 @@ export async function mergeOfdFiles(files: File[]): Promise<Blob> {
   }
 
   outZip.file("OFD.xml", ofdXml);
+  onProgress?.(92, "progressExporting");
   return outZip.generateAsync({ type: "blob", compression: "DEFLATE" });
 }
 

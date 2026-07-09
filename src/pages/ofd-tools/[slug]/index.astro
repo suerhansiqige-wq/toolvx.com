@@ -1,40 +1,32 @@
 ---
-import OfdLayout from "@/layouts/OfdLayout.astro";
-import OfdWorkspace from "@/components/ofd/OfdWorkspace.astro";
+import OfdToolPage from "@/components/ofd/OfdToolPage.astro";
 import {
   DEFAULT_OFD_TOOL_SLUG,
   getOfdToolBySlug,
   ofdToolsRegistry,
 } from "@/data/ofdToolsRegistry";
-import { catalogs, type LocaleCode } from "@/i18n/messages";
+import { getOfdToolSeo } from "@/data/ofdToolsSeo";
 import config from "@/config";
 
+/** Static route at `ofd-to-pdf.astro` owns `/ofd-tools/ofd-to-pdf`. */
+const STATIC_PAGE_SLUGS = new Set(["ofd-to-pdf"]);
+
 export function getStaticPaths() {
-  return ofdToolsRegistry.map(tool => ({
-    params: { slug: tool.slug },
-    props: { tool },
-  }));
+  return ofdToolsRegistry
+    .filter(tool => !STATIC_PAGE_SLUGS.has(tool.slug))
+    .map(tool => ({
+      params: { slug: tool.slug },
+      props: { tool },
+    }));
 }
 
 const { tool } = Astro.props;
-const locale = Astro.currentLocale ?? config.site.lang;
-const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
-const copy = catalog.ofd.tools[tool.i18nKey as keyof typeof catalog.ofd.tools];
 
-if (!getOfdToolBySlug(tool.slug)) {
-  return Astro.redirect(`/ofd-tools/${DEFAULT_OFD_TOOL_SLUG}`);
+if (!getOfdToolBySlug(tool.slug) || !getOfdToolSeo(tool.slug)) {
+  return Astro.redirect(`/ofd-tools/${DEFAULT_OFD_TOOL_SLUG}/`);
 }
 
-const pageTitle = `${copy.title} | ${config.site.title}`;
-const pageDescription = `${copy.desc} — 100% local browser processing on ToolVX.`;
-const keywords = `OFD, ${copy.title}, OFD tool, browser OFD, ToolVX`;
+const locale = Astro.currentLocale ?? config.site.lang;
 ---
 
-<OfdLayout
-  title={pageTitle}
-  description={pageDescription}
-  keywords={keywords}
-  appName={copy.title}
->
-  <OfdWorkspace tool={tool} locale={locale} />
-</OfdLayout>
+<OfdToolPage tool={tool} locale={locale} />

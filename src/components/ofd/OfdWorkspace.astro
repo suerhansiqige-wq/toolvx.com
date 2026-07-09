@@ -38,25 +38,61 @@ const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
   >
     <div
       id="ofd-drop-zone"
-      class="ofd-drop-zone border-border bg-muted/30 hover:border-accent interactive relative cursor-pointer rounded-2xl border-2 border-dashed p-8 sm:p-12"
+      class="ofd-drop-zone border-border bg-muted/30 hover:border-accent interactive relative cursor-pointer rounded-2xl border-2 border-dashed p-6 sm:p-8"
     >
       <input
         id="ofd-file-input"
         type="file"
         accept=".ofd,application/ofd,application/octet-stream"
         multiple={tool.multiple ?? false}
-        class="file-input-overlay"
+        class="ofd-file-input-overlay"
         aria-label={tool.multiple ? ws.uploadMultiHint : ws.uploadHint}
       />
-      <p class="text-foreground text-base font-medium" data-i18n="ofd.workspace.uploadHint">
-        {tool.multiple ? ws.uploadMultiHint : ws.uploadHint}
-      </p>
-      <p class="text-muted-foreground mt-2 text-sm" data-i18n="ofd.workspace.uploadSubhint">
-        {ws.uploadSubhint}
-      </p>
+
+      <div id="ofd-drop-empty" class="ofd-drop-empty relative z-0 text-center sm:text-left">
+        <p class="text-foreground text-base font-medium" data-i18n="ofd.workspace.uploadHint">
+          {tool.multiple ? ws.uploadMultiHint : ws.uploadHint}
+        </p>
+        <p class="text-muted-foreground mt-2 text-sm" data-i18n="ofd.workspace.uploadSubhint">
+          {ws.uploadSubhint}
+        </p>
+      </div>
+
+      <div id="ofd-drop-filled" class="ofd-drop-filled relative z-0 hidden">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <button
+            id="ofd-add-file-btn"
+            type="button"
+            class="ofd-add-file-chip interactive shrink-0"
+            data-i18n="ofd.workspace.addFile"
+          >
+            {ws.addFile}
+          </button>
+          <div id="ofd-file-chips" class="flex min-w-0 flex-1 flex-wrap gap-2"></div>
+        </div>
+
+        <div id="ofd-progress-area" class="mt-5 hidden" aria-live="polite">
+          <div
+            class="bg-muted h-2.5 w-full overflow-hidden rounded-full"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            id="ofd-progress-track"
+          >
+            <div
+              id="ofd-progress-bar"
+              class="bg-accent h-full rounded-full transition-[width] duration-200 ease-out"
+              style="width: 0%"
+            >
+            </div>
+          </div>
+          <p id="ofd-progress-label" class="text-muted-foreground mt-2 text-sm"></p>
+        </div>
+      </div>
     </div>
 
-    <p id="ofd-status" class="text-muted-foreground mt-4 min-h-[1.25rem] text-sm" aria-live="polite"></p>
+    <p id="ofd-status" class="text-muted-foreground mt-3 min-h-[1.25rem] text-sm" aria-live="polite"
+    ></p>
 
     <div class="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
       <button
@@ -85,6 +121,107 @@ const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
   .ofd-drop-zone--active {
     border-color: color-mix(in oklab, var(--accent) 55%, transparent);
     background: color-mix(in oklab, var(--accent) 8%, var(--muted));
+  }
+
+  .ofd-drop-zone--has-files {
+    border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+    background: color-mix(in oklab, var(--card) 80%, var(--muted));
+    cursor: default;
+  }
+
+  .ofd-file-input-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 0;
+  }
+
+  .ofd-drop-zone--has-files .ofd-file-input-overlay {
+    position: fixed;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .ofd-add-file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 0.75rem;
+    border: 2px dashed color-mix(in oklab, var(--accent) 50%, transparent);
+    background: color-mix(in oklab, var(--accent) 6%, transparent);
+    padding: 0.65rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .ofd-file-chip {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+    background: var(--card);
+    padding: 0.5rem 0.65rem 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    box-shadow: 0 1px 2px color-mix(in oklab, black 6%, transparent);
+  }
+
+  .ofd-file-chip__icon {
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .ofd-file-chip__meta {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .ofd-file-chip__name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .ofd-file-chip__size {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+
+  .ofd-file-chip__remove {
+    flex-shrink: 0;
+    display: flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: none;
+    background: color-mix(in oklab, var(--muted) 80%, transparent);
+    color: var(--muted-foreground);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .ofd-file-chip__remove:hover {
+    background: color-mix(in oklab, #ef4444 15%, var(--muted));
+    color: #ef4444;
   }
 </style>
 
