@@ -5,6 +5,11 @@ export type OfdProgressReporter = (percent: number, stageKey: string) => void;
 
 const PARSE_TIMEOUT_MS = 90_000;
 const RASTERIZE_TIMEOUT_MS = 45_000;
+const FONT_FACE_TIMEOUT_MS = 6_000;
+const FONTS_READY_TIMEOUT_MS = 2_000;
+const FONT_BATCH_TIMEOUT_MS = 12_000;
+
+const loadedFontFileKeys = new Set<string>();
 
 function withTimeout<T>(promise: Promise<T>, ms: number, errorCode: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -197,7 +202,11 @@ async function waitForPageResources(pageDiv: HTMLElement): Promise<void> {
     )
   );
   try {
-    await document.fonts?.ready;
+    if (document.fonts?.ready) {
+      await withTimeout(document.fonts.ready, FONTS_READY_TIMEOUT_MS, "fonts-ready-timeout").catch(
+        () => undefined
+      );
+    }
   } catch {
     /* ignore */
   }
@@ -216,33 +225,57 @@ async function getOfdPageCount(file: File): Promise<number> {
 async function loadOfdEmbeddedFonts(file: File): Promise<void> {
   if (typeof FontFace === "undefined" || !document.fonts) return;
 
+  const cacheKey = `${file.name}:${file.size}:${file.lastModified}`;
+  if (loadedFontFileKeys.has(cacheKey)) return;
+
+  try {
+    await withTimeout(loadOfdEmbeddedFontsInner(file), FONT_BATCH_TIMEOUT_MS, "font-batch-timeout");
+    loadedFontFileKeys.add(cacheKey);
+  } catch {
+    /* continue without embedded fonts */
+  }
+}
+
+async function loadOfdEmbeddedFontsInner(file: File): Promise<void> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
   const loads: Promise<void>[] = [];
+  const registeredFamilies = new Set<string>(
+    [...document.fonts].map(face => face.family.replace(/^"|"$/g, ""))
+  );
 
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir || !FONT_EXT.test(path)) continue;
-    const family = path
-      .split("/")
-      .pop()
-      ?.replace(/\.[^.]+$/, "") ?? "ofd-font";
+    const family =
+      path
+        .split("/")
+        .pop()
+        ?.replace(/\.[^.]+$/, "") ?? "ofd-font";
+    if (registeredFamilies.has(family)) continue;
+
     loads.push(
-      (async () => {
-        try {
-          const face = new FontFace(family, await entry.async("arraybuffer"));
-          await face.load();
-          document.fonts.add(face);
-        } catch {
-          /* skip broken font */
-        }
-      })()
+      withTimeout(
+        (async () => {
+          try {
+            const face = new FontFace(family, await entry.async("arraybuffer"));
+            await face.load();
+            document.fonts.add(face);
+            registeredFamilies.add(family);
+          } catch {
+            /* skip broken font */
+          }
+        })(),
+        FONT_FACE_TIMEOUT_MS,
+        "font-face-timeout"
+      ).catch(() => undefined)
     );
   }
 
   await Promise.all(loads);
-  try {
-    await document.fonts.ready;
-  } catch {
-    /* ignore */
+
+  if (document.fonts?.ready) {
+    await withTimeout(document.fonts.ready, FONTS_READY_TIMEOUT_MS, "fonts-ready-timeout").catch(
+      () => undefined
+    );
   }
 }
 
@@ -401,7 +434,9 @@ export async function resolveExportCanvases(
   await loadOfdEmbeddedFonts(file);
 
   onProgress?.(28, "progressParsing");
-  const { pages, canvases } = await loadOfdPreview(file, DEFAULT_RENDER_WIDTH, onProgress);
+  const { pages, canvases } = await loadOfdPreview(file, DEFAULT_RENDER_WIDTH, onProgress, {
+    skipFonts: true,
+  });
 
   if (pages.length === 0) {
     onProgress?.(85, "progressExporting");
@@ -436,7 +471,9 @@ export async function exportFileToSvgZip(
   onProgress?.(25, "progressFonts");
   await loadOfdEmbeddedFonts(file);
   onProgress?.(40, "progressParsing");
-  const { pages } = await loadOfdPreview(file, DEFAULT_RENDER_WIDTH, onProgress);
+  const { pages } = await loadOfdPreview(file, DEFAULT_RENDER_WIDTH, onProgress, {
+    skipFonts: true,
+  });
   if (pages.length === 0) throw new Error("no-svg");
   onProgress?.(75, "progressExporting");
   return withPagesMounted(pages, () => exportPagesToSvgZip(pages, baseName));
@@ -502,9 +539,10 @@ function remapZipPath(path: string, sourcePrefix: string, targetPrefix: string):
 export async function parseAndRenderOfd(
   file: File | ArrayBuffer,
   width = DEFAULT_RENDER_WIDTH,
-  onProgress?: OfdProgressReporter
+  onProgress?: OfdProgressReporter,
+  options?: { skipFonts?: boolean }
 ): Promise<{ pages: HTMLElement[]; docs: OfdParsedDocument[] }> {
-  if (file instanceof File) {
+  if (file instanceof File && !options?.skipFonts) {
     await loadOfdEmbeddedFonts(file);
   }
 
@@ -542,14 +580,15 @@ export async function parseAndRenderOfd(
 export async function loadOfdPreview(
   file: File,
   width = DEFAULT_RENDER_WIDTH,
-  onProgress?: OfdProgressReporter
+  onProgress?: OfdProgressReporter,
+  options?: { skipFonts?: boolean }
 ): Promise<OfdPreviewResult> {
   if (!isOfdFile(file)) {
     throw new Error("invalid-ofd");
   }
 
   try {
-    const { pages, docs } = await parseAndRenderOfd(file, width, onProgress);
+    const { pages, docs } = await parseAndRenderOfd(file, width, onProgress, options);
     onProgress?.(48, "progressRasterizing");
     const canvases = await canvasesFromRenderedPages(pages, width, onProgress);
     if (canvases.length > 0 && !canvases.every(isCanvasMostlyBlank)) {
@@ -943,7 +982,11 @@ async function renderOfdThumbnailInner(file: File, width: number): Promise<strin
   await loadOfdModule();
   await loadOfdEmbeddedFonts(file);
 
-  const { pages } = await withTimeout(parseAndRenderOfd(file, width), 20_000, "timeout");
+  const { pages } = await withTimeout(
+    parseAndRenderOfd(file, width, undefined, { skipFonts: true }),
+    20_000,
+    "timeout"
+  );
   if (pages.length === 0) {
     const singleImage = await trySingleImageFallback(file);
     const canvas = singleImage?.[0];
