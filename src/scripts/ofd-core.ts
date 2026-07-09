@@ -12,7 +12,13 @@ import JSZip from "jszip";
 import { isCanvasMostlyBlank } from "@/scripts/pdf-render";
 import { loadOfdEmbeddedFonts } from "@/scripts/ofd-font-loader";
 import { hydratePagesMedia } from "@/scripts/ofd-image-hydrator";
-import { overlayPagesContent, getPagePaintContext, paintMissingPageContentOntoCanvas } from "@/scripts/ofd-content-overlay";
+import {
+  overlayPagesContent,
+  getPagePaintContext,
+  paintMissingPageContentOntoCanvas,
+  countDynamicContentItems,
+  loadPageContentMeta,
+} from "@/scripts/ofd-content-overlay";
 import { stitchLongImageInWorker, terminateOfdRasterWorker } from "@/scripts/ofd-raster-client";
 import {
   BlobUrlRegistry,
@@ -44,6 +50,7 @@ const DEFAULT_RENDER_WIDTH = 794;
 const OFD_SCRIPT = "/vendor/ofd.umd.min.js";
 
 const mediaUrlRegistry = new BlobUrlRegistry();
+let activePaintContexts: import("@/scripts/ofd-content-overlay").PagePaintContext[] = [];
 
 function withTimeout<T>(promise: Promise<T>, ms: number, errorCode: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -443,21 +450,35 @@ export async function pageDivToCanvas(
 ): Promise<HTMLCanvasElement> {
   await waitForPageResources(pageDiv);
   const { w, h } = parsePageSize(pageDiv, fallbackWidth);
-  const paintCtx = getPagePaintContext(pageDiv);
   const hasOverlayDom = Boolean(
     pageDiv.querySelector("[data-ofd-content-overlay]")?.childElementCount
   );
   const minInk = pageDiv.querySelector("img, image") ? 0.008 : 0.004;
+  const mustDomRaster = hasOverlayDom || activePaintContexts.length > 0;
 
   const attempts: HTMLCanvasElement[] = [];
 
   async function finalizeCanvas(canvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
-    if (paintCtx) await paintMissingPageContentOntoCanvas(canvas, paintCtx);
+    let ctx = getPagePaintContext(pageDiv);
+    if (!ctx) {
+      const idx = Array.from(
+        pageDiv.parentElement?.querySelectorAll("[data-ofd-page-clone]") ?? []
+      ).indexOf(pageDiv);
+      ctx = activePaintContexts[idx >= 0 ? idx : 0];
+    }
+    if (ctx) {
+      const expected = countDynamicContentItems(ctx.meta.contentXml);
+      const painted = await paintMissingPageContentOntoCanvas(canvas, ctx, h);
+      if (expected > 0 && painted === 0) {
+        canvas.dataset.ofdNeedsRepaint = "1";
+      } else {
+        delete canvas.dataset.ofdNeedsRepaint;
+      }
+    }
     return canvas;
   }
 
-  // html2canvas first when DOM overlay carries dynamic text/photos
-  if (hasOverlayDom) {
+  if (mustDomRaster) {
     try {
       const domRaster = await finalizeCanvas(await rasterizePageDivWithHtml2Canvas(pageDiv, w, h));
       const accepted = acceptCanvas(domRaster, minInk);
@@ -471,18 +492,21 @@ export async function pageDivToCanvas(
   const existing = pageDiv.querySelector("canvas");
   if (existing instanceof HTMLCanvasElement && existing.width > 0 && existing.height > 0) {
     const cloned = await finalizeCanvas(cloneCanvas(existing));
-    const accepted = acceptCanvas(cloned, minInk);
+    const needsRepaint = cloned.dataset.ofdNeedsRepaint === "1";
+    const accepted = !needsRepaint ? acceptCanvas(cloned, minInk) : null;
     if (accepted) return cloned;
     attempts.push(cloned);
   }
 
-  try {
-    const domRaster = await finalizeCanvas(await rasterizePageDivWithHtml2Canvas(pageDiv, w, h));
-    const accepted = acceptCanvas(domRaster, minInk);
-    if (accepted) return domRaster;
-    attempts.push(domRaster);
-  } catch {
-    /* fall through */
+  if (!mustDomRaster) {
+    try {
+      const domRaster = await finalizeCanvas(await rasterizePageDivWithHtml2Canvas(pageDiv, w, h));
+      const accepted = acceptCanvas(domRaster, minInk);
+      if (accepted) return domRaster;
+      attempts.push(domRaster);
+    } catch {
+      /* fall through */
+    }
   }
 
   const svg = pageDiv.querySelector("svg");
@@ -551,17 +575,20 @@ export async function resolveExportCanvases(
     );
     const valid = fresh.filter(c => isCanvasRenderable(c));
     if (valid.length > 0) {
-      const domInk = Math.max(...valid.map(measureCanvasInkRatio));
-      const embedded = await tryEmbeddedImagesFallback(file);
-      if (embedded?.length) {
-        const embInk = Math.max(...embedded.map(measureCanvasInkRatio));
-        // Prefer full-page embedded raster when DOM render is sparse (e.g. certificates)
-        if (embInk > domInk * 1.25) {
-          onProgress?.(92, "progressExporting");
-          for (const c of valid) releaseCanvas(c);
-          return embedded.filter(c => isCanvasRenderable(c)).map(cloneCanvas);
+      const metas = await loadPageContentMeta(file);
+      const dynamicItems = metas.reduce((n, m) => n + countDynamicContentItems(m.contentXml), 0);
+      if (dynamicItems === 0) {
+        const embedded = await tryEmbeddedImagesFallback(file);
+        if (embedded?.length) {
+          const domInk = Math.max(...valid.map(measureCanvasInkRatio));
+          const embInk = Math.max(...embedded.map(measureCanvasInkRatio));
+          if (embInk > domInk * 1.25) {
+            onProgress?.(92, "progressExporting");
+            for (const c of valid) releaseCanvas(c);
+            return embedded.filter(c => isCanvasRenderable(c)).map(cloneCanvas);
+          }
+          for (const c of embedded) releaseCanvas(c);
         }
-        for (const c of embedded) releaseCanvas(c);
       }
       onProgress?.(92, "progressExporting");
       if (partial) onProgress?.(90, "progressPartialRaster");
@@ -636,11 +663,12 @@ async function withPagesMounted<T>(
   try {
     if (file) {
       await hydratePagesMedia(file, pages, mediaUrlRegistry);
-      await overlayPagesContent(file, pages, mediaUrlRegistry);
+      activePaintContexts = await overlayPagesContent(file, pages, mediaUrlRegistry);
     }
     for (const page of pages) await waitForPageResources(page);
     return await fn();
   } finally {
+    activePaintContexts = [];
     host.remove();
   }
 }
@@ -694,6 +722,9 @@ export async function loadOfdPreview(
 ): Promise<OfdPreviewResult> {
   if (!isOfdFile(file)) throw new Error("invalid-ofd");
 
+  const metas = await loadPageContentMeta(file);
+  const dynamicItems = metas.reduce((n, m) => n + countDynamicContentItems(m.contentXml), 0);
+
   try {
     const { pages, docs } = await parseAndRenderOfd(file, width, onProgress, options);
 
@@ -707,16 +738,20 @@ export async function loadOfdPreview(
       }
     }
 
-    const embedded = await tryEmbeddedImagesFallback(file);
-    if (embedded?.length) {
-      return { pages: [], canvases: embedded, docs, usedImageFallback: true, partialRaster: false };
+    if (dynamicItems === 0) {
+      const embedded = await tryEmbeddedImagesFallback(file);
+      if (embedded?.length) {
+        return { pages: [], canvases: embedded, docs, usedImageFallback: true, partialRaster: false };
+      }
     }
 
     throw new Error("no-visual");
   } catch {
-    const embedded = await tryEmbeddedImagesFallback(file);
-    if (embedded?.length) {
-      return { pages: [], canvases: embedded, docs: [], usedImageFallback: true, partialRaster: false };
+    if (dynamicItems === 0) {
+      const embedded = await tryEmbeddedImagesFallback(file);
+      if (embedded?.length) {
+        return { pages: [], canvases: embedded, docs: [], usedImageFallback: true, partialRaster: false };
+      }
     }
     throw new Error("no-visual");
   }
@@ -946,13 +981,6 @@ async function renderOfdThumbnailInner(file: File, width: number): Promise<strin
       return "";
     });
     if (url) return url;
-  }
-
-  const embedded = await tryEmbeddedImagesFallback(file);
-  if (embedded?.[0] && isCanvasRenderable(embedded[0])) {
-    const dataUrl = scaleCanvasToDataUrl(embedded[0], width);
-    releaseCanvas(embedded[0]);
-    return dataUrl;
   }
 
   return "";

@@ -41,8 +41,6 @@ export type PagePaintContext = {
 };
 
 const pagePaintCache = new WeakMap<HTMLElement, PagePaintContext>();
-
-const PAGE_CONTENT_RE = /\/Pages\/Page_\d+\/Content\.xml$/i;
 const STATIC_LABEL_RE =
   /^(姓名|性别|年龄|单位名称|发证日期|照片|照|片|NO[:：]?|食品及公共场所|健康体检|合格证|从业人员|中国卫生监督)$/;
 
@@ -184,21 +182,67 @@ export async function buildOfdMediaIdMap(
   return { map, portraitAssets };
 }
 
+async function resolvePageContentXml(zip: JSZip, pagePath: string): Promise<string | null> {
+  const raw = await readText(zip, pagePath);
+  if (!raw) return null;
+
+  const hasObjects =
+    /<(?:[\w-]+:)?TextObject\b/i.test(raw) || /<(?:[\w-]+:)?ImageObject\b/i.test(raw);
+  if (hasObjects) return raw;
+
+  // BaseLoc often points to Page.xml while dynamic content lives in sibling Content.xml.
+  if (/Page\.xml$/i.test(pagePath)) {
+    const sibling = pagePath.replace(/Page\.xml$/i, "Content.xml");
+    const siblingXml = await readText(zip, sibling);
+    if (siblingXml) return siblingXml;
+  }
+
+  const contentLoc =
+    raw.match(/\bContentLoc\s*=\s*"([^"]+)"/i)?.[1] ??
+    raw.match(/<(?:[\w-]+:)?ContentLoc[^>]*>([^<]+)</i)?.[1];
+  if (contentLoc) {
+    const resolved = resolveRelativePath(pagePath, contentLoc.trim());
+    const located = await readText(zip, resolved);
+    if (located) return located;
+  }
+
+  const dir = pagePath.replace(/[^/]+$/, "");
+  const byConvention = `${dir}Content.xml`;
+  const conventional = await readText(zip, byConvention);
+  if (conventional) return conventional;
+
+  return raw;
+}
+
+async function loadPageAnnotationXml(zip: JSZip, docRoot: string, pageIndex: number): Promise<string> {
+  const prefix = docRoot.replace(/[^/]+$/, "");
+  const candidates = [
+    `${prefix}Annots/Page_${pageIndex}/Annotation.xml`,
+    `${prefix}Annots/Page_${pageIndex}/Annotations.xml`,
+  ];
+  const chunks: string[] = [];
+  for (const path of candidates) {
+    const xml = await readText(zip, path);
+    if (xml) chunks.push(xml);
+  }
+  return chunks.join("\n");
+}
+
 export async function loadPageContentMeta(file: File): Promise<PageContentMeta[]> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
   const ofdXml = await readText(zip, "OFD.xml");
   const metas: PageContentMeta[] = [];
 
   let documentXml = "";
+  let docRoot = "";
   if (ofdXml) {
-    const docRoot = parseOfdDocRoot(ofdXml);
+    docRoot = parseOfdDocRoot(ofdXml) ?? "";
     if (docRoot) documentXml = (await readText(zip, docRoot)) ?? "";
   }
 
   const pagePaths: string[] = [];
   if (documentXml) {
     const pages = parseDocumentPages(documentXml);
-    const docRoot = parseOfdDocRoot(ofdXml ?? "");
     for (const page of pages) {
       if (docRoot) pagePaths.push(resolveRelativePath(docRoot, page.baseLoc));
     }
@@ -206,18 +250,72 @@ export async function loadPageContentMeta(file: File): Promise<PageContentMeta[]
 
   if (pagePaths.length === 0) {
     for (const path of Object.keys(zip.files).sort(naturalSort)) {
-      if (PAGE_CONTENT_RE.test(path)) pagePaths.push(path);
+      if (/\/Pages\/Page_\d+\/(?:Content|Page)\.xml$/i.test(path)) pagePaths.push(path);
     }
   }
 
-  for (const contentPath of pagePaths) {
-    const contentXml = await readText(zip, contentPath);
+  for (let i = 0; i < pagePaths.length; i++) {
+    const contentPath = pagePaths[i];
+    let contentXml = await resolvePageContentXml(zip, contentPath);
     if (!contentXml) continue;
+
+    const annotXml = docRoot ? await loadPageAnnotationXml(zip, docRoot, i) : "";
+    if (annotXml && !contentXml.includes(annotXml)) {
+      contentXml = `${contentXml}\n${annotXml}`;
+    }
+
     const [pageWidthMm, pageHeightMm] = parsePageAreaMm(documentXml, contentXml);
     metas.push({ contentXml, pageWidthMm, pageHeightMm });
   }
 
   return metas;
+}
+
+/** Count fillable values in page Content.xml (excludes static labels). */
+export function countDynamicContentItems(contentXml: string): number {
+  let count = 0;
+  for (const match of contentXml.matchAll(
+    /<(?:[\w-]+:)?TextObject\b[^>]*>[\s\S]*?<(?:[\w-]+:)?TextCode[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?TextCode>/gi
+  )) {
+    if (isDynamicText(decodeXmlText(match[1] ?? ""))) count++;
+  }
+  count += [...contentXml.matchAll(/<(?:[\w-]+:)?ImageObject\b/gi)].length;
+  return count;
+}
+
+export async function preparePagePaintContexts(
+  file: File,
+  registry: BlobUrlRegistry
+): Promise<PagePaintContext[]> {
+  const [metas, fontIdMap, mediaPack] = await Promise.all([
+    loadPageContentMeta(file),
+    buildOfdFontIdMap(file),
+    buildOfdMediaIdMap(file, registry),
+  ]);
+  return metas.map(meta => ({
+    meta,
+    fontIdMap,
+    mediaIdMap: mediaPack.map,
+    portraitAssets: mediaPack.portraitAssets,
+  }));
+}
+
+function resolvePageScale(
+  meta: PageContentMeta,
+  pageWidthPx: number,
+  pageHeightPx: number
+): { scaleX: number; scaleY: number } {
+  const metaW = meta.pageWidthMm;
+  const metaH = meta.pageHeightMm;
+  const renderLandscape = pageWidthPx >= pageHeightPx;
+  const metaLandscape = metaW >= metaH;
+
+  if (renderLandscape === metaLandscape) {
+    return { scaleX: pageWidthPx / metaW, scaleY: pageHeightPx / metaH };
+  }
+
+  // Page DOM orientation differs from PhysicalBox — swap axis mapping.
+  return { scaleX: pageWidthPx / metaH, scaleY: pageHeightPx / metaW };
 }
 
 export function getPagePaintContext(pageDiv: HTMLElement): PagePaintContext | undefined {
@@ -249,17 +347,18 @@ async function paintImageObject(
   canvas: HTMLCanvasElement,
   ctx: PagePaintContext,
   attrs: string,
-  scale: number,
+  scaleX: number,
+  scaleY: number,
   portraitIdx: { value: number }
 ): Promise<boolean> {
   const resourceId = Number(attr(attrs, "ResourceID"));
   const boundary = parseOfdBox(attr(attrs, "Boundary"));
   if (!boundary) return false;
 
-  const left = boundary[0] * scale;
-  const top = boundary[1] * scale;
-  const width = boundary[2] * scale;
-  const height = boundary[3] * scale;
+  const left = boundary[0] * scaleX;
+  const top = boundary[1] * scaleY;
+  const width = boundary[2] * scaleX;
+  const height = boundary[3] * scaleY;
   const ctm = parseOfdCtm(attr(attrs, "CTM"));
 
   const asset = resolveImageAsset(ctx, resourceId, boundary, portraitIdx);
@@ -299,22 +398,25 @@ async function paintImageObject(
 
 export async function paintMissingPageContentOntoCanvas(
   canvas: HTMLCanvasElement,
-  ctx: PagePaintContext
+  ctx: PagePaintContext,
+  pageHeightPx?: number
 ): Promise<number> {
   const style = canvas.style.width ? Number(canvas.style.width.replace("px", "")) : 0;
   const cssWidth = style || canvas.width;
-  const scale = cssWidth / ctx.meta.pageWidthMm;
-  if (!scale || !Number.isFinite(scale)) return 0;
+  const cssHeight =
+    pageHeightPx ||
+    (canvas.style.height ? Number(canvas.style.height.replace("px", "")) : 0) ||
+    canvas.height;
+  const { scaleX: mmScaleX, scaleY: mmScaleY } = resolvePageScale(ctx.meta, cssWidth, cssHeight);
+  if (!mmScaleX || !mmScaleY || !Number.isFinite(mmScaleX) || !Number.isFinite(mmScaleY)) return 0;
 
   const g = canvas.getContext("2d");
   if (!g) return 0;
 
-  const styleH = canvas.style.height ? Number(canvas.style.height.replace("px", "")) : 0;
-  const cssHeight = styleH || canvas.height;
-  const scaleY = canvas.height / cssHeight;
-  const scaleX = canvas.width / cssWidth;
+  const pixelScaleX = canvas.width / cssWidth;
+  const pixelScaleY = canvas.height / cssHeight;
   g.save();
-  g.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+  g.setTransform(pixelScaleX, 0, 0, pixelScaleY, 0, 0);
 
   let painted = 0;
 
@@ -334,15 +436,11 @@ export async function paintMissingPageContentOntoCanvas(
     const fontId = attr(objAttrs, "Font") ?? "0";
     const sizeMm = Number(attr(objAttrs, "Size") ?? "3.5");
 
-    const left = (boundary[0] + codeX) * scale;
-    const top = (boundary[1] + codeY) * scale;
-    const regionW = Math.max(boundary[2] * scale, 12);
-    const regionH = Math.max(boundary[3] * scale, 8);
-    const fontSize = Math.max(9, sizeMm * scale * 0.96);
+    const left = (boundary[0] + codeX) * mmScaleX;
+    const top = (boundary[1] + codeY) * mmScaleY;
+    const fontSize = Math.max(9, sizeMm * Math.min(mmScaleX, mmScaleY) * 0.96);
 
-    const ink = measureRegionInkRatio(canvas, left, top, regionW, regionH);
-    if (ink > 0.035) continue;
-
+    // Always paint page-layer values — template underlines must not block text.
     g.font = `${fontSize}px ${fontFamilyForId(fontId, ctx.fontIdMap)}`;
     g.fillStyle = "#000000";
     g.textBaseline = "alphabetic";
@@ -351,8 +449,41 @@ export async function paintMissingPageContentOntoCanvas(
   }
 
   const portraitIdx = { value: 0 };
-  for (const match of ctx.meta.contentXml.matchAll(/<(?:[\w-]+:)?ImageObject\b([^/>]*)\/?>/gi)) {
-    if (await paintImageObject(g, canvas, ctx, match[1] ?? "", scale, portraitIdx)) painted++;
+  for (const match of ctx.meta.contentXml.matchAll(
+    /<(?:[\w-]+:)?ImageObject\b([^>]*)(?:\/>|>[\s\S]*?<\/(?:[\w-]+:)?ImageObject>)/gi
+  )) {
+    if (await paintImageObject(g, canvas, ctx, match[1] ?? "", mmScaleX, mmScaleY, portraitIdx)) {
+      painted++;
+    }
+  }
+
+  // Stamp annotations often only expose Appearance Boundary without ImageObject.
+  for (const match of ctx.meta.contentXml.matchAll(
+    /<(?:[\w-]+:)?Annot\b[^>]*Type\s*=\s*"Stamp"[^>]*>[\s\S]*?<(?:[\w-]+:)?Appearance\b[^>]*Boundary\s*=\s*"([^"]+)"/gi
+  )) {
+    const boundary = parseOfdBox(match[1]);
+    if (!boundary) continue;
+
+    const stampAsset = [...ctx.mediaIdMap.values()].find(a => /stamp|seal|章|印/i.test(a.pathHint));
+    if (!stampAsset) continue;
+
+    const left = boundary[0] * mmScaleX;
+    const top = boundary[1] * mmScaleY;
+    const width = boundary[2] * mmScaleX;
+    const height = boundary[3] * mmScaleY;
+    const ink = measureRegionInkRatio(canvas, left, top, width, height);
+    if (ink > 0.25) continue;
+
+    try {
+      const img = await loadImage(stampAsset.url);
+      drawOfdImageInBoundary(g, img, left, top, width, height, null, {
+        stamp: true,
+        forceContain: true,
+      });
+      painted++;
+    } catch {
+      /* skip */
+    }
   }
 
   g.restore();
@@ -403,10 +534,12 @@ function overlayMissingPageContentDom(
 ): number {
   const style = pageDiv.getAttribute("style") ?? "";
   const wMatch = style.match(/width:\s*(\d+(?:\.\d+)?)px/);
+  const hMatch = style.match(/height:\s*(\d+(?:\.\d+)?)px/);
   const pageWidthPx = wMatch ? Number(wMatch[1]) : pageDiv.clientWidth || 794;
+  const pageHeightPx = hMatch ? Number(hMatch[1]) : pageDiv.clientHeight || Math.round(pageWidthPx * 0.707);
   if (!pageWidthPx) return 0;
 
-  const scale = pageWidthPx / meta.pageWidthMm;
+  const { scaleX, scaleY } = resolvePageScale(meta, pageWidthPx, pageHeightPx);
   fixExistingPageImages(pageDiv);
   const overlay = ensureOverlayRoot(pageDiv);
   let added = 0;
@@ -418,6 +551,7 @@ function overlayMissingPageContentDom(
     portraitAssets: mediaPack.portraitAssets,
   };
   const portraitIdx = { value: 0 };
+  const fontScale = Math.min(scaleX, scaleY);
 
   for (const match of meta.contentXml.matchAll(
     /<(?:[\w-]+:)?TextObject\b([^>]*)>[\s\S]*?<(?:[\w-]+:)?TextCode([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?TextCode>/gi
@@ -435,9 +569,9 @@ function overlayMissingPageContentDom(
     const fontId = attr(objAttrs, "Font") ?? "0";
     const sizeMm = Number(attr(objAttrs, "Size") ?? "3.5");
 
-    const left = (boundary[0] + codeX) * scale;
-    const top = (boundary[1] + codeY) * scale;
-    const fontSize = Math.max(9, sizeMm * scale * 0.96);
+    const left = (boundary[0] + codeX) * scaleX;
+    const top = (boundary[1] + codeY) * scaleY;
+    const fontSize = Math.max(9, sizeMm * fontScale * 0.96);
 
     const span = document.createElement("span");
     span.textContent = rawText;
@@ -456,7 +590,9 @@ function overlayMissingPageContentDom(
     added++;
   }
 
-  for (const match of meta.contentXml.matchAll(/<(?:[\w-]+:)?ImageObject\b([^/>]*)\/?>/gi)) {
+  for (const match of meta.contentXml.matchAll(
+    /<(?:[\w-]+:)?ImageObject\b([^>]*)(?:\/>|>[\s\S]*?<\/(?:[\w-]+:)?ImageObject>)/gi
+  )) {
     const attrs = match[1] ?? "";
     const resourceId = Number(attr(attrs, "ResourceID"));
     const boundary = parseOfdBox(attr(attrs, "Boundary"));
@@ -465,10 +601,10 @@ function overlayMissingPageContentDom(
     const asset = resolveImageAsset(paintCtx, resourceId, boundary, portraitIdx);
     if (!asset) continue;
 
-    const left = boundary[0] * scale;
-    const top = boundary[1] * scale;
-    const width = boundary[2] * scale;
-    const height = boundary[3] * scale;
+    const left = boundary[0] * scaleX;
+    const top = boundary[1] * scaleY;
+    const width = boundary[2] * scaleX;
+    const height = boundary[3] * scaleY;
 
     const img = document.createElement("img");
     img.src = asset.url;
@@ -496,26 +632,20 @@ export async function overlayPagesContent(
   file: File,
   pages: HTMLElement[],
   registry: BlobUrlRegistry
-): Promise<void> {
-  if (pages.length === 0) return;
+): Promise<PagePaintContext[]> {
+  if (pages.length === 0) return [];
 
-  const [metas, fontIdMap, mediaPack] = await Promise.all([
-    loadPageContentMeta(file),
-    buildOfdFontIdMap(file),
-    buildOfdMediaIdMap(file, registry),
-  ]);
+  const contexts = await preparePagePaintContexts(file, registry);
 
   for (let i = 0; i < pages.length; i++) {
-    const meta = metas[i];
-    if (!meta) continue;
-
-    const paintCtx: PagePaintContext = {
-      meta,
-      fontIdMap,
-      mediaIdMap: mediaPack.map,
-      portraitAssets: mediaPack.portraitAssets,
-    };
+    const paintCtx = contexts[i];
+    if (!paintCtx) continue;
     pagePaintCache.set(pages[i], paintCtx);
-    overlayMissingPageContentDom(pages[i], meta, fontIdMap, mediaPack);
+    overlayMissingPageContentDom(pages[i], paintCtx.meta, paintCtx.fontIdMap, {
+      map: paintCtx.mediaIdMap,
+      portraitAssets: paintCtx.portraitAssets,
+    });
   }
+
+  return contexts;
 }
