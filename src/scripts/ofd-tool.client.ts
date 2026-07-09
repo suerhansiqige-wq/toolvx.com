@@ -20,9 +20,7 @@ import { formatBytes } from "@/scripts/tools";
 
 type OfdToolMode = string;
 
-const THUMB_ITEM_WIDTH = "w-[132px]";
-const THUMB_ROW_CLASS =
-  "dropzone-thumbs-scroll flex min-h-[12rem] min-w-0 w-full flex-1 flex-nowrap items-stretch gap-4 overflow-x-auto px-1 pt-1";
+const THUMB_ROW_CLASS = "ofd-thumbs-row";
 
 let currentFiles: File[] = [];
 let extractedText = "";
@@ -95,8 +93,10 @@ function setBusy(next: boolean) {
   busy = next;
   const actionBtn = $("ofd-action-btn") as HTMLButtonElement | null;
   const input = $("ofd-file-input") as HTMLInputElement | null;
+  const addBtn = $("ofd-add-file-btn") as HTMLButtonElement | null;
   if (actionBtn) actionBtn.disabled = next || currentFiles.length === 0;
   if (input) input.disabled = next;
+  if (addBtn) addBtn.disabled = next;
 }
 
 function resetOutput() {
@@ -115,8 +115,7 @@ function ofdFileIcon(): string {
 function createDeleteButton(onRemove: () => void): HTMLButtonElement {
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
-  deleteBtn.className =
-    "dropzone-thumb-remove interactive absolute end-1 top-1 z-30 flex size-8 items-center justify-center rounded-full border-2 border-white bg-rose-500 font-bold text-white shadow-lg ring-2 ring-rose-500/35 transition hover:scale-110 hover:bg-rose-600 dark:border-rose-950";
+  deleteBtn.className = "ofd-thumb-remove interactive";
   deleteBtn.setAttribute("aria-label", t(wsKey("removeFile")));
   deleteBtn.textContent = "×";
   deleteBtn.addEventListener("click", e => {
@@ -130,18 +129,10 @@ function createAddCard(): HTMLButtonElement {
   const card = document.createElement("button");
   card.type = "button";
   card.id = "ofd-add-file-btn";
-  card.className = `dropzone-add-card interactive flex min-h-[12rem] ${THUMB_ITEM_WIDTH} shrink-0 flex-col items-center justify-center gap-2 self-stretch rounded-xl border-2 border-dashed border-accent/45 bg-accent/5 px-3 py-6 text-center transition-all duration-300 hover:border-accent hover:bg-accent/10`;
+  card.className = "ofd-add-card interactive";
   card.setAttribute("aria-label", t(wsKey("addFile")));
   card.setAttribute("data-i18n", "ofd.workspace.addFile");
-
-  card.innerHTML = `
-    <span class="bg-accent text-accent-foreground flex size-11 items-center justify-center rounded-full shadow-sm">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="size-6" aria-hidden="true">
-        <path d="M12 5v14M5 12h14"/>
-      </svg>
-    </span>
-    <span class="text-foreground text-xs font-semibold">${t(wsKey("addFile"))}</span>
-  `;
+  card.textContent = t(wsKey("addFile"));
 
   card.addEventListener("click", e => {
     e.stopPropagation();
@@ -163,49 +154,40 @@ function createProgressBlock(): HTMLElement {
   return wrap;
 }
 
-function createThumbPlaceholder(): HTMLElement {
-  const placeholder = document.createElement("div");
-  placeholder.className = `border-border bg-muted/40 flex min-h-[10rem] ${THUMB_ITEM_WIDTH} shrink-0 flex-1 animate-pulse items-center justify-center rounded-xl border`;
-  placeholder.innerHTML =
-    '<div class="border-accent size-6 animate-spin rounded-full border-2 border-t-transparent"></div>';
-  return placeholder;
+function createThumbSpinner(): HTMLElement {
+  const spinner = document.createElement("div");
+  spinner.className = "ofd-thumb-spinner";
+  spinner.setAttribute("aria-hidden", "true");
+  return spinner;
 }
 
 function createFileThumb(file: File, index: number): HTMLElement {
   const card = document.createElement("div");
-  card.className = `dropzone-thumb-item relative flex h-full min-h-[12rem] ${THUMB_ITEM_WIDTH} shrink-0 flex-col items-center gap-2 overflow-visible`;
+  card.className = "ofd-thumb-item";
   card.dataset.ofdThumbIndex = String(index);
 
   if (isMultipleMode() && currentFiles.length > 1) {
     const orderBadge = document.createElement("span");
-    orderBadge.className =
-      "bg-accent text-accent-foreground absolute start-1.5 top-1.5 z-10 flex size-6 items-center justify-center rounded-full text-[10px] font-bold shadow-sm";
+    orderBadge.className = "ofd-thumb-order";
     orderBadge.textContent = String(index + 1);
     card.appendChild(orderBadge);
   }
 
-  const visualWrap = document.createElement("div");
-  visualWrap.className = `flex min-h-[10rem] ${THUMB_ITEM_WIDTH} w-full flex-1 shrink-0`;
-
   const visual = document.createElement("div");
-  visual.className =
-    "border-border bg-card relative flex size-full min-h-[10rem] w-full flex-1 items-center justify-center overflow-hidden rounded-xl border shadow-sm";
+  visual.className = "ofd-thumb-visual";
   visual.dataset.ofdThumbVisual = "";
-  visual.innerHTML =
-    '<div class="border-accent size-6 animate-spin rounded-full border-2 border-t-transparent"></div>';
-  visualWrap.appendChild(visual);
+  visual.appendChild(createThumbSpinner());
 
   const name = document.createElement("p");
-  name.className =
-    "text-foreground w-full truncate px-1 text-center text-xs font-medium";
+  name.className = "ofd-thumb-name";
   name.textContent = file.name;
   name.title = file.name;
 
   const size = document.createElement("p");
-  size.className = "text-muted-foreground text-[10px]";
+  size.className = "ofd-thumb-size";
   size.textContent = formatBytes(file.size);
 
-  card.append(visualWrap, name, size, createProgressBlock());
+  card.append(visual, name, size, createProgressBlock());
   return card;
 }
 
@@ -269,17 +251,12 @@ function renderFileThumbs() {
   zone.classList.add("has-files");
   thumbs.className = THUMB_ROW_CLASS;
 
-  if (isMultipleMode()) {
-    thumbs.appendChild(createAddCard());
-  }
+  thumbs.appendChild(createAddCard());
 
   for (let i = 0; i < currentFiles.length; i++) {
     const file = currentFiles[i];
-    const placeholder = createThumbPlaceholder();
-    thumbs.appendChild(placeholder);
-
     const card = createFileThumb(file, i);
-    thumbs.replaceChild(card, placeholder);
+    thumbs.appendChild(card);
 
     const visual = card.querySelector<HTMLElement>("[data-ofd-thumb-visual]");
     if (visual) void loadThumbPreview(file, visual, i, generation);
