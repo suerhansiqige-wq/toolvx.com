@@ -318,9 +318,16 @@ export type Messages = {
       success: string;
       error: string;
       errorInvalid: string;
+      errorNeedMultiple: string;
+      errorNoVisual: string;
+      errorNoText: string;
+      fallbackImages: string;
       convert: string;
       download: string;
-      comingSoonAction: string;
+      actionMerge: string;
+      actionCompress: string;
+      actionExtract: string;
+      actionView: string;
       readerReady: string;
     };
   };

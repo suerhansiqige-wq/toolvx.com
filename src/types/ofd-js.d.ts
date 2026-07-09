@@ -1,18 +1,23 @@
 declare module "ofd.js" {
+  export type OfdParsedDocument = {
+    pages: unknown[];
+    document?: unknown;
+    tpls?: unknown;
+    fontResObj?: unknown;
+    drawParamResObj?: unknown;
+    multiMediaResObj?: unknown;
+  };
+
   export function parseOfdDocument(options: {
     ofd: File | Blob | ArrayBuffer;
-    success?: (res?: unknown) => void;
+    success?: (res: OfdParsedDocument[] | OfdParsedDocument) => void;
     fail?: (error: unknown) => void;
   }): void;
 
   export function renderOfd(
-    documentIndex?: number,
-    width?: number
-  ): Promise<HTMLElement[] | HTMLElement>;
-
-  export function renderOfdByIndex(
-    documentIndex: number,
-    pageIndex: number,
-    width?: number
-  ): Promise<HTMLElement>;
+    width: number,
+    ofd: OfdParsedDocument
+  ): HTMLElement[] | HTMLElement;
 }
+
+export {};

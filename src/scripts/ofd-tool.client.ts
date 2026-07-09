@@ -1,18 +1,30 @@
 import { applyI18n, onI18nReady, t } from "@/scripts/i18n-client";
 import {
+  compressOfdFile,
+  exportCanvasesToLongImage,
   exportCanvasesToPdf,
+  exportCanvasesToPngZip,
+  exportPagesToHtml,
+  exportPagesToSvgZip,
+  exportTextToDocx,
+  extractOfdText,
   isOfdFile,
+  loadMultipleOfdPreviews,
   loadOfdPreview,
+  mergeOfdFiles,
+  outputFilename,
   pdfFilenameFromOfd,
 } from "@/scripts/ofd-core";
 
 type OfdToolMode = string;
-type OfdToolStatus = "ready" | "coming-soon";
 
-let currentFile: File | null = null;
+let currentFiles: File[] = [];
+let currentPages: HTMLElement[] = [];
 let currentCanvases: HTMLCanvasElement[] = [];
+let extractedText = "";
 let outputBlob: Blob | null = null;
 let busy = false;
+let usedImageFallback = false;
 
 function $(id: string) {
   return document.getElementById(id);
@@ -26,8 +38,8 @@ function getMode(): OfdToolMode {
   return getRoot()?.dataset.mode ?? "reader";
 }
 
-function getStatus(): OfdToolStatus {
-  return (getRoot()?.dataset.status as OfdToolStatus) ?? "coming-soon";
+function isMultipleMode(): boolean {
+  return getRoot()?.dataset.multiple === "true";
 }
 
 function wsKey(key: string) {
@@ -46,7 +58,7 @@ function setBusy(next: boolean) {
   busy = next;
   const actionBtn = $("ofd-action-btn") as HTMLButtonElement | null;
   const input = $("ofd-file-input") as HTMLInputElement | null;
-  if (actionBtn) actionBtn.disabled = next || !currentFile || getStatus() !== "ready";
+  if (actionBtn) actionBtn.disabled = next || currentFiles.length === 0;
   if (input) input.disabled = next;
 }
 
@@ -64,48 +76,149 @@ function clearPreview() {
   if (preview) preview.replaceChildren();
 }
 
-async function renderPreview(pages: HTMLElement[]) {
+async function renderPreview(pages: HTMLElement[], canvases: HTMLCanvasElement[]) {
   const preview = $("ofd-preview");
   if (!preview) return;
   preview.replaceChildren();
-  for (const page of pages) {
-    page.classList.add("ofd-preview__page");
-    preview.appendChild(page);
+
+  if (pages.length > 0) {
+    for (const page of pages) {
+      page.classList.add("ofd-preview__page");
+      preview.appendChild(page);
+    }
+    return;
+  }
+
+  for (const canvas of canvases) {
+    const wrap = document.createElement("div");
+    wrap.className = "ofd-preview__page";
+    canvas.classList.add("ofd-preview__fallback-canvas");
+    wrap.appendChild(canvas);
+    preview.appendChild(wrap);
   }
 }
 
-async function handleFile(file: File) {
-  if (!isOfdFile(file)) {
+function primaryFile(): File | null {
+  return currentFiles[0] ?? null;
+}
+
+function statusForMode(mode: string, fallback: boolean): string {
+  if (fallback) return t(wsKey("fallbackImages"));
+  if (mode === "reader") return t(wsKey("readerReady"));
+  return t(wsKey("success"));
+}
+
+function mapErrorMessage(error: unknown): string {
+  const code = error instanceof Error ? error.message : String(error);
+  if (code === "invalid-ofd") return t(wsKey("errorInvalid"));
+  if (code === "need-multiple") return t(wsKey("errorNeedMultiple"));
+  if (code === "no-text") return t(wsKey("errorNoText"));
+  if (code === "no-visual" || code === "no-pages" || code === "no-svg") {
+    return t(wsKey("errorNoVisual"));
+  }
+  return t(wsKey("error"));
+}
+
+async function handleFiles(files: FileList | File[]) {
+  const list = Array.from(files).filter(isOfdFile);
+  if (list.length === 0) {
     setStatusMessage(t(wsKey("errorInvalid")), true);
     return;
   }
 
-  currentFile = file;
+  if (isMultipleMode() && list.length < 2) {
+    setStatusMessage(t(wsKey("errorNeedMultiple")), true);
+    return;
+  }
+
+  currentFiles = isMultipleMode() ? list : [list[0]];
+  currentPages = [];
   currentCanvases = [];
+  extractedText = "";
   outputBlob = null;
+  usedImageFallback = false;
   clearPreview();
   resetOutput();
   setBusy(true);
   setStatusMessage(t(wsKey("processing")));
 
-  try {
-    const { pages, canvases } = await loadOfdPreview(file);
-    currentCanvases = canvases;
-    await renderPreview(pages);
+  const mode = getMode();
 
-    const mode = getMode();
-    if (mode === "reader") {
-      setStatusMessage(t(wsKey("readerReady")));
-    } else {
+  try {
+    if (mode === "to-text" || mode === "to-word") {
+      const chunks: string[] = [];
+      for (const file of currentFiles) {
+        chunks.push(await extractOfdText(file));
+      }
+      extractedText = chunks.filter(Boolean).join("\n\n");
+      if (!extractedText.trim()) throw new Error("no-text");
       setStatusMessage(t(wsKey("success")));
+    } else if (mode === "compress") {
+      const file = primaryFile();
+      if (!file) throw new Error("no-file");
+      outputBlob = await compressOfdFile(file);
+      attachDownload(outputBlob, outputFilename(file.name, "ofd"));
+      setStatusMessage(t(wsKey("success")));
+    } else if (mode === "merge") {
+      outputBlob = await mergeOfdFiles(currentFiles);
+      attachDownload(outputBlob, `${currentFiles[0].name.replace(/\.ofd$/i, "")}-merged.ofd`);
+      try {
+        const { pages, canvases, usedImageFallback: fallback } =
+          await loadMultipleOfdPreviews(currentFiles);
+        currentPages = pages;
+        currentCanvases = canvases;
+        usedImageFallback = fallback;
+        await renderPreview(pages, canvases);
+      } catch {
+        // merged file is still downloadable without preview
+      }
+      setStatusMessage(t(wsKey("success")));
+    } else {
+      const { pages, canvases, usedImageFallback: fallback } =
+        currentFiles.length > 1
+          ? await loadMultipleOfdPreviews(currentFiles)
+          : await loadOfdPreview(currentFiles[0]);
+      currentPages = pages;
+      currentCanvases = canvases;
+      usedImageFallback = fallback;
+      await renderPreview(pages, canvases);
+      setStatusMessage(statusForMode(mode, fallback));
     }
-  } catch {
-    currentFile = null;
+  } catch (error) {
+    currentFiles = [];
+    currentPages = [];
+    currentCanvases = [];
+    extractedText = "";
+    usedImageFallback = false;
     clearPreview();
-    setStatusMessage(t(wsKey("error")), true);
+    setStatusMessage(mapErrorMessage(error), true);
   } finally {
     setBusy(false);
     syncActionState();
+  }
+}
+
+function attachDownload(blob: Blob, filename: string) {
+  const downloadBtn = $("ofd-download-btn") as HTMLAnchorElement | null;
+  if (!downloadBtn) return;
+  downloadBtn.href = URL.createObjectURL(blob);
+  downloadBtn.download = filename;
+  downloadBtn.classList.remove("pointer-events-none", "opacity-45");
+}
+
+function actionLabelKey(): string {
+  const mode = getMode();
+  switch (mode) {
+    case "merge":
+      return "actionMerge";
+    case "compress":
+      return "actionCompress";
+    case "to-text":
+      return "actionExtract";
+    case "reader":
+      return "actionView";
+    default:
+      return "convert";
   }
 }
 
@@ -113,60 +226,101 @@ function syncActionState() {
   const actionBtn = $("ofd-action-btn") as HTMLButtonElement | null;
   if (!actionBtn) return;
 
-  const status = getStatus();
-  const mode = getMode();
-  const hasFile = Boolean(currentFile);
-
-  if (status !== "ready") {
-    actionBtn.disabled = true;
-    actionBtn.textContent = t(wsKey("comingSoonAction"));
-    return;
-  }
-
-  actionBtn.disabled = busy || !hasFile;
-  actionBtn.textContent =
-    mode === "reader" ? t(wsKey("convert")) : t(wsKey("convert"));
+  const hasFiles = currentFiles.length > 0;
+  actionBtn.disabled = busy || !hasFiles;
+  actionBtn.textContent = t(wsKey(actionLabelKey()));
 }
 
 async function runAction() {
-  if (busy || !currentFile) return;
-  const status = getStatus();
+  if (busy || currentFiles.length === 0) return;
   const mode = getMode();
-
-  if (status !== "ready") {
-    setStatusMessage(t(wsKey("comingSoonAction")), true);
-    return;
-  }
+  const file = primaryFile();
+  if (!file) return;
 
   if (mode === "reader") {
     $("ofd-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
 
-  if (mode === "to-pdf") {
-    if (currentCanvases.length === 0) {
-      setStatusMessage(t(wsKey("error")), true);
-      return;
+  setBusy(true);
+  setStatusMessage(t(wsKey("processing")));
+
+  try {
+    let blob: Blob | null = null;
+    let filename = "";
+
+    switch (mode) {
+      case "to-pdf": {
+        if (currentCanvases.length === 0) throw new Error("no-visual");
+        blob = await exportCanvasesToPdf(currentCanvases);
+        filename = pdfFilenameFromOfd(file.name);
+        break;
+      }
+      case "to-image": {
+        if (currentCanvases.length === 0) throw new Error("no-visual");
+        blob = await exportCanvasesToPngZip(currentCanvases, file.name.replace(/\.ofd$/i, ""));
+        filename = outputFilename(file.name, "zip");
+        break;
+      }
+      case "to-long-image": {
+        if (currentCanvases.length === 0) throw new Error("no-visual");
+        blob = await exportCanvasesToLongImage(currentCanvases);
+        filename = outputFilename(file.name, "png");
+        break;
+      }
+      case "to-svg": {
+        if (currentPages.length === 0) throw new Error("no-svg");
+        blob = await exportPagesToSvgZip(currentPages, file.name.replace(/\.ofd$/i, ""));
+        filename = outputFilename(file.name, "svg.zip");
+        break;
+      }
+      case "to-web": {
+        if (currentCanvases.length === 0) throw new Error("no-visual");
+        blob = await exportPagesToHtml(currentPages, file.name.replace(/\.ofd$/i, ""), currentCanvases);
+        filename = outputFilename(file.name, "html");
+        break;
+      }
+      case "to-text": {
+        blob = new Blob([extractedText], { type: "text/plain;charset=utf-8" });
+        filename = outputFilename(file.name, "txt");
+        break;
+      }
+      case "to-word": {
+        blob = await exportTextToDocx(extractedText, file.name.replace(/\.ofd$/i, ""));
+        filename = outputFilename(file.name, "docx");
+        break;
+      }
+      case "merge": {
+        if (!outputBlob) {
+          outputBlob = await mergeOfdFiles(currentFiles);
+        }
+        blob = outputBlob;
+        filename = `${file.name.replace(/\.ofd$/i, "")}-merged.ofd`;
+        break;
+      }
+      case "compress": {
+        if (!outputBlob) {
+          outputBlob = await compressOfdFile(file);
+        }
+        blob = outputBlob;
+        filename = outputFilename(file.name, "ofd");
+        break;
+      }
+      default:
+        throw new Error("unsupported-mode");
     }
 
-    setBusy(true);
-    setStatusMessage(t(wsKey("processing")));
-    try {
-      outputBlob = await exportCanvasesToPdf(currentCanvases);
-      const downloadBtn = $("ofd-download-btn") as HTMLAnchorElement | null;
-      if (downloadBtn) {
-        downloadBtn.href = URL.createObjectURL(outputBlob);
-        downloadBtn.download = pdfFilenameFromOfd(currentFile.name);
-        downloadBtn.classList.remove("pointer-events-none", "opacity-45");
-      }
-      setStatusMessage(t(wsKey("success")));
-    } catch {
-      resetOutput();
-      setStatusMessage(t(wsKey("error")), true);
-    } finally {
-      setBusy(false);
-      syncActionState();
+    if (blob) {
+      outputBlob = blob;
+      attachDownload(blob, filename);
     }
+    setStatusMessage(statusForMode(mode, usedImageFallback));
+  } catch (error) {
+    resetOutput();
+    setStatusMessage(mapErrorMessage(error), true);
+  } finally {
+    setBusy(false);
+    syncActionState();
   }
 }
 
@@ -195,8 +349,8 @@ function bindDropZone(signal: AbortSignal) {
     event => {
       event.preventDefault();
       zone.classList.remove("ofd-drop-zone--active");
-      const file = event.dataTransfer?.files?.[0];
-      if (file) void handleFile(file);
+      const files = event.dataTransfer?.files;
+      if (files?.length) void handleFiles(files);
     },
     { signal }
   );
@@ -204,8 +358,7 @@ function bindDropZone(signal: AbortSignal) {
   input.addEventListener(
     "change",
     () => {
-      const file = input.files?.[0];
-      if (file) void handleFile(file);
+      if (input.files?.length) void handleFiles(input.files);
     },
     { signal }
   );
@@ -229,10 +382,13 @@ function initOfdTool() {
   const ac = new AbortController();
   root.__ofdToolAbort = ac;
 
-  currentFile = null;
+  currentFiles = [];
+  currentPages = [];
   currentCanvases = [];
+  extractedText = "";
   outputBlob = null;
   busy = false;
+  usedImageFallback = false;
 
   bindDropZone(ac.signal);
   bindActions(ac.signal);

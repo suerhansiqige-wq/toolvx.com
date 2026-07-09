@@ -22,15 +22,12 @@ export type OfdToolMode =
   | "reader"
   | "to-long-image";
 
-export type OfdToolStatus = "ready" | "coming-soon";
-
 export type OfdToolDefinition = {
   slug: string;
   i18nKey: string;
   accent: OfdToolAccent;
   icon: string;
   mode: OfdToolMode;
-  status: OfdToolStatus;
   multiple?: boolean;
 };
 
@@ -59,7 +56,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "sky",
     icon: "pdf",
     mode: "to-pdf",
-    status: "ready",
   },
   {
     slug: "ofd-merge",
@@ -67,7 +63,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "blue",
     icon: "merge",
     mode: "merge",
-    status: "coming-soon",
     multiple: true,
   },
   {
@@ -76,7 +71,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "indigo",
     icon: "image",
     mode: "to-image",
-    status: "coming-soon",
   },
   {
     slug: "ofd-to-svg",
@@ -84,7 +78,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "cyan",
     icon: "svg",
     mode: "to-svg",
-    status: "coming-soon",
   },
   {
     slug: "ofd-to-web",
@@ -92,7 +85,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "teal",
     icon: "web",
     mode: "to-web",
-    status: "coming-soon",
   },
   {
     slug: "ofd-to-text",
@@ -100,7 +92,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "violet",
     icon: "text",
     mode: "to-text",
-    status: "coming-soon",
   },
   {
     slug: "ofd-compress",
@@ -108,7 +99,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "rose",
     icon: "compress",
     mode: "compress",
-    status: "coming-soon",
   },
   {
     slug: "ofd-to-word",
@@ -116,7 +106,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "amber",
     icon: "word",
     mode: "to-word",
-    status: "coming-soon",
   },
   {
     slug: "ofd-reader",
@@ -124,7 +113,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "emerald",
     icon: "reader",
     mode: "reader",
-    status: "ready",
   },
   {
     slug: "ofd-to-long-image",
@@ -132,7 +120,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "slate",
     icon: "longImage",
     mode: "to-long-image",
-    status: "coming-soon",
   },
 ];
 

@@ -31,9 +31,9 @@ const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
   <div
     id="ofd-tool-root"
     data-mode={tool.mode}
-    data-status={tool.status}
     data-slug={tool.slug}
     data-i18n-key={tool.i18nKey}
+    data-multiple={tool.multiple ? "true" : "false"}
   >
     <div
       id="ofd-drop-zone"
@@ -109,6 +109,10 @@ const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
     display: block;
     width: 100% !important;
     height: auto !important;
+  }
+
+  .ofd-preview :global(.ofd-preview__fallback-canvas) {
+    max-width: 52rem;
   }
 </style>
 
