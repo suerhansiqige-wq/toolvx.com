@@ -18,11 +18,8 @@ export type OfdToolMode =
   | "to-web"
   | "to-text"
   | "compress"
-  | "to-word"
   | "reader"
   | "to-long-image";
-
-export type OfdToolStatus = "ready" | "coming-soon";
 
 export type OfdToolDefinition = {
   slug: string;
@@ -30,7 +27,6 @@ export type OfdToolDefinition = {
   accent: OfdToolAccent;
   icon: string;
   mode: OfdToolMode;
-  status: OfdToolStatus;
   multiple?: boolean;
 };
 
@@ -52,6 +48,9 @@ export const ofdToolIconPaths: Record<string, string> = {
     '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
 };
 
+/** Default landing tool when entering OFD from the site nav. */
+export const DEFAULT_OFD_TOOL_SLUG = "ofd-to-pdf";
+
 export const ofdToolsRegistry: OfdToolDefinition[] = [
   {
     slug: "ofd-to-pdf",
@@ -59,7 +58,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "sky",
     icon: "pdf",
     mode: "to-pdf",
-    status: "ready",
   },
   {
     slug: "ofd-merge",
@@ -67,7 +65,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "blue",
     icon: "merge",
     mode: "merge",
-    status: "coming-soon",
     multiple: true,
   },
   {
@@ -76,7 +73,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "indigo",
     icon: "image",
     mode: "to-image",
-    status: "coming-soon",
   },
   {
     slug: "ofd-to-svg",
@@ -84,7 +80,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "cyan",
     icon: "svg",
     mode: "to-svg",
-    status: "coming-soon",
   },
   {
     slug: "ofd-to-web",
@@ -92,7 +87,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "teal",
     icon: "web",
     mode: "to-web",
-    status: "coming-soon",
   },
   {
     slug: "ofd-to-text",
@@ -100,7 +94,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "violet",
     icon: "text",
     mode: "to-text",
-    status: "coming-soon",
   },
   {
     slug: "ofd-compress",
@@ -108,15 +101,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "rose",
     icon: "compress",
     mode: "compress",
-    status: "coming-soon",
-  },
-  {
-    slug: "ofd-to-word",
-    i18nKey: "ofdToWord",
-    accent: "amber",
-    icon: "word",
-    mode: "to-word",
-    status: "coming-soon",
   },
   {
     slug: "ofd-reader",
@@ -124,7 +108,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "emerald",
     icon: "reader",
     mode: "reader",
-    status: "ready",
   },
   {
     slug: "ofd-to-long-image",
@@ -132,7 +115,6 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     accent: "slate",
     icon: "longImage",
     mode: "to-long-image",
-    status: "coming-soon",
   },
 ];
 
