@@ -1,7 +1,11 @@
 ---
 import OfdLayout from "@/layouts/OfdLayout.astro";
 import OfdWorkspace from "@/components/ofd/OfdWorkspace.astro";
-import { getOfdToolBySlug, ofdToolsRegistry } from "@/data/ofdToolsRegistry";
+import {
+  DEFAULT_OFD_TOOL_SLUG,
+  getOfdToolBySlug,
+  ofdToolsRegistry,
+} from "@/data/ofdToolsRegistry";
 import { catalogs, type LocaleCode } from "@/i18n/messages";
 import config from "@/config";
 
@@ -18,7 +22,7 @@ const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
 const copy = catalog.ofd.tools[tool.i18nKey as keyof typeof catalog.ofd.tools];
 
 if (!getOfdToolBySlug(tool.slug)) {
-  return Astro.redirect("/ofd-tools");
+  return Astro.redirect(`/ofd-tools/${DEFAULT_OFD_TOOL_SLUG}`);
 }
 
 const pageTitle = `${copy.title} | ${config.site.title}`;

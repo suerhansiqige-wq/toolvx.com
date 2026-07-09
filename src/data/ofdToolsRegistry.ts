@@ -49,6 +49,9 @@ export const ofdToolIconPaths: Record<string, string> = {
     '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
 };
 
+/** Default landing tool when entering OFD from the site nav. */
+export const DEFAULT_OFD_TOOL_SLUG = "ofd-to-pdf";
+
 export const ofdToolsRegistry: OfdToolDefinition[] = [
   {
     slug: "ofd-to-pdf",

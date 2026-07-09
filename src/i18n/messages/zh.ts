@@ -53,7 +53,7 @@ export const zh: Messages = {
       search: "搜索",
       tools: "PDF工具",
       redact: "脱敏",
-      ofdTools: "OFD 工具箱",
+      ofdTools: "OFD工具",
     },
     footer: {
       copyright: "版权",
