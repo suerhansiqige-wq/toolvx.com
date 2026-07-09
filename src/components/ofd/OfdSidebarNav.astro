@@ -1,0 +1,90 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import {
+  ofdToolIconPaths,
+  ofdToolsRegistry,
+  type OfdToolDefinition,
+} from "@/data/ofdToolsRegistry";
+import { catalogs, type LocaleCode } from "@/i18n/messages";
+
+const currentPath = Astro.url.pathname;
+const locale = "en";
+const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
+
+function isActive(href: string) {
+  return currentPath === href || currentPath.startsWith(`${href}/`);
+}
+---
+
+<nav
+  class="tool-sidebar-nav ofd-sidebar-nav"
+  aria-label={catalog.ofd.workspace.sidebarAria}
+  data-i18n-aria-label="ofd.workspace.sidebarAria"
+  data-pagefind-ignore
+>
+  {
+    ofdToolsRegistry.map((tool: OfdToolDefinition, index) => {
+      const href = getRelativeLocaleUrl(locale, `ofd-tools/${tool.slug}`);
+      const copy = catalog.ofd.tools[tool.i18nKey as keyof typeof catalog.ofd.tools];
+      const active = isActive(href);
+      return (
+        <a
+          href={href}
+          class:list={[
+            "tool-sidebar-nav__link",
+            index > 0 && "tool-sidebar-nav__link--group-start",
+            active && "tool-sidebar-nav__link--active",
+          ]}
+          aria-current={active ? "page" : undefined}
+        >
+          <span class="ofd-sidebar-nav__icon" aria-hidden="true">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              set:html={ofdToolIconPaths[tool.icon]}
+            />
+          </span>
+          <span class="tool-sidebar-nav__label" data-i18n={`ofd.tools.${tool.i18nKey}.title`}>
+            {copy.title}
+          </span>
+        </a>
+      );
+    })
+  }
+  <div class="tool-sidebar-nav__spacer" aria-hidden="true"></div>
+</nav>
+
+<style>
+  .ofd-sidebar-nav__icon {
+    display: inline-flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.55rem;
+    background: color-mix(in oklab, var(--accent) 12%, var(--muted));
+    color: var(--accent);
+  }
+
+  .ofd-sidebar-nav__icon :global(svg) {
+    width: 1rem;
+    height: 1rem;
+  }
+</style>
+
+<script>
+  import { syncToolSidebarWidth } from "@/scripts/tool-sidebar-width";
+
+  function initOfdSidebar() {
+    syncToolSidebarWidth();
+  }
+
+  initOfdSidebar();
+  document.addEventListener("astro:after-swap", initOfdSidebar);
+</script>

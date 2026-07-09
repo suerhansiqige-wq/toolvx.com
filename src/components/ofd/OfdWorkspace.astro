@@ -1,0 +1,117 @@
+---
+import type { OfdToolDefinition } from "@/data/ofdToolsRegistry";
+import { catalogs, type LocaleCode } from "@/i18n/messages";
+
+type Props = {
+  tool: OfdToolDefinition;
+  locale?: string;
+};
+
+const { tool, locale = "en" } = Astro.props;
+const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
+const copy = catalog.ofd.tools[tool.i18nKey as keyof typeof catalog.ofd.tools];
+const ws = catalog.ofd.workspace;
+const titleKey = `ofd.tools.${tool.i18nKey}.title`;
+const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
+---
+
+<section class="card-surface shadow-elevated mb-10 p-6 sm:p-10" data-pagefind-body>
+  <div class="mb-8 text-center">
+    <h1
+      class="text-foreground mb-2 text-3xl font-bold tracking-tight sm:text-4xl"
+      data-i18n={titleKey}
+    >
+      {copy.title}
+    </h1>
+    <p class="text-muted-foreground mx-auto max-w-2xl text-sm sm:text-base" data-i18n={taglineKey}>
+      {copy.desc}
+    </p>
+  </div>
+
+  <div
+    id="ofd-tool-root"
+    data-mode={tool.mode}
+    data-status={tool.status}
+    data-slug={tool.slug}
+    data-i18n-key={tool.i18nKey}
+  >
+    <div
+      id="ofd-drop-zone"
+      class="ofd-drop-zone border-border bg-muted/30 hover:border-accent interactive relative cursor-pointer rounded-2xl border-2 border-dashed p-8 sm:p-12"
+    >
+      <input
+        id="ofd-file-input"
+        type="file"
+        accept=".ofd,application/ofd,application/octet-stream"
+        multiple={tool.multiple ?? false}
+        class="file-input-overlay"
+        aria-label={tool.multiple ? ws.uploadMultiHint : ws.uploadHint}
+      />
+      <p class="text-foreground text-base font-medium" data-i18n="ofd.workspace.uploadHint">
+        {tool.multiple ? ws.uploadMultiHint : ws.uploadHint}
+      </p>
+      <p class="text-muted-foreground mt-2 text-sm" data-i18n="ofd.workspace.uploadSubhint">
+        {ws.uploadSubhint}
+      </p>
+    </div>
+
+    <p id="ofd-status" class="text-muted-foreground mt-4 min-h-[1.25rem] text-sm" aria-live="polite"></p>
+
+    <div
+      id="ofd-preview"
+      class="ofd-preview mt-6 flex flex-col items-center gap-4"
+      aria-label={ws.previewAria}
+      data-i18n-aria-label="ofd.workspace.previewAria"
+    ></div>
+
+    {
+      tool.mode !== "reader" && (
+        <div class="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+          <button
+            id="ofd-action-btn"
+            type="button"
+            class="interactive bg-accent text-accent-foreground h-14 rounded-[1rem] border-2 border-transparent px-4 text-base font-bold disabled:cursor-not-allowed disabled:opacity-45"
+            disabled
+          >
+            <span data-i18n="ofd.workspace.convert">{ws.convert}</span>
+          </button>
+          <a
+            id="ofd-download-btn"
+            href="#"
+            download
+            class="interactive pointer-events-none flex h-14 items-center justify-center rounded-[1rem] border-2 border-border bg-card px-4 text-base font-bold opacity-45"
+          >
+            <span data-i18n="ofd.workspace.download">{ws.download}</span>
+          </a>
+        </div>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  .ofd-drop-zone--active {
+    border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+    background: color-mix(in oklab, var(--accent) 8%, var(--muted));
+  }
+
+  .ofd-preview :global(.ofd-preview__page) {
+    width: 100%;
+    max-width: 52rem;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+    background: white;
+    box-shadow: 0 8px 24px color-mix(in oklab, black 8%, transparent);
+  }
+
+  .ofd-preview :global(canvas) {
+    display: block;
+    width: 100% !important;
+    height: auto !important;
+  }
+</style>
+
+<script>
+  import "@/scripts/ofd-tool.client.ts";
+</script>

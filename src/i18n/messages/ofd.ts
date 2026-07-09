@@ -23,6 +23,21 @@ export const ofdEn: Messages["ofd"] = {
       desc: "Stitch all pages into one vertical image",
     },
   },
+  workspace: {
+    sidebarAria: "OFD tools navigation",
+    uploadHint: "Click to upload or drag & drop an OFD file here",
+    uploadSubhint: "Supports .ofd files — processed locally in your browser",
+    uploadMultiHint: "Select multiple OFD files to merge",
+    previewAria: "OFD document preview",
+    processing: "Processing…",
+    success: "Done! Your file is ready.",
+    error: "Could not process this OFD file. Please try another file.",
+    errorInvalid: "Please choose a valid .ofd file.",
+    convert: "Convert",
+    download: "Download",
+    comingSoonAction: "Coming soon",
+    readerReady: "Document loaded — scroll to read all pages.",
+  },
 };
 
 export const ofdZh: Messages["ofd"] = {
@@ -44,5 +59,20 @@ export const ofdZh: Messages["ofd"] = {
     ofdToWord: { title: "OFD 转 Word", desc: "将提取文本导出为 DOCX" },
     ofdReader: { title: "OFD 阅读器", desc: "在浏览器中预览 OFD 页面" },
     ofdToLongImage: { title: "OFD 转长图", desc: "将所有页面拼接为一张长图" },
+  },
+  workspace: {
+    sidebarAria: "OFD 工具导航",
+    uploadHint: "点击上传或拖拽 OFD 文件到此处",
+    uploadSubhint: "支持 .ofd 文件 — 全部在浏览器本地处理",
+    uploadMultiHint: "选择多个 OFD 文件进行合并",
+    previewAria: "OFD 文档预览",
+    processing: "处理中…",
+    success: "完成！文件已准备好。",
+    error: "无法处理此 OFD 文件，请尝试其他文件。",
+    errorInvalid: "请选择有效的 .ofd 文件。",
+    convert: "转换",
+    download: "下载",
+    comingSoonAction: "即将推出",
+    readerReady: "文档已加载 — 向下滚动阅读全部页面。",
   },
 };

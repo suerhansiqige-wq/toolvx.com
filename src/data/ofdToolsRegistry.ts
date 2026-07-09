@@ -10,11 +10,28 @@ export type OfdToolAccent =
   | "emerald"
   | "slate";
 
+export type OfdToolMode =
+  | "to-pdf"
+  | "merge"
+  | "to-image"
+  | "to-svg"
+  | "to-web"
+  | "to-text"
+  | "compress"
+  | "to-word"
+  | "reader"
+  | "to-long-image";
+
+export type OfdToolStatus = "ready" | "coming-soon";
+
 export type OfdToolDefinition = {
   slug: string;
   i18nKey: string;
   accent: OfdToolAccent;
   icon: string;
+  mode: OfdToolMode;
+  status: OfdToolStatus;
+  multiple?: boolean;
 };
 
 /** SVG path markup (24×24 viewBox) for hub cards. */
@@ -41,60 +58,81 @@ export const ofdToolsRegistry: OfdToolDefinition[] = [
     i18nKey: "ofdToPdf",
     accent: "sky",
     icon: "pdf",
+    mode: "to-pdf",
+    status: "ready",
   },
   {
     slug: "ofd-merge",
     i18nKey: "ofdMerge",
     accent: "blue",
     icon: "merge",
+    mode: "merge",
+    status: "coming-soon",
+    multiple: true,
   },
   {
     slug: "ofd-to-image",
     i18nKey: "ofdToImage",
     accent: "indigo",
     icon: "image",
+    mode: "to-image",
+    status: "coming-soon",
   },
   {
     slug: "ofd-to-svg",
     i18nKey: "ofdToSvg",
     accent: "cyan",
     icon: "svg",
+    mode: "to-svg",
+    status: "coming-soon",
   },
   {
     slug: "ofd-to-web",
     i18nKey: "ofdToWeb",
     accent: "teal",
     icon: "web",
+    mode: "to-web",
+    status: "coming-soon",
   },
   {
     slug: "ofd-to-text",
     i18nKey: "ofdToText",
     accent: "violet",
     icon: "text",
+    mode: "to-text",
+    status: "coming-soon",
   },
   {
     slug: "ofd-compress",
     i18nKey: "ofdCompress",
     accent: "rose",
     icon: "compress",
+    mode: "compress",
+    status: "coming-soon",
   },
   {
     slug: "ofd-to-word",
     i18nKey: "ofdToWord",
     accent: "amber",
     icon: "word",
+    mode: "to-word",
+    status: "coming-soon",
   },
   {
     slug: "ofd-reader",
     i18nKey: "ofdReader",
     accent: "emerald",
     icon: "reader",
+    mode: "reader",
+    status: "ready",
   },
   {
     slug: "ofd-to-long-image",
     i18nKey: "ofdToLongImage",
     accent: "slate",
     icon: "longImage",
+    mode: "to-long-image",
+    status: "coming-soon",
   },
 ];
 

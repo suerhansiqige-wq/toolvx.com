@@ -308,5 +308,20 @@ export type Messages = {
       localBadge: string;
     };
     tools: Record<string, { title: string; desc: string }>;
+    workspace: {
+      sidebarAria: string;
+      uploadHint: string;
+      uploadSubhint: string;
+      uploadMultiHint: string;
+      previewAria: string;
+      processing: string;
+      success: string;
+      error: string;
+      errorInvalid: string;
+      convert: string;
+      download: string;
+      comingSoonAction: string;
+      readerReady: string;
+    };
   };
 };
