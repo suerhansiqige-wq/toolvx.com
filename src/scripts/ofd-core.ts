@@ -12,6 +12,7 @@ import JSZip from "jszip";
 import { isCanvasMostlyBlank } from "@/scripts/pdf-render";
 import { loadOfdEmbeddedFonts } from "@/scripts/ofd-font-loader";
 import { hydratePagesMedia } from "@/scripts/ofd-image-hydrator";
+import { overlayPagesContent } from "@/scripts/ofd-content-overlay";
 import { stitchLongImageInWorker, terminateOfdRasterWorker } from "@/scripts/ofd-raster-client";
 import {
   BlobUrlRegistry,
@@ -612,7 +613,10 @@ async function withPagesMounted<T>(
   document.body.appendChild(host);
 
   try {
-    if (file) await hydratePagesMedia(file, pages, mediaUrlRegistry);
+    if (file) {
+      await hydratePagesMedia(file, pages, mediaUrlRegistry);
+      await overlayPagesContent(file, pages, mediaUrlRegistry);
+    }
     for (const page of pages) await waitForPageResources(page);
     return await fn();
   } finally {
@@ -897,13 +901,6 @@ function scaleCanvasToDataUrl(canvas: HTMLCanvasElement, maxWidth: number): stri
 }
 
 async function renderOfdThumbnailInner(file: File, width: number): Promise<string> {
-  const embedded = await tryEmbeddedImagesFallback(file);
-  if (embedded?.[0] && isCanvasRenderable(embedded[0])) {
-    const url = scaleCanvasToDataUrl(embedded[0], width);
-    releaseCanvas(embedded[0]);
-    return url;
-  }
-
   await loadOfdModule();
   await loadOfdEmbeddedFonts(file);
 
@@ -912,22 +909,32 @@ async function renderOfdThumbnailInner(file: File, width: number): Promise<strin
     20_000,
     "timeout"
   );
-  if (pages.length === 0) return "";
-
-  return withPagesMounted(file, [pages[0]], async () => {
-    try {
-      const canvas = await pageDivToCanvas(pages[0], width);
-      if (isCanvasRenderable(canvas)) {
-        const url = scaleCanvasToDataUrl(canvas, width);
+  if (pages.length > 0) {
+    const url = await withPagesMounted(file, [pages[0]], async () => {
+      try {
+        const canvas = await pageDivToCanvas(pages[0], width);
+        if (isCanvasRenderable(canvas)) {
+          const dataUrl = scaleCanvasToDataUrl(canvas, width);
+          releaseCanvas(canvas);
+          return dataUrl;
+        }
         releaseCanvas(canvas);
-        return url;
+      } catch {
+        /* fall through */
       }
-      releaseCanvas(canvas);
-    } catch {
-      /* fall through */
-    }
-    return "";
-  });
+      return "";
+    });
+    if (url) return url;
+  }
+
+  const embedded = await tryEmbeddedImagesFallback(file);
+  if (embedded?.[0] && isCanvasRenderable(embedded[0])) {
+    const dataUrl = scaleCanvasToDataUrl(embedded[0], width);
+    releaseCanvas(embedded[0]);
+    return dataUrl;
+  }
+
+  return "";
 }
 
 export async function renderOfdThumbnail(

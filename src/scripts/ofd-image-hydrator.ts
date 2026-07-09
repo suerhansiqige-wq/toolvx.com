@@ -75,6 +75,7 @@ export async function buildOfdMediaUrlMap(
       /<(?:[\w-]+:)?(?:MultiMedia|Res)\b[^>]*(?:Type="Image"|Type\s*=\s*"Image")[^>]*>[\s\S]*?(?:\/>|<\/(?:[\w-]+:)?(?:MultiMedia|Res)>)/gi
     )) {
       const tag = block[0];
+      const mediaId = tag.match(/\bID\s*=\s*"(\d+)"/i)?.[1];
       const mediaFile =
         tag.match(/<(?:[\w-]+:)?MediaFile[^>]*>([^<]+)<\/(?:[\w-]+:)?MediaFile>/i)?.[1] ??
         tag.match(/\bMediaFile="([^"]+)"/)?.[1];
@@ -97,6 +98,10 @@ export async function buildOfdMediaUrlMap(
       map.set(basename(trimmed), url);
       map.set(fullPath, url);
       map.set(fullPath.toLowerCase(), url);
+      if (mediaId) {
+        map.set(mediaId, url);
+        map.set(`resource:${mediaId}`, url);
+      }
     }
   }
 
@@ -128,7 +133,14 @@ function resolveMediaUrl(src: string, map: Map<string, string>): string | null {
 export function hydratePageMedia(pageDiv: HTMLElement, mediaMap: Map<string, string>): void {
   pageDiv.querySelectorAll("img").forEach(img => {
     const src = img.getAttribute("src") ?? "";
-    const resolved = resolveMediaUrl(src, mediaMap);
+    let resolved = resolveMediaUrl(src, mediaMap);
+    if (!resolved) {
+      const resourceId =
+        img.getAttribute("data-resource-id") ??
+        img.getAttribute("resourceid") ??
+        img.dataset.resourceId;
+      if (resourceId) resolved = mediaMap.get(resourceId) ?? mediaMap.get(`resource:${resourceId}`) ?? null;
+    }
     if (resolved) {
       img.src = resolved;
       img.removeAttribute("crossorigin");

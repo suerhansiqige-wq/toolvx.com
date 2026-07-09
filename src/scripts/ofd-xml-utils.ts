@@ -13,6 +13,27 @@ export function naturalSort(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 }
 
+/** Decode OFD TextCode entity references and strip nested tags. */
+export function decodeXmlText(value: string): string {
+  return value
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/<[^>]+>/g, "")
+    .trim();
+}
+
+/** Parse PhysicalBox / Boundary "x y w h" (mm) into numbers. */
+export function parseOfdBox(raw: string | null | undefined): [number, number, number, number] | null {
+  if (!raw) return null;
+  const parts = raw.trim().split(/\s+/).map(Number);
+  if (parts.length < 4 || parts.some(n => !Number.isFinite(n))) return null;
+  return [parts[0], parts[1], parts[2], parts[3]];
+}
+
 export function parseOfdDocRoot(ofdXml: string): string | null {
   const match = ofdXml.match(/<(?:[\w-]+:)?DocRoot[^>]*>([^<]+)<\/(?:[\w-]+:)?DocRoot>/i);
   return match?.[1]?.trim() ?? null;

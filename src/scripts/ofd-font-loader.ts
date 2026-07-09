@@ -4,7 +4,7 @@
  * to safe system font stacks so text never renders invisible.
  */
 import JSZip from "jszip";
-import { injectFontFallbackStyle } from "@/scripts/ofd-render-utils";
+import { injectFontFallbackStyle, injectFontIdAliasStyle } from "@/scripts/ofd-render-utils";
 
 const FONT_EXT = /\.(ttf|otf|woff2?|eot)$/i;
 const FONT_FACE_TIMEOUT_MS = 6_000;
@@ -36,6 +36,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 type FontDescriptor = {
   names: string[];
   filePath: string;
+  id?: number;
 };
 
 function dirname(path: string): string {
@@ -55,8 +56,12 @@ function resolveResPath(xmlPath: string, relative: string): string {
   return stack.join("/");
 }
 
-async function parseFontDescriptors(zip: JSZip): Promise<FontDescriptor[]> {
+async function parseFontDescriptors(zip: JSZip): Promise<{
+  descriptors: FontDescriptor[];
+  systemFontIds: Map<number, string>;
+}> {
   const descriptors: FontDescriptor[] = [];
+  const systemFontIds = new Map<number, string>();
   const seen = new Set<string>();
 
   for (const path of Object.keys(zip.files)) {
@@ -68,27 +73,38 @@ async function parseFontDescriptors(zip: JSZip): Promise<FontDescriptor[]> {
       /<(?:[\w-]+:)?Font\b[\s\S]*?(?:\/>|<\/(?:[\w-]+:)?Font>)/gi
     )) {
       const tag = block[0];
+      const fontId = Number(tag.match(/\bID\s*=\s*"(\d+)"/i)?.[1] ?? NaN);
       const fontName = tag.match(/\bFontName="([^"]+)"/)?.[1];
       const familyName = tag.match(/\bFamilyName="([^"]+)"/)?.[1];
       const fileRef =
         tag.match(/<(?:[\w-]+:)?FontFile[^>]*>([^<]+)<\/(?:[\w-]+:)?FontFile>/i)?.[1] ??
         tag.match(/\bFontFile="([^"]+)"/)?.[1];
-      if (!fileRef) continue;
-
-      const filePath = resolveResPath(path, fileRef.trim());
-      const key = filePath.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
 
       const names = [
         ...new Set(
-          [fontName, familyName, fileRef.split("/").pop()?.replace(/\.[^.]+$/, "")].filter(
-            Boolean
-          ) as string[]
+          [
+            fontName,
+            familyName,
+            Number.isFinite(fontId) ? String(fontId) : null,
+            fileRef?.split("/").pop()?.replace(/\.[^.]+$/, ""),
+          ].filter(Boolean) as string[]
         ),
       ];
-      if (names.length === 0) continue;
-      descriptors.push({ names, filePath });
+
+      if (fileRef) {
+        const filePath = resolveResPath(path, fileRef.trim());
+        const key = filePath.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (names.length === 0) continue;
+        descriptors.push({
+          names,
+          filePath,
+          id: Number.isFinite(fontId) ? fontId : undefined,
+        });
+      } else if (names.length > 0 && Number.isFinite(fontId)) {
+        systemFontIds.set(fontId, fontName ?? familyName ?? names[0]);
+      }
     }
 
     for (const block of xml.matchAll(
@@ -121,7 +137,7 @@ async function parseFontDescriptors(zip: JSZip): Promise<FontDescriptor[]> {
     descriptors.push({ names: [baseName], filePath: path });
   }
 
-  return descriptors;
+  return { descriptors, systemFontIds };
 }
 
 async function registerFontFace(names: string[], data: ArrayBuffer): Promise<boolean> {
@@ -176,7 +192,7 @@ export async function loadOfdEmbeddedFonts(file: File): Promise<void> {
 
 async function loadOfdEmbeddedFontsInner(file: File): Promise<void> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const descriptors = await parseFontDescriptors(zip);
+  const { descriptors, systemFontIds } = await parseFontDescriptors(zip);
   const fallbackNames: string[] = [];
   const loads: Promise<void>[] = [];
 
@@ -205,6 +221,10 @@ async function loadOfdEmbeddedFontsInner(file: File): Promise<void> {
     registerSystemFallback([...new Set(fallbackNames)]);
   }
 
+  if (systemFontIds.size > 0) {
+    injectFontIdAliasStyle(systemFontIds);
+  }
+
   if (document.fonts?.ready) {
     await withTimeout(document.fonts.ready, FONTS_READY_TIMEOUT_MS).catch(() => undefined);
   }
@@ -224,6 +244,7 @@ export function clearOfdFontCache(): void {
   loadedFontFileKeys.clear();
   registeredFamilies.clear();
   document.getElementById("ofd-font-fallback-style")?.remove();
+  document.getElementById("ofd-font-id-alias-style")?.remove();
 }
 
 export function getRegisteredFontFamilies(): string[] {

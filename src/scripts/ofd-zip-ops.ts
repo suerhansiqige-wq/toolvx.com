@@ -11,6 +11,7 @@ import {
   buildPageEntry,
   buildTemplateEntry,
   collectNumericIds,
+  decodeXmlText,
   docPrefixFromRoot,
   maxNumericId,
   mergeResourceXml,
@@ -23,18 +24,6 @@ import {
 } from "./ofd-xml-utils";
 
 const PAGE_CONTENT_RE = /^Doc_\d+\/Pages\/Page_\d+\/Content\.xml$/i;
-
-function decodeXmlText(value: string): string {
-  return value
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/<[^>]+>/g, "")
-    .trim();
-}
 
 function discoverPrimaryDocPrefix(zip: JSZip, ofdXml: string | undefined): string {
   const docRoot = ofdXml ? parseOfdDocRoot(ofdXml) : null;

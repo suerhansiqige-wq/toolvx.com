@@ -177,6 +177,28 @@ export function enforcePageLayerOrder(pageDiv: HTMLElement): void {
  * Inject fallback font CSS so text remains visible when embedded OFD fonts fail.
  * Uses system-ui stack with similar metrics to common Chinese document fonts.
  */
+const CJK_FONT_STACK =
+  '"Noto Sans SC", "Microsoft YaHei", "PingFang SC", "SimSun", "Source Han Sans SC", system-ui, sans-serif';
+
+const FONT_NAME_STACK: Record<string, string> = {
+  宋体: '"SimSun", "NSimSun", ' + CJK_FONT_STACK,
+  楷体: '"KaiTi", "STKaiti", "AR PL UKai CN", ' + CJK_FONT_STACK,
+  黑体: '"SimHei", "Heiti SC", ' + CJK_FONT_STACK,
+  仿宋: '"FangSong", "STFangsong", ' + CJK_FONT_STACK,
+  "Courier New": '"Courier New", Courier, monospace',
+};
+
+function stackForFontName(name: string): string {
+  const hit = FONT_NAME_STACK[name];
+  if (hit) return hit;
+  if (/courier/i.test(name)) return FONT_NAME_STACK["Courier New"];
+  if (/宋|song|sun/i.test(name)) return FONT_NAME_STACK["宋体"];
+  if (/楷|kai/i.test(name)) return FONT_NAME_STACK["楷体"];
+  if (/黑|hei/i.test(name)) return FONT_NAME_STACK["黑体"];
+  if (/仿|fang/i.test(name)) return FONT_NAME_STACK["仿宋"];
+  return `"${name}", ${CJK_FONT_STACK}`;
+}
+
 export function injectFontFallbackStyle(fontFamilies: string[]): void {
   if (fontFamilies.length === 0) return;
   const id = "ofd-font-fallback-style";
@@ -185,8 +207,37 @@ export function injectFontFallbackStyle(fontFamilies: string[]): void {
   const rules = fontFamilies
     .map(
       family =>
-        `[style*="${family}"], [data-font="${family}"], .ofd-text-${CSS.escape(family)} { font-family: "${family}", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", "SimSun", system-ui, sans-serif !important; }`
+        `[style*="${family}"], [data-font="${family}"], .ofd-text-${CSS.escape(family)} { font-family: ${stackForFontName(family)} !important; }`
     )
+    .join("\n");
+
+  const style = document.createElement("style");
+  style.id = id;
+  style.textContent = rules;
+  document.head.appendChild(style);
+}
+
+/** Map numeric OFD Font IDs (e.g. Font="85") to usable CSS font stacks. */
+export function injectFontIdAliasStyle(fontIdMap: Map<number, string>): void {
+  if (fontIdMap.size === 0) return;
+  const id = "ofd-font-id-alias-style";
+  document.getElementById(id)?.remove();
+
+  const rules = [...fontIdMap.entries()]
+    .map(([fontId, fontName]) => {
+      const stack = stackForFontName(fontName);
+      const idStr = String(fontId);
+      return [
+        `[data-font-id="${idStr}"]`,
+        `[data-font="${idStr}"]`,
+        `.ofd-font-${idStr}`,
+        `[style*="font-family: ${idStr}"]`,
+        `[style*="font-family:${idStr}"]`,
+        `[font-family="${idStr}"]`,
+      ]
+        .map(sel => `${sel}{font-family:${stack}!important}`)
+        .join("");
+    })
     .join("\n");
 
   const style = document.createElement("style");
