@@ -1,6 +1,7 @@
 import { applyI18n, onI18nReady, t } from "@/scripts/i18n-client";
 import {
   compressOfdFile,
+  disposeOfdSession,
   exportCanvasesToLongImage,
   exportCanvasesToPdf,
   exportCanvasesToPngZip,
@@ -15,6 +16,8 @@ import {
   resolveExportCanvases,
   type OfdProgressReporter,
 } from "@/scripts/ofd-core";
+import { BlobUrlRegistry, triggerBlobDownload } from "@/scripts/ofd-render-utils";
+import { terminateOfdZipWorker } from "@/scripts/ofd-zip-client";
 import { createLegacyFilePicker } from "@/scripts/file-input";
 import { formatBytes } from "@/scripts/tools";
 
@@ -27,6 +30,9 @@ let extractedText = "";
 let outputBlob: Blob | null = null;
 let busy = false;
 let thumbGeneration = 0;
+let lastExportCanvases: HTMLCanvasElement[] = [];
+const downloadUrlRegistry = new BlobUrlRegistry();
+let activeDownloadUrl: string | null = null;
 
 function $(id: string) {
   return document.getElementById(id);
@@ -49,11 +55,14 @@ function wsKey(key: string) {
 }
 
 function setStatusMessage(message: string, isError = false) {
-  const el = $("ofd-status");
-  if (!el) return;
-  el.textContent = message;
-  el.classList.toggle("text-destructive", isError);
-  el.classList.toggle("text-muted-foreground", !isError);
+  const apply = () => {
+    const el = $("ofd-status");
+    if (!el) return;
+    el.textContent = message;
+    el.classList.toggle("text-destructive", isError);
+    el.classList.toggle("text-muted-foreground", !isError);
+  };
+  requestAnimationFrame(apply);
 }
 
 function getThumbCard(index = 0): HTMLElement | null {
@@ -101,11 +110,34 @@ function setBusy(next: boolean) {
 
 function resetOutput() {
   outputBlob = null;
+  disposeOfdSession(lastExportCanvases);
+  lastExportCanvases = [];
   const downloadBtn = $("ofd-download-btn") as HTMLAnchorElement | null;
   if (downloadBtn) {
     downloadBtn.classList.add("pointer-events-none", "opacity-45");
     downloadBtn.removeAttribute("href");
   }
+  if (activeDownloadUrl) {
+    downloadUrlRegistry.revoke(activeDownloadUrl);
+    activeDownloadUrl = null;
+  }
+}
+
+function attachDownload(blob: Blob, filename: string) {
+  const downloadBtn = $("ofd-download-btn") as HTMLAnchorElement | null;
+  if (!downloadBtn) return;
+
+  if (activeDownloadUrl) downloadUrlRegistry.revoke(activeDownloadUrl);
+  activeDownloadUrl = downloadUrlRegistry.create(blob);
+  downloadBtn.href = activeDownloadUrl;
+  downloadBtn.download = filename;
+  downloadBtn.classList.remove("pointer-events-none", "opacity-45");
+
+  // 兼容部分浏览器：点击下载按钮时再次触发 Blob 下载
+  downloadBtn.onclick = event => {
+    event.preventDefault();
+    triggerBlobDownload(blob, filename);
+  };
 }
 
 function ofdFileIcon(): string {
@@ -396,12 +428,10 @@ async function handleFiles(files: FileList | File[]) {
   }
 }
 
-function attachDownload(blob: Blob, filename: string) {
-  const downloadBtn = $("ofd-download-btn") as HTMLAnchorElement | null;
-  if (!downloadBtn) return;
-  downloadBtn.href = URL.createObjectURL(blob);
-  downloadBtn.download = filename;
-  downloadBtn.classList.remove("pointer-events-none", "opacity-45");
+async function loadExportCanvases(file: File, report: OfdProgressReporter) {
+  disposeOfdSession(lastExportCanvases);
+  lastExportCanvases = await resolveExportCanvases(file, report);
+  return lastExportCanvases;
 }
 
 function actionLabelKey(): string {
@@ -448,21 +478,21 @@ async function runAction() {
     switch (mode) {
       case "to-pdf":
       case "reader": {
-        const exportCanvases = await resolveExportCanvases(file, report);
+        const exportCanvases = await loadExportCanvases(file, report);
         setProgress(93, "progressExporting");
         blob = await exportCanvasesToPdf(exportCanvases);
         filename = pdfFilenameFromOfd(file.name);
         break;
       }
       case "to-image": {
-        const exportCanvases = await resolveExportCanvases(file, report);
+        const exportCanvases = await loadExportCanvases(file, report);
         setProgress(93, "progressExporting");
         blob = await exportCanvasesToPngZip(exportCanvases, file.name.replace(/\.ofd$/i, ""));
         filename = outputFilename(file.name, "zip");
         break;
       }
       case "to-long-image": {
-        const exportCanvases = await resolveExportCanvases(file, report);
+        const exportCanvases = await loadExportCanvases(file, report);
         setProgress(93, "progressExporting");
         blob = await exportCanvasesToLongImage(exportCanvases);
         filename = outputFilename(file.name, "png");
@@ -474,7 +504,7 @@ async function runAction() {
         break;
       }
       case "to-web": {
-        const exportCanvases = await resolveExportCanvases(file, report);
+        const exportCanvases = await loadExportCanvases(file, report);
         setProgress(93, "progressExporting");
         blob = await exportPagesToHtml([], file.name.replace(/\.ofd$/i, ""), exportCanvases);
         filename = outputFilename(file.name, "html");
@@ -606,6 +636,12 @@ function initOfdTool() {
   if (!root) return;
 
   root.__ofdToolAbort?.abort();
+  terminateOfdZipWorker();
+  disposeOfdSession(lastExportCanvases);
+  lastExportCanvases = [];
+  downloadUrlRegistry.revokeAll();
+  activeDownloadUrl = null;
+
   const ac = new AbortController();
   root.__ofdToolAbort = ac;
 
@@ -627,3 +663,8 @@ function initOfdTool() {
 onI18nReady(() => syncActionState());
 initOfdTool();
 document.addEventListener("astro:page-load", initOfdTool);
+window.addEventListener("beforeunload", () => {
+  terminateOfdZipWorker();
+  disposeOfdSession(lastExportCanvases);
+  downloadUrlRegistry.revokeAll();
+});

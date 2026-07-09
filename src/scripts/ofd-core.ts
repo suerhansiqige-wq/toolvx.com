@@ -1,15 +1,30 @@
 import JSZip from "jszip";
 import { isCanvasMostlyBlank } from "@/scripts/pdf-render";
+import { loadOfdEmbeddedFonts } from "@/scripts/ofd-font-loader";
+import { hydratePagesMedia } from "@/scripts/ofd-image-hydrator";
+import {
+  BlobUrlRegistry,
+  getAdaptiveCanvasScale,
+  getAdaptiveRenderWidth,
+  releaseCanvas,
+  releaseCanvases,
+  triggerBlobDownload,
+  yieldToMain,
+} from "@/scripts/ofd-render-utils";
+import {
+  compressOfdInWorker,
+  extractOfdTextInWorker,
+  mergeOfdInWorker,
+} from "@/scripts/ofd-zip-client";
+import { getOfdPageCountFromBuffer } from "@/scripts/ofd-zip-ops";
 
 export type OfdProgressReporter = (percent: number, stageKey: string) => void;
 
 const PARSE_TIMEOUT_MS = 90_000;
 const RASTERIZE_TIMEOUT_MS = 45_000;
-const FONT_FACE_TIMEOUT_MS = 6_000;
-const FONTS_READY_TIMEOUT_MS = 2_000;
-const FONT_BATCH_TIMEOUT_MS = 12_000;
 
-const loadedFontFileKeys = new Set<string>();
+/** 会话级 Blob URL 注册表，页面卸载时统一释放 */
+const mediaUrlRegistry = new BlobUrlRegistry();
 
 function withTimeout<T>(promise: Promise<T>, ms: number, errorCode: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -28,6 +43,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, errorCode: string): Pro
 }
 const DEFAULT_RENDER_WIDTH = 794;
 const OFD_SCRIPT = "/vendor/ofd.umd.min.js";
+
+function renderWidth(): number {
+  return getAdaptiveRenderWidth(DEFAULT_RENDER_WIDTH);
+}
 
 export type OfdParsedDocument = {
   pages: unknown[];
@@ -150,23 +169,10 @@ export type OfdPreviewResult = {
 };
 
 const IMAGE_EXT = /\.(jpe?g|png|bmp|gif|webp|tif{1,2})$/i;
-const FONT_EXT = /\.(ttf|otf|woff2?)$/i;
-const PAGE_CONTENT_RE = /^Doc_\d+\/Pages\/Page_\d+\/Content\.xml$/i;
+const FONTS_READY_TIMEOUT_MS = 2_000;
 
 function naturalSort(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
-}
-
-function decodeXmlText(value: string): string {
-  return value
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/<[^>]+>/g, "")
-    .trim();
 }
 
 function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
@@ -214,69 +220,7 @@ async function waitForPageResources(pageDiv: HTMLElement): Promise<void> {
 }
 
 async function getOfdPageCount(file: File): Promise<number> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  let count = 0;
-  for (const path of Object.keys(zip.files)) {
-    if (PAGE_CONTENT_RE.test(path)) count++;
-  }
-  return count;
-}
-
-async function loadOfdEmbeddedFonts(file: File): Promise<void> {
-  if (typeof FontFace === "undefined" || !document.fonts) return;
-
-  const cacheKey = `${file.name}:${file.size}:${file.lastModified}`;
-  if (loadedFontFileKeys.has(cacheKey)) return;
-
-  try {
-    await withTimeout(loadOfdEmbeddedFontsInner(file), FONT_BATCH_TIMEOUT_MS, "font-batch-timeout");
-    loadedFontFileKeys.add(cacheKey);
-  } catch {
-    /* continue without embedded fonts */
-  }
-}
-
-async function loadOfdEmbeddedFontsInner(file: File): Promise<void> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const loads: Promise<void>[] = [];
-  const registeredFamilies = new Set<string>(
-    [...document.fonts].map(face => face.family.replace(/^"|"$/g, ""))
-  );
-
-  for (const [path, entry] of Object.entries(zip.files)) {
-    if (entry.dir || !FONT_EXT.test(path)) continue;
-    const family =
-      path
-        .split("/")
-        .pop()
-        ?.replace(/\.[^.]+$/, "") ?? "ofd-font";
-    if (registeredFamilies.has(family)) continue;
-
-    loads.push(
-      withTimeout(
-        (async () => {
-          try {
-            const face = new FontFace(family, await entry.async("arraybuffer"));
-            await face.load();
-            document.fonts.add(face);
-            registeredFamilies.add(family);
-          } catch {
-            /* skip broken font */
-          }
-        })(),
-        FONT_FACE_TIMEOUT_MS,
-        "font-face-timeout"
-      ).catch(() => undefined)
-    );
-  }
-
-  await Promise.all(loads);
-
-  if (document.fonts?.ready) {
-    await withTimeout(document.fonts.ready, FONTS_READY_TIMEOUT_MS, "fonts-ready-timeout").catch(
-      () => undefined
-    );
-  }
+  return getOfdPageCountFromBuffer(await file.arrayBuffer());
 }
 
 async function rasterizePageDivWithHtml2Canvas(
@@ -287,7 +231,7 @@ async function rasterizePageDivWithHtml2Canvas(
   const { default: html2canvas } = await import("html2canvas");
   return withTimeout(
     html2canvas(pageDiv, {
-      scale: Math.max(1, window.devicePixelRatio || 1),
+      scale: getAdaptiveCanvasScale(),
       width,
       height,
       useCORS: true,
@@ -326,7 +270,7 @@ async function tryEmbeddedImagesFallback(file: File): Promise<HTMLCanvasElement[
 
 async function canvasesFromRenderedPages(
   pages: HTMLElement[],
-  width = DEFAULT_RENDER_WIDTH,
+  width = renderWidth(),
   onProgress?: OfdProgressReporter
 ): Promise<HTMLCanvasElement[]> {
   const canvases: HTMLCanvasElement[] = [];
@@ -338,8 +282,10 @@ async function canvasesFromRenderedPages(
     try {
       canvases.push(await pageDivToCanvas(pages[i], width));
     } catch {
-      /* page may lack raster output */
+      /* 单页失败可跳过 */
     }
+    // 每页渲染后让出主线程，避免低配设备假死
+    await yieldToMain();
   }
   return canvases;
 }
@@ -449,14 +395,15 @@ export async function resolveExportCanvases(
   await loadOfdEmbeddedFonts(file);
 
   onProgress?.(28, "progressParsing");
-  const { pages } = await parseAndRenderOfd(file, DEFAULT_RENDER_WIDTH, onProgress, {
+  const width = renderWidth();
+  const { pages } = await parseAndRenderOfd(file, width, onProgress, {
     skipFonts: true,
   });
 
   if (pages.length > 0) {
     onProgress?.(48, "progressRasterizing");
-    const fresh = await withPagesMounted(pages, () =>
-      canvasesFromRenderedPages(pages, DEFAULT_RENDER_WIDTH, onProgress)
+    const fresh = await withPagesMounted(file, pages, () =>
+      canvasesFromRenderedPages(pages, width, onProgress)
     );
     const valid = fresh.filter(c => !isCanvasMostlyBlank(c));
     if (valid.length > 0) {
@@ -487,64 +434,31 @@ export async function exportFileToSvgZip(
   });
   if (pages.length === 0) throw new Error("no-svg");
   onProgress?.(75, "progressExporting");
-  return withPagesMounted(pages, () => exportPagesToSvgZip(pages, baseName));
+  return withPagesMounted(file, pages, () => exportPagesToSvgZip(pages, baseName));
 }
 
-async function withPagesMounted<T>(pages: HTMLElement[], fn: () => Promise<T>): Promise<T> {
+async function withPagesMounted<T>(
+  file: File | null,
+  pages: HTMLElement[],
+  fn: () => Promise<T>
+): Promise<T> {
   if (pages.length === 0) return fn();
 
   const host = document.createElement("div");
   host.setAttribute("aria-hidden", "true");
-  host.style.cssText = "position:fixed;left:-10000px;top:0;pointer-events:none;opacity:0;";
+  // visibility:hidden 比 opacity:0 更利于 html2canvas / 字体测量
+  host.style.cssText =
+    "position:fixed;left:0;top:0;z-index:-1;visibility:hidden;pointer-events:none;overflow:hidden;width:1px;height:1px;";
   for (const page of pages) host.appendChild(page);
   document.body.appendChild(host);
 
   try {
+    if (file) await hydratePagesMedia(file, pages, mediaUrlRegistry);
+    await waitForPageResources(pages[0]);
     return await fn();
   } finally {
     host.remove();
   }
-}
-
-function parseOfdDocRoot(ofdXml: string): string | null {
-  const match = ofdXml.match(/<(?:[\w-]+:)?DocRoot[^>]*>([^<]+)<\/(?:[\w-]+:)?DocRoot>/i);
-  return match?.[1]?.trim() ?? null;
-}
-
-function parseOfdSignatures(ofdXml: string): string | null {
-  const match = ofdXml.match(/<(?:[\w-]+:)?Signatures[^>]*>([^<]+)<\/(?:[\w-]+:)?Signatures>/i);
-  return match?.[1]?.trim() ?? null;
-}
-
-function docPrefixFromRoot(docRoot: string): string | null {
-  const match = docRoot.match(/^(Doc_\d+)\//i);
-  return match ? `${match[1]}/` : null;
-}
-
-function discoverPrimaryDocPrefix(zip: JSZip, ofdXml: string | undefined): string {
-  const docRoot = ofdXml ? parseOfdDocRoot(ofdXml) : null;
-  if (docRoot) {
-    const prefix = docPrefixFromRoot(docRoot);
-    if (prefix) return prefix;
-  }
-
-  const prefixes = new Set<string>();
-  for (const path of Object.keys(zip.files)) {
-    const match = path.match(/^(Doc_\d+)\//i);
-    if (match) prefixes.add(`${match[1]}/`);
-  }
-
-  const sorted = [...prefixes].sort(naturalSort);
-  return sorted[0] ?? "Doc_0/";
-}
-
-function zipPathStartsWith(path: string, prefix: string): boolean {
-  return path.toLowerCase().startsWith(prefix.toLowerCase());
-}
-
-function remapZipPath(path: string, sourcePrefix: string, targetPrefix: string): string {
-  if (!zipPathStartsWith(path, sourcePrefix)) return path;
-  return targetPrefix + path.slice(sourcePrefix.length);
 }
 
 export async function parseAndRenderOfd(
@@ -603,7 +517,7 @@ export async function loadOfdPreview(
 
     if (pages.length > 0) {
       onProgress?.(48, "progressRasterizing");
-      const canvases = await withPagesMounted(pages, () =>
+      const canvases = await withPagesMounted(file, pages, () =>
         canvasesFromRenderedPages(pages, width, onProgress)
       );
       if (canvases.length > 0 && !canvases.every(isCanvasMostlyBlank)) {
@@ -691,28 +605,39 @@ export async function exportCanvasesToPngZip(
 export async function exportCanvasesToLongImage(canvases: HTMLCanvasElement[]): Promise<Blob> {
   if (canvases.length === 0) throw new Error("no-pages");
 
-  const width = Math.max(...canvases.map(c => c.width));
   const gap = 12;
-  const totalHeight = canvases.reduce((sum, c) => sum + c.height, 0) + gap * (canvases.length - 1);
+  let width = Math.max(...canvases.map(c => c.width));
+  let totalHeight = canvases.reduce((sum, c) => sum + c.height, 0) + gap * (canvases.length - 1);
+
+  // 多数浏览器单轴 Canvas 上限约 16384px，超出时等比缩小避免空白导出
+  const MAX_DIM = 16384;
+  const scale = Math.min(1, MAX_DIM / width, MAX_DIM / totalHeight);
 
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = totalHeight;
+  canvas.width = Math.max(1, Math.floor(width * scale));
+  canvas.height = Math.max(1, Math.floor(totalHeight * scale));
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas-context");
 
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, width, totalHeight);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   let y = 0;
   for (const page of canvases) {
-    const x = Math.floor((width - page.width) / 2);
-    ctx.drawImage(page, x, y);
-    y += page.height + gap;
+    const drawW = Math.floor(page.width * scale);
+    const drawH = Math.floor(page.height * scale);
+    const x = Math.floor((canvas.width - drawW) / 2);
+    ctx.drawImage(page, x, y, drawW, drawH);
+    y += drawH + Math.floor(gap * scale);
+    await yieldToMain();
   }
 
   return new Promise((resolve, reject) => {
-    canvas.toBlob(b => (b ? resolve(b) : reject(new Error("png-failed"))), "image/png");
+    canvas.toBlob(b => {
+      releaseCanvas(canvas);
+      if (b) resolve(b);
+      else reject(new Error("png-failed"));
+    }, "image/png");
   });
 }
 
@@ -764,29 +689,7 @@ ${sections}
 }
 
 export async function extractOfdText(file: File): Promise<string> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const lines: string[] = [];
-
-  for (const path of Object.keys(zip.files).sort(naturalSort)) {
-    if (!path.endsWith("Content.xml") && !path.endsWith("Annotations.xml")) continue;
-    const entry = zip.files[path];
-    if (!entry || entry.dir) continue;
-    const xml = await entry.async("string");
-    for (const match of xml.matchAll(/<(?:[\w-]+:)?TextCode[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?TextCode>/g)) {
-      const text = decodeXmlText(match[1] ?? "");
-      if (text) lines.push(text);
-    }
-    for (const match of xml.matchAll(/<(?:[\w-]+:)?TextObject[^>]*>[\s\S]*?<\/(?:[\w-]+:)?TextObject>/g)) {
-      const chunk = match[0];
-      const inner = chunk.match(/<(?:[\w-]+:)?TextCode[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?TextCode>/);
-      if (inner) {
-        const text = decodeXmlText(inner[1] ?? "");
-        if (text) lines.push(text);
-      }
-    }
-  }
-
-  return [...new Set(lines)].join("\n");
+  return extractOfdTextInWorker(await file.arrayBuffer());
 }
 
 export async function exportTextToDocx(text: string, title: string): Promise<Blob> {
@@ -809,25 +712,8 @@ export async function exportTextToDocx(text: string, title: string): Promise<Blo
 }
 
 export async function compressOfdFile(file: File): Promise<Blob> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  return zip.generateAsync({
-    type: "blob",
-    compression: "DEFLATE",
-    compressionOptions: { level: 9 },
-  });
-}
-
-function randomDocId(): string {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID().replace(/-/g, "");
-  }
-  return `${Date.now()}${Math.random().toString(16).slice(2)}`;
-}
-
-function appendDocBody(ofdXml: string, docRoot: string, signatures?: string): string {
-  const sigXml = signatures ? `<ofd:Signatures>${signatures}</ofd:Signatures>` : "";
-  const body = `<ofd:DocBody><ofd:DocInfo><ofd:DocID>${randomDocId()}</ofd:DocID></ofd:DocInfo><ofd:DocRoot>${docRoot}</ofd:DocRoot>${sigXml}</ofd:DocBody>`;
-  return ofdXml.replace("</ofd:OFD>", `${body}</ofd:OFD>`);
+  const buffer = await compressOfdInWorker(await file.arrayBuffer());
+  return new Blob([buffer], { type: "application/ofd" });
 }
 
 export async function mergeOfdFiles(
@@ -835,50 +721,12 @@ export async function mergeOfdFiles(
   onProgress?: OfdProgressReporter
 ): Promise<Blob> {
   if (files.length < 2) throw new Error("need-multiple");
-
   onProgress?.(15, "progressMerging");
-  const outZip = await JSZip.loadAsync(await files[0].arrayBuffer());
-  let ofdXml = await outZip.file("OFD.xml")?.async("string");
-  if (!ofdXml) throw new Error("invalid-ofd");
-
-  let nextDocIndex = 0;
-  for (const path of Object.keys(outZip.files)) {
-    const match = path.match(/^Doc_(\d+)\//i);
-    if (match) nextDocIndex = Math.max(nextDocIndex, Number(match[1]) + 1);
-  }
-
-  for (let i = 1; i < files.length; i++) {
-    onProgress?.(15 + Math.round((i / files.length) * 70), "progressMerging");
-    const srcZip = await JSZip.loadAsync(await files[i].arrayBuffer());
-    const srcOfdXml = await srcZip.file("OFD.xml")?.async("string");
-    if (!srcOfdXml) throw new Error("invalid-ofd");
-
-    const sourcePrefix = discoverPrimaryDocPrefix(srcZip, srcOfdXml);
-    const targetPrefix = `Doc_${nextDocIndex}/`;
-    let copied = 0;
-
-    for (const [path, entry] of Object.entries(srcZip.files)) {
-      if (entry.dir || !zipPathStartsWith(path, sourcePrefix)) continue;
-      outZip.file(remapZipPath(path, sourcePrefix, targetPrefix), await entry.async("uint8array"));
-      copied++;
-    }
-
-    if (copied === 0) throw new Error("merge-copy-failed");
-
-    const docRoot = parseOfdDocRoot(srcOfdXml) ?? `${sourcePrefix}Document.xml`;
-    const remappedDocRoot = remapZipPath(docRoot, sourcePrefix, targetPrefix);
-    const signatures = parseOfdSignatures(srcOfdXml);
-    const remappedSignatures = signatures
-      ? remapZipPath(signatures, sourcePrefix, targetPrefix)
-      : undefined;
-
-    ofdXml = appendDocBody(ofdXml, remappedDocRoot, remappedSignatures);
-    nextDocIndex += 1;
-  }
-
-  outZip.file("OFD.xml", ofdXml);
+  const buffers = await Promise.all(files.map(f => f.arrayBuffer()));
+  onProgress?.(60, "progressMerging");
+  const merged = await mergeOfdInWorker(buffers);
   onProgress?.(92, "progressExporting");
-  return outZip.generateAsync({ type: "blob", compression: "DEFLATE" });
+  return new Blob([merged], { type: "application/ofd" });
 }
 
 function escapeHtml(value: string): string {
@@ -890,12 +738,13 @@ function escapeHtml(value: string): string {
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  triggerBlobDownload(blob, filename);
+}
+
+/** 释放 OFD 会话占用的 Blob URL 与 Canvas 缓存 */
+export function disposeOfdSession(canvases: HTMLCanvasElement[] = []): void {
+  releaseCanvases(canvases);
+  mediaUrlRegistry.revokeAll();
 }
 
 export function baseNameFromOfd(sourceName: string): string {
@@ -950,7 +799,7 @@ async function renderOfdThumbnailInner(file: File, width: number): Promise<strin
   );
   if (pages.length === 0) return "";
 
-  return withPagesMounted([pages[0]], async () => {
+  return withPagesMounted(file, [pages[0]], async () => {
     try {
       const canvas = await pageDivToCanvas(pages[0], width);
       if (!isCanvasMostlyBlank(canvas)) return scaleCanvasToDataUrl(canvas, width);
