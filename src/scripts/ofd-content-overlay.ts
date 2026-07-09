@@ -11,6 +11,15 @@ import {
   parseOfdDocRoot,
   resolveRelativePath,
 } from "@/scripts/ofd-xml-utils";
+import {
+  applyDomImageFit,
+  drawOfdImageInBoundary,
+  isLikelyStampResource,
+  isPortraitImage,
+  isPortraitSlot,
+  needsAspectCorrection,
+  parseOfdCtm,
+} from "@/scripts/ofd-image-draw";
 import { BlobUrlRegistry, measureRegionInkRatio } from "@/scripts/ofd-render-utils";
 
 export type PageContentMeta = {
@@ -19,11 +28,16 @@ export type PageContentMeta = {
   pageHeightMm: number;
 };
 
+export type MediaAsset = {
+  url: string;
+  pathHint: string;
+};
+
 export type PagePaintContext = {
   meta: PageContentMeta;
   fontIdMap: Map<number, string>;
-  mediaIdMap: Map<number, string>;
-  portraitUrls: string[];
+  mediaIdMap: Map<number, MediaAsset>;
+  portraitAssets: MediaAsset[];
 };
 
 const pagePaintCache = new WeakMap<HTMLElement, PagePaintContext>();
@@ -87,7 +101,6 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Font ID → display name from PublicRes / DocumentRes. */
 export async function buildOfdFontIdMap(file: File): Promise<Map<number, string>> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
   const map = new Map<number, string>();
@@ -111,15 +124,28 @@ export async function buildOfdFontIdMap(file: File): Promise<Map<number, string>
   return map;
 }
 
-/** MultiMedia ID → blob URL; collects portrait photo candidates from the package. */
 export async function buildOfdMediaIdMap(
   file: File,
   registry: BlobUrlRegistry
-): Promise<{ map: Map<number, string>; portraitUrls: string[] }> {
+): Promise<{ map: Map<number, MediaAsset>; portraitAssets: MediaAsset[] }> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const map = new Map<number, string>();
-  const portraitUrls: string[] = [];
+  const map = new Map<number, MediaAsset>();
+  const portraitAssets: MediaAsset[] = [];
   const imageExt = /\.(jpe?g|png|bmp|gif|webp|tif{1,2})$/i;
+
+  async function registerImage(path: string, id?: number): Promise<MediaAsset | null> {
+    const entry = zip.file(path) ?? zip.file(path.replace(/^\//, ""));
+    if (!entry || entry.dir) return null;
+    const blob = await entry.async("blob");
+    const typed =
+      blob.type && blob.type.startsWith("image/")
+        ? blob
+        : new Blob([await entry.async("arraybuffer")], { type: mimeFromPath(path) });
+    const url = registry.create(typed);
+    const asset: MediaAsset = { url, pathHint: path };
+    if (Number.isFinite(id)) map.set(id as number, asset);
+    return asset;
+  }
 
   for (const path of Object.keys(zip.files).sort(naturalSort)) {
     if (!path.endsWith("DocumentRes.xml") && !path.endsWith("PublicRes.xml")) continue;
@@ -135,53 +161,29 @@ export async function buildOfdMediaIdMap(
         tag.match(/<(?:[\w-]+:)?MediaFile[^>]*>([^<]+)<\/(?:[\w-]+:)?MediaFile>/i)?.[1] ??
         attr(tag, "MediaFile");
       if (!Number.isFinite(id) || !mediaFile) continue;
-
       const fullPath = resolveRelativePath(path, mediaFile.trim());
-      const entry = zip.file(fullPath) ?? zip.file(mediaFile.trim());
-      if (!entry || entry.dir) continue;
-
-      const blob = await entry.async("blob");
-      const typed =
-        blob.type && blob.type.startsWith("image/")
-          ? blob
-          : new Blob([await entry.async("arraybuffer")], { type: mimeFromPath(fullPath) });
-      const url = registry.create(typed);
-      map.set(id, url);
-
-      try {
-        const probe = await loadImage(url);
-        if (probe.naturalHeight >= probe.naturalWidth * 0.85 && probe.naturalWidth >= 40) {
-          portraitUrls.push(url);
-        }
-      } catch {
-        /* skip */
-      }
+      await registerImage(fullPath, id);
     }
   }
 
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir || !imageExt.test(path)) continue;
-    if (/qr\.png$/i.test(path) || /logo|stamp|seal|sign/i.test(path)) continue;
-    const blob = await entry.async("blob");
-    const typed =
-      blob.type && blob.type.startsWith("image/")
-        ? blob
-        : new Blob([await entry.async("arraybuffer")], { type: mimeFromPath(path) });
-    const url = registry.create(typed);
+    if (/qr\.png$/i.test(path)) continue;
+    const asset = await registerImage(path);
+    if (!asset) continue;
     try {
-      const probe = await loadImage(url);
-      if (probe.naturalHeight >= probe.naturalWidth * 0.85 && probe.naturalWidth >= 40) {
-        if (!portraitUrls.includes(url)) portraitUrls.push(url);
+      const probe = await loadImage(asset.url);
+      if (isPortraitImage(probe) && probe.naturalWidth >= 40) {
+        if (!portraitAssets.some(a => a.url === asset.url)) portraitAssets.push(asset);
       }
     } catch {
       /* skip */
     }
   }
 
-  return { map, portraitUrls };
+  return { map, portraitAssets };
 }
 
-/** Load per-page Content.xml and page dimensions. */
 export async function loadPageContentMeta(file: File): Promise<PageContentMeta[]> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
   const ofdXml = await readText(zip, "OFD.xml");
@@ -222,10 +224,79 @@ export function getPagePaintContext(pageDiv: HTMLElement): PagePaintContext | un
   return pagePaintCache.get(pageDiv);
 }
 
-/**
- * Draw TextObject / ImageObject from page Content.xml onto a rendered canvas
- * when the target region is still blank (template-only render).
- */
+function resolveImageAsset(
+  ctx: PagePaintContext,
+  resourceId: number,
+  boundary: [number, number, number, number],
+  portraitIdx: { value: number }
+): MediaAsset | undefined {
+  if (Number.isFinite(resourceId)) {
+    const hit = ctx.mediaIdMap.get(resourceId);
+    if (hit) return hit;
+  }
+
+  const boxW = boundary[2];
+  const boxH = boundary[3];
+  if (!isPortraitSlot(boxW, boxH)) return undefined;
+
+  const asset = ctx.portraitAssets[portraitIdx.value];
+  if (asset) portraitIdx.value++;
+  return asset;
+}
+
+async function paintImageObject(
+  g: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  ctx: PagePaintContext,
+  attrs: string,
+  scale: number,
+  portraitIdx: { value: number }
+): Promise<boolean> {
+  const resourceId = Number(attr(attrs, "ResourceID"));
+  const boundary = parseOfdBox(attr(attrs, "Boundary"));
+  if (!boundary) return false;
+
+  const left = boundary[0] * scale;
+  const top = boundary[1] * scale;
+  const width = boundary[2] * scale;
+  const height = boundary[3] * scale;
+  const ctm = parseOfdCtm(attr(attrs, "CTM"));
+
+  const asset = resolveImageAsset(ctx, resourceId, boundary, portraitIdx);
+  if (!asset) return false;
+
+  let img: HTMLImageElement;
+  try {
+    img = await loadImage(asset.url);
+  } catch {
+    return false;
+  }
+
+  const ink = measureRegionInkRatio(canvas, left, top, width, height);
+  const stamp = isLikelyStampResource(asset.pathHint, img);
+  const forceRepaint =
+    needsAspectCorrection(width, height, img) || (stamp && ink < 0.5);
+  if (!forceRepaint && ink > 0.08) return false;
+
+  if (forceRepaint || ink > 0.02) {
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    const styleW = Number(canvas.style.width?.replace("px", "")) || canvas.width;
+    const styleH = Number(canvas.style.height?.replace("px", "")) || canvas.height;
+    const scaleX = canvas.width / styleW;
+    const scaleY = canvas.height / styleH;
+    g.fillStyle = "#ffffff";
+    g.fillRect(left * scaleX, top * scaleY, width * scaleX, height * scaleY);
+    g.restore();
+  }
+
+  drawOfdImageInBoundary(g, img, left, top, width, height, ctm, {
+    stamp,
+    forceContain: forceRepaint || isPortraitImage(img),
+  });
+  return true;
+}
+
 export async function paintMissingPageContentOntoCanvas(
   canvas: HTMLCanvasElement,
   ctx: PagePaintContext
@@ -279,39 +350,28 @@ export async function paintMissingPageContentOntoCanvas(
     painted++;
   }
 
-  let portraitIdx = 0;
+  const portraitIdx = { value: 0 };
   for (const match of ctx.meta.contentXml.matchAll(/<(?:[\w-]+:)?ImageObject\b([^/>]*)\/?>/gi)) {
-    const attrs = match[1] ?? "";
-    const resourceId = Number(attr(attrs, "ResourceID"));
-    const boundary = parseOfdBox(attr(attrs, "Boundary"));
-    if (!boundary) continue;
-
-    const left = boundary[0] * scale;
-    const top = boundary[1] * scale;
-    const width = boundary[2] * scale;
-    const height = boundary[3] * scale;
-
-    const ink = measureRegionInkRatio(canvas, left, top, width, height);
-    if (ink > 0.08) continue;
-
-    let url = Number.isFinite(resourceId) ? ctx.mediaIdMap.get(resourceId) : undefined;
-    if (!url && ctx.portraitUrls[portraitIdx]) {
-      url = ctx.portraitUrls[portraitIdx];
-      portraitIdx++;
-    }
-    if (!url) continue;
-
-    try {
-      const img = await loadImage(url);
-      g.drawImage(img, left, top, width, height);
-      painted++;
-    } catch {
-      /* skip broken asset */
-    }
+    if (await paintImageObject(g, canvas, ctx, match[1] ?? "", scale, portraitIdx)) painted++;
   }
 
   g.restore();
   return painted;
+}
+
+function fixExistingPageImages(pageDiv: HTMLElement): void {
+  pageDiv.querySelectorAll("img").forEach(img => {
+    const w = img.offsetWidth || Number(img.style.width?.replace("px", "") || 0);
+    const h = img.offsetHeight || Number(img.style.height?.replace("px", "") || 0);
+    if (w > 0 && h > 0 && img.complete && img.naturalWidth > 0) {
+      const stamp = /stamp|seal|章|印/i.test(img.src);
+      applyDomImageFit(img, w, h, stamp);
+      if (needsAspectCorrection(w, h, img)) {
+        img.style.visibility = "hidden";
+        img.style.opacity = "0";
+      }
+    }
+  });
 }
 
 function ensureOverlayRoot(pageDiv: HTMLElement): HTMLElement {
@@ -335,12 +395,11 @@ function ensureOverlayRoot(pageDiv: HTMLElement): HTMLElement {
   return root;
 }
 
-/** DOM overlay fallback — used together with html2canvas path. */
 function overlayMissingPageContentDom(
   pageDiv: HTMLElement,
   meta: PageContentMeta,
   fontIdMap: Map<number, string>,
-  mediaIdMap: Map<number, string>
+  mediaPack: { map: Map<number, MediaAsset>; portraitAssets: MediaAsset[] }
 ): number {
   const style = pageDiv.getAttribute("style") ?? "";
   const wMatch = style.match(/width:\s*(\d+(?:\.\d+)?)px/);
@@ -348,8 +407,17 @@ function overlayMissingPageContentDom(
   if (!pageWidthPx) return 0;
 
   const scale = pageWidthPx / meta.pageWidthMm;
+  fixExistingPageImages(pageDiv);
   const overlay = ensureOverlayRoot(pageDiv);
   let added = 0;
+
+  const paintCtx: PagePaintContext = {
+    meta,
+    fontIdMap,
+    mediaIdMap: mediaPack.map,
+    portraitAssets: mediaPack.portraitAssets,
+  };
+  const portraitIdx = { value: 0 };
 
   for (const match of meta.contentXml.matchAll(
     /<(?:[\w-]+:)?TextObject\b([^>]*)>[\s\S]*?<(?:[\w-]+:)?TextCode([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?TextCode>/gi
@@ -392,10 +460,10 @@ function overlayMissingPageContentDom(
     const attrs = match[1] ?? "";
     const resourceId = Number(attr(attrs, "ResourceID"));
     const boundary = parseOfdBox(attr(attrs, "Boundary"));
-    if (!Number.isFinite(resourceId) || !boundary) continue;
+    if (!boundary) continue;
 
-    const url = mediaIdMap.get(resourceId);
-    if (!url) continue;
+    const asset = resolveImageAsset(paintCtx, resourceId, boundary, portraitIdx);
+    if (!asset) continue;
 
     const left = boundary[0] * scale;
     const top = boundary[1] * scale;
@@ -403,7 +471,7 @@ function overlayMissingPageContentDom(
     const height = boundary[3] * scale;
 
     const img = document.createElement("img");
-    img.src = url;
+    img.src = asset.url;
     img.alt = "";
     img.dataset.ofdOverlayImage = String(resourceId);
     img.style.cssText = [
@@ -412,9 +480,10 @@ function overlayMissingPageContentDom(
       `top:${top}px`,
       `width:${width}px`,
       `height:${height}px`,
-      "object-fit:fill",
       "pointer-events:none",
     ].join(";");
+    img.onload = () => applyDomImageFit(img, width, height, isLikelyStampResource(asset.pathHint, img));
+    applyDomImageFit(img, width, height, /stamp|seal|章|印/i.test(asset.pathHint));
     overlay.appendChild(img);
     added++;
   }
@@ -435,14 +504,18 @@ export async function overlayPagesContent(
     buildOfdFontIdMap(file),
     buildOfdMediaIdMap(file, registry),
   ]);
-  const { map: mediaIdMap, portraitUrls } = mediaPack;
 
   for (let i = 0; i < pages.length; i++) {
     const meta = metas[i];
     if (!meta) continue;
 
-    const paintCtx: PagePaintContext = { meta, fontIdMap, mediaIdMap, portraitUrls };
+    const paintCtx: PagePaintContext = {
+      meta,
+      fontIdMap,
+      mediaIdMap: mediaPack.map,
+      portraitAssets: mediaPack.portraitAssets,
+    };
     pagePaintCache.set(pages[i], paintCtx);
-    overlayMissingPageContentDom(pages[i], meta, fontIdMap, mediaIdMap);
+    overlayMissingPageContentDom(pages[i], meta, fontIdMap, mediaPack);
   }
 }

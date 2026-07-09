@@ -144,6 +144,8 @@ export function hydratePageMedia(pageDiv: HTMLElement, mediaMap: Map<string, str
     if (resolved) {
       img.src = resolved;
       img.removeAttribute("crossorigin");
+      img.style.objectFit = img.style.objectFit || "contain";
+      img.style.objectPosition = img.style.objectPosition || "center";
     }
 
     const isStamp =
