@@ -316,9 +316,11 @@ export type Messages = {
       previewAria: string;
       processing: string;
       success: string;
+      fileReady: string;
       error: string;
       errorInvalid: string;
       errorNeedMultiple: string;
+      errorMergeFailed: string;
       errorNoVisual: string;
       errorNoText: string;
       fallbackImages: string;
@@ -329,6 +331,11 @@ export type Messages = {
       actionExtract: string;
       actionView: string;
       readerReady: string;
+      trustTitle: string;
+      trustSub: string;
+      trustCheck1: string;
+      trustCheck2: string;
+      trustCheck3: string;
     };
   };
 };

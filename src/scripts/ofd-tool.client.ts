@@ -4,12 +4,10 @@ import {
   exportCanvasesToLongImage,
   exportCanvasesToPdf,
   exportCanvasesToPngZip,
+  exportFileToSvgZip,
   exportPagesToHtml,
-  exportPagesToSvgZip,
   extractOfdText,
   isOfdFile,
-  loadMultipleOfdPreviews,
-  loadOfdPreview,
   mergeOfdFiles,
   outputFilename,
   pdfFilenameFromOfd,
@@ -19,12 +17,9 @@ import {
 type OfdToolMode = string;
 
 let currentFiles: File[] = [];
-let currentPages: HTMLElement[] = [];
-let currentCanvases: HTMLCanvasElement[] = [];
 let extractedText = "";
 let outputBlob: Blob | null = null;
 let busy = false;
-let usedImageFallback = false;
 
 function $(id: string) {
   return document.getElementById(id);
@@ -71,51 +66,15 @@ function resetOutput() {
   }
 }
 
-function clearPreview() {
-  const preview = $("ofd-preview");
-  if (preview) preview.replaceChildren();
-}
-
-async function renderPreview(pages: HTMLElement[], canvases: HTMLCanvasElement[]) {
-  const preview = $("ofd-preview");
-  if (!preview) return;
-  preview.replaceChildren();
-
-  if (pages.length > 0) {
-    for (const page of pages) {
-      page.classList.add("ofd-preview__page");
-      preview.appendChild(page);
-    }
-    return;
-  }
-
-  for (const canvas of canvases) {
-    const wrap = document.createElement("div");
-    wrap.className = "ofd-preview__page";
-    const display = document.createElement("canvas");
-    display.width = canvas.width;
-    display.height = canvas.height;
-    display.classList.add("ofd-preview__fallback-canvas");
-    display.getContext("2d")?.drawImage(canvas, 0, 0);
-    wrap.appendChild(display);
-    preview.appendChild(wrap);
-  }
-}
-
 function primaryFile(): File | null {
   return currentFiles[0] ?? null;
-}
-
-function statusForMode(mode: string, fallback: boolean): string {
-  if (fallback) return t(wsKey("fallbackImages"));
-  if (mode === "reader") return t(wsKey("readerReady"));
-  return t(wsKey("success"));
 }
 
 function mapErrorMessage(error: unknown): string {
   const code = error instanceof Error ? error.message : String(error);
   if (code === "invalid-ofd") return t(wsKey("errorInvalid"));
   if (code === "need-multiple") return t(wsKey("errorNeedMultiple"));
+  if (code === "merge-copy-failed") return t(wsKey("errorMergeFailed"));
   if (code === "no-text") return t(wsKey("errorNoText"));
   if (code === "no-visual" || code === "no-pages" || code === "no-svg") {
     return t(wsKey("errorNoVisual"));
@@ -136,12 +95,8 @@ async function handleFiles(files: FileList | File[]) {
   }
 
   currentFiles = isMultipleMode() ? list : [list[0]];
-  currentPages = [];
-  currentCanvases = [];
   extractedText = "";
   outputBlob = null;
-  usedImageFallback = false;
-  clearPreview();
   resetOutput();
   setBusy(true);
   setStatusMessage(t(wsKey("processing")));
@@ -156,7 +111,7 @@ async function handleFiles(files: FileList | File[]) {
       }
       extractedText = chunks.filter(Boolean).join("\n\n");
       if (!extractedText.trim()) throw new Error("no-text");
-      setStatusMessage(t(wsKey("success")));
+      setStatusMessage(t(wsKey("fileReady")));
     } else if (mode === "compress") {
       const file = primaryFile();
       if (!file) throw new Error("no-file");
@@ -165,36 +120,17 @@ async function handleFiles(files: FileList | File[]) {
       setStatusMessage(t(wsKey("success")));
     } else if (mode === "merge") {
       outputBlob = await mergeOfdFiles(currentFiles);
-      attachDownload(outputBlob, `${currentFiles[0].name.replace(/\.ofd$/i, "")}-merged.ofd`);
-      try {
-        const { pages, canvases, usedImageFallback: fallback } =
-          await loadMultipleOfdPreviews(currentFiles);
-        currentPages = pages;
-        currentCanvases = canvases;
-        usedImageFallback = fallback;
-        await renderPreview(pages, canvases);
-      } catch {
-        // merged file is still downloadable without preview
-      }
+      attachDownload(
+        outputBlob,
+        `${currentFiles[0].name.replace(/\.ofd$/i, "")}-merged.ofd`
+      );
       setStatusMessage(t(wsKey("success")));
     } else {
-      const { pages, canvases, usedImageFallback: fallback } =
-        currentFiles.length > 1
-          ? await loadMultipleOfdPreviews(currentFiles)
-          : await loadOfdPreview(currentFiles[0]);
-      currentPages = pages;
-      currentCanvases = canvases;
-      usedImageFallback = fallback;
-      await renderPreview(pages, canvases);
-      setStatusMessage(statusForMode(mode, fallback));
+      setStatusMessage(t(wsKey("fileReady")));
     }
   } catch (error) {
     currentFiles = [];
-    currentPages = [];
-    currentCanvases = [];
     extractedText = "";
-    usedImageFallback = false;
-    clearPreview();
     setStatusMessage(mapErrorMessage(error), true);
   } finally {
     setBusy(false);
@@ -241,11 +177,6 @@ async function runAction() {
   const file = primaryFile();
   if (!file) return;
 
-  if (mode === "reader") {
-    $("ofd-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
-  }
-
   setBusy(true);
   setStatusMessage(t(wsKey("processing")));
 
@@ -253,38 +184,34 @@ async function runAction() {
     let blob: Blob | null = null;
     let filename = "";
 
-    const exportCanvases =
-      mode === "to-pdf" ||
-      mode === "to-image" ||
-      mode === "to-long-image" ||
-      mode === "to-web"
-        ? await resolveExportCanvases(file, currentPages, currentCanvases)
-        : currentCanvases;
-
     switch (mode) {
-      case "to-pdf": {
+      case "to-pdf":
+      case "reader": {
+        const exportCanvases = await resolveExportCanvases(file);
         blob = await exportCanvasesToPdf(exportCanvases);
         filename = pdfFilenameFromOfd(file.name);
         break;
       }
       case "to-image": {
+        const exportCanvases = await resolveExportCanvases(file);
         blob = await exportCanvasesToPngZip(exportCanvases, file.name.replace(/\.ofd$/i, ""));
         filename = outputFilename(file.name, "zip");
         break;
       }
       case "to-long-image": {
+        const exportCanvases = await resolveExportCanvases(file);
         blob = await exportCanvasesToLongImage(exportCanvases);
         filename = outputFilename(file.name, "png");
         break;
       }
       case "to-svg": {
-        if (currentPages.length === 0) throw new Error("no-svg");
-        blob = await exportPagesToSvgZip(currentPages, file.name.replace(/\.ofd$/i, ""));
+        blob = await exportFileToSvgZip(file, file.name.replace(/\.ofd$/i, ""));
         filename = outputFilename(file.name, "svg.zip");
         break;
       }
       case "to-web": {
-        blob = await exportPagesToHtml(currentPages, file.name.replace(/\.ofd$/i, ""), exportCanvases);
+        const exportCanvases = await resolveExportCanvases(file);
+        blob = await exportPagesToHtml([], file.name.replace(/\.ofd$/i, ""), exportCanvases);
         filename = outputFilename(file.name, "html");
         break;
       }
@@ -317,7 +244,7 @@ async function runAction() {
       outputBlob = blob;
       attachDownload(blob, filename);
     }
-    setStatusMessage(statusForMode(mode, usedImageFallback));
+    setStatusMessage(t(wsKey("success")));
   } catch (error) {
     resetOutput();
     setStatusMessage(mapErrorMessage(error), true);
@@ -386,12 +313,9 @@ function initOfdTool() {
   root.__ofdToolAbort = ac;
 
   currentFiles = [];
-  currentPages = [];
-  currentCanvases = [];
   extractedText = "";
   outputBlob = null;
   busy = false;
-  usedImageFallback = false;
 
   bindDropZone(ac.signal);
   bindActions(ac.signal);

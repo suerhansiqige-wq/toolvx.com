@@ -126,6 +126,8 @@ export type OfdPreviewResult = {
 };
 
 const IMAGE_EXT = /\.(jpe?g|png|bmp|gif|webp|tif{1,2})$/i;
+const FONT_EXT = /\.(ttf|otf|woff2?)$/i;
+const PAGE_CONTENT_RE = /^Doc_\d+\/Pages\/Page_\d+\/Content\.xml$/i;
 
 function naturalSort(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
@@ -157,6 +159,117 @@ async function waitForPaint(): Promise<void> {
   await new Promise<void>(resolve => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
+}
+
+async function waitForPageResources(pageDiv: HTMLElement): Promise<void> {
+  await waitForPaint();
+  const images = Array.from(pageDiv.querySelectorAll("img"));
+  await Promise.all(
+    images.map(
+      img =>
+        new Promise<void>(resolve => {
+          if (img.complete) {
+            resolve();
+            return;
+          }
+          img.addEventListener("load", () => resolve(), { once: true });
+          img.addEventListener("error", () => resolve(), { once: true });
+        })
+    )
+  );
+  try {
+    await document.fonts?.ready;
+  } catch {
+    /* ignore */
+  }
+  await waitForPaint();
+}
+
+async function getOfdPageCount(file: File): Promise<number> {
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  let count = 0;
+  for (const path of Object.keys(zip.files)) {
+    if (PAGE_CONTENT_RE.test(path)) count++;
+  }
+  return count;
+}
+
+async function loadOfdEmbeddedFonts(file: File): Promise<void> {
+  if (typeof FontFace === "undefined" || !document.fonts) return;
+
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const loads: Promise<void>[] = [];
+
+  for (const [path, entry] of Object.entries(zip.files)) {
+    if (entry.dir || !FONT_EXT.test(path)) continue;
+    const family = path
+      .split("/")
+      .pop()
+      ?.replace(/\.[^.]+$/, "") ?? "ofd-font";
+    loads.push(
+      (async () => {
+        try {
+          const face = new FontFace(family, await entry.async("arraybuffer"));
+          await face.load();
+          document.fonts.add(face);
+        } catch {
+          /* skip broken font */
+        }
+      })()
+    );
+  }
+
+  await Promise.all(loads);
+  try {
+    await document.fonts.ready;
+  } catch {
+    /* ignore */
+  }
+}
+
+async function rasterizePageDivWithHtml2Canvas(
+  pageDiv: HTMLElement,
+  width: number,
+  height: number
+): Promise<HTMLCanvasElement> {
+  const { default: html2canvas } = await import("html2canvas");
+  return html2canvas(pageDiv, {
+    scale: Math.max(1, window.devicePixelRatio || 1),
+    width,
+    height,
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+    backgroundColor: "#ffffff",
+  });
+}
+
+/** Only use raw zip images when the document is a single-page scan with one asset. */
+async function trySingleImageFallback(file: File): Promise<HTMLCanvasElement[] | null> {
+  const pageCount = await getOfdPageCount(file);
+  const images = await extractOfdImages(file);
+  if (pageCount !== 1 || images.length !== 1) return null;
+  try {
+    const canvas = await blobToCanvas(images[0]);
+    return isCanvasMostlyBlank(canvas) ? null : [canvas];
+  } catch {
+    return null;
+  }
+}
+
+async function canvasesFromRenderedPages(
+  pages: HTMLElement[],
+  width = DEFAULT_RENDER_WIDTH
+): Promise<HTMLCanvasElement[]> {
+  const canvases: HTMLCanvasElement[] = [];
+  for (const page of pages) {
+    try {
+      canvases.push(await pageDivToCanvas(page, width));
+    } catch {
+      /* page may lack raster output */
+    }
+  }
+  return canvases;
 }
 
 async function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
@@ -223,7 +336,15 @@ export async function pageDivToCanvas(
   pageDiv: HTMLElement,
   fallbackWidth = DEFAULT_RENDER_WIDTH
 ): Promise<HTMLCanvasElement> {
-  await waitForPaint();
+  await waitForPageResources(pageDiv);
+  const { w, h } = parsePageSize(pageDiv, fallbackWidth);
+
+  try {
+    const domRaster = await rasterizePageDivWithHtml2Canvas(pageDiv, w, h);
+    if (!isCanvasMostlyBlank(domRaster)) return domRaster;
+  } catch {
+    /* try canvas/svg next */
+  }
 
   const existing = pageDiv.querySelector("canvas");
   if (existing instanceof HTMLCanvasElement && existing.width > 0 && existing.height > 0) {
@@ -233,7 +354,6 @@ export async function pageDivToCanvas(
 
   const svg = pageDiv.querySelector("svg");
   if (svg instanceof SVGSVGElement) {
-    const { w, h } = parsePageSize(pageDiv, fallbackWidth);
     const rasterized = await rasterizeSvgToCanvas(svg, w, h);
     if (!isCanvasMostlyBlank(rasterized)) return rasterized;
   }
@@ -241,41 +361,102 @@ export async function pageDivToCanvas(
   throw new Error("no-renderable-page");
 }
 
-/** Fresh canvases for export — re-rasterize pages or fall back to embedded images. */
-export async function resolveExportCanvases(
-  file: File,
-  pages: HTMLElement[],
-  cached: HTMLCanvasElement[]
-): Promise<HTMLCanvasElement[]> {
-  if (pages.length > 0) {
-    const fresh: HTMLCanvasElement[] = [];
-    for (const page of pages) {
-      try {
-        fresh.push(await pageDivToCanvas(page));
-      } catch {
-        // try next page
-      }
-    }
-    if (fresh.length > 0 && !fresh.every(isCanvasMostlyBlank)) return fresh;
+/** Fresh canvases for export — render off-screen without a visible preview. */
+export async function resolveExportCanvases(file: File): Promise<HTMLCanvasElement[]> {
+  await loadOfdEmbeddedFonts(file);
+  const { pages, canvases } = await loadOfdPreview(file);
+
+  if (pages.length === 0) {
+    const valid = canvases.filter(c => !isCanvasMostlyBlank(c));
+    if (valid.length > 0) return valid.map(cloneCanvas);
+    const singleImage = await trySingleImageFallback(file);
+    if (singleImage) return singleImage;
+    throw new Error("no-visual");
   }
 
-  const validCached = cached.filter(c => c.width > 0 && c.height > 0 && !isCanvasMostlyBlank(c));
-  if (validCached.length > 0) return validCached.map(cloneCanvas);
+  return withPagesMounted(pages, async () => {
+    const fresh = await canvasesFromRenderedPages(pages);
+    if (fresh.length > 0 && !fresh.every(isCanvasMostlyBlank)) return fresh.map(cloneCanvas);
+    const valid = canvases.filter(c => !isCanvasMostlyBlank(c));
+    if (valid.length > 0) return valid.map(cloneCanvas);
+    const singleImage = await trySingleImageFallback(file);
+    if (singleImage) return singleImage;
+    throw new Error("no-visual");
+  });
+}
 
-  const { canvases } = await loadOfdPreview(file);
-  const validReloaded = canvases.filter(c => !isCanvasMostlyBlank(c));
-  if (validReloaded.length > 0) return validReloaded.map(cloneCanvas);
+export async function exportFileToSvgZip(file: File, baseName: string): Promise<Blob> {
+  await loadOfdEmbeddedFonts(file);
+  const { pages } = await loadOfdPreview(file);
+  if (pages.length === 0) throw new Error("no-svg");
+  return withPagesMounted(pages, () => exportPagesToSvgZip(pages, baseName));
+}
 
-  const imageCanvases = await canvasesFromOfdImages(file);
-  if (imageCanvases.length > 0) return imageCanvases;
+async function withPagesMounted<T>(pages: HTMLElement[], fn: () => Promise<T>): Promise<T> {
+  if (pages.length === 0) return fn();
 
-  throw new Error("no-visual");
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText = "position:fixed;left:-10000px;top:0;pointer-events:none;opacity:0;";
+  for (const page of pages) host.appendChild(page);
+  document.body.appendChild(host);
+
+  try {
+    return await fn();
+  } finally {
+    host.remove();
+  }
+}
+
+function parseOfdDocRoot(ofdXml: string): string | null {
+  const match = ofdXml.match(/<(?:[\w-]+:)?DocRoot[^>]*>([^<]+)<\/(?:[\w-]+:)?DocRoot>/i);
+  return match?.[1]?.trim() ?? null;
+}
+
+function parseOfdSignatures(ofdXml: string): string | null {
+  const match = ofdXml.match(/<(?:[\w-]+:)?Signatures[^>]*>([^<]+)<\/(?:[\w-]+:)?Signatures>/i);
+  return match?.[1]?.trim() ?? null;
+}
+
+function docPrefixFromRoot(docRoot: string): string | null {
+  const match = docRoot.match(/^(Doc_\d+)\//i);
+  return match ? `${match[1]}/` : null;
+}
+
+function discoverPrimaryDocPrefix(zip: JSZip, ofdXml: string | undefined): string {
+  const docRoot = ofdXml ? parseOfdDocRoot(ofdXml) : null;
+  if (docRoot) {
+    const prefix = docPrefixFromRoot(docRoot);
+    if (prefix) return prefix;
+  }
+
+  const prefixes = new Set<string>();
+  for (const path of Object.keys(zip.files)) {
+    const match = path.match(/^(Doc_\d+)\//i);
+    if (match) prefixes.add(`${match[1]}/`);
+  }
+
+  const sorted = [...prefixes].sort(naturalSort);
+  return sorted[0] ?? "Doc_0/";
+}
+
+function zipPathStartsWith(path: string, prefix: string): boolean {
+  return path.toLowerCase().startsWith(prefix.toLowerCase());
+}
+
+function remapZipPath(path: string, sourcePrefix: string, targetPrefix: string): string {
+  if (!zipPathStartsWith(path, sourcePrefix)) return path;
+  return targetPrefix + path.slice(sourcePrefix.length);
 }
 
 export async function parseAndRenderOfd(
   file: File | ArrayBuffer,
   width = DEFAULT_RENDER_WIDTH
 ): Promise<{ pages: HTMLElement[]; docs: OfdParsedDocument[] }> {
+  if (file instanceof File) {
+    await loadOfdEmbeddedFonts(file);
+  }
+
   const ofd = await loadOfdModule();
 
   return new Promise((resolve, reject) => {
@@ -312,29 +493,26 @@ export async function loadOfdPreview(
 
   try {
     const { pages, docs } = await parseAndRenderOfd(file, width);
-    const canvases: HTMLCanvasElement[] = [];
-    for (const page of pages) {
-      try {
-        canvases.push(await pageDivToCanvas(page, width));
-      } catch {
-        // page may lack raster output
-      }
-    }
+    const canvases = await canvasesFromRenderedPages(pages, width);
     if (canvases.length > 0 && !canvases.every(isCanvasMostlyBlank)) {
       return { pages, canvases, docs, usedImageFallback: false };
     }
-    const fallback = await canvasesFromOfdImages(file);
-    if (fallback.length > 0) {
-      return { pages, canvases: fallback, docs, usedImageFallback: true };
+
+    const singleImage = await trySingleImageFallback(file);
+    if (singleImage) {
+      return { pages: [], canvases: singleImage, docs, usedImageFallback: true };
     }
+
     if (canvases.length > 0) {
       return { pages, canvases, docs, usedImageFallback: false };
     }
     throw new Error("no-visual");
   } catch {
-    const canvases = await canvasesFromOfdImages(file);
-    if (canvases.length === 0) throw new Error("no-visual");
-    return { pages: [], canvases, docs: [], usedImageFallback: true };
+    const singleImage = await trySingleImageFallback(file);
+    if (singleImage) {
+      return { pages: [], canvases: singleImage, docs: [], usedImageFallback: true };
+    }
+    throw new Error("no-visual");
   }
 }
 
@@ -551,29 +729,35 @@ export async function mergeOfdFiles(files: File[]): Promise<Blob> {
 
   let nextDocIndex = 0;
   for (const path of Object.keys(outZip.files)) {
-    const match = path.match(/^Doc_(\d+)\//);
+    const match = path.match(/^Doc_(\d+)\//i);
     if (match) nextDocIndex = Math.max(nextDocIndex, Number(match[1]) + 1);
   }
 
   for (let i = 1; i < files.length; i++) {
     const srcZip = await JSZip.loadAsync(await files[i].arrayBuffer());
-    const targetPrefix = `Doc_${nextDocIndex}/`;
-    const sourcePrefix = "Doc_0/";
-
-    for (const [path, entry] of Object.entries(srcZip.files)) {
-      if (entry.dir || !path.startsWith(sourcePrefix)) continue;
-      outZip.file(path.replace(sourcePrefix, targetPrefix), await entry.async("uint8array"));
-    }
-
     const srcOfdXml = await srcZip.file("OFD.xml")?.async("string");
     if (!srcOfdXml) throw new Error("invalid-ofd");
 
-    const docRootMatch = srcOfdXml.match(/<ofd:DocRoot>([^<]+)<\/ofd:DocRoot>/);
-    const sigMatch = srcOfdXml.match(/<ofd:Signatures>([^<]+)<\/ofd:Signatures>/);
-    const docRoot = (docRootMatch?.[1] ?? "Doc_0/Document.xml").replace(sourcePrefix, targetPrefix);
-    const signatures = sigMatch?.[1]?.replace(sourcePrefix, targetPrefix);
+    const sourcePrefix = discoverPrimaryDocPrefix(srcZip, srcOfdXml);
+    const targetPrefix = `Doc_${nextDocIndex}/`;
+    let copied = 0;
 
-    ofdXml = appendDocBody(ofdXml, docRoot, signatures);
+    for (const [path, entry] of Object.entries(srcZip.files)) {
+      if (entry.dir || !zipPathStartsWith(path, sourcePrefix)) continue;
+      outZip.file(remapZipPath(path, sourcePrefix, targetPrefix), await entry.async("uint8array"));
+      copied++;
+    }
+
+    if (copied === 0) throw new Error("merge-copy-failed");
+
+    const docRoot = parseOfdDocRoot(srcOfdXml) ?? `${sourcePrefix}Document.xml`;
+    const remappedDocRoot = remapZipPath(docRoot, sourcePrefix, targetPrefix);
+    const signatures = parseOfdSignatures(srcOfdXml);
+    const remappedSignatures = signatures
+      ? remapZipPath(signatures, sourcePrefix, targetPrefix)
+      : undefined;
+
+    ofdXml = appendDocBody(ofdXml, remappedDocRoot, remappedSignatures);
     nextDocIndex += 1;
   }
 

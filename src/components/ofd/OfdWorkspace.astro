@@ -1,5 +1,6 @@
 ---
 import type { OfdToolDefinition } from "@/data/ofdToolsRegistry";
+import OfdTrustBadge from "@/components/ofd/OfdTrustBadge.astro";
 import { catalogs, type LocaleCode } from "@/i18n/messages";
 
 type Props = {
@@ -57,62 +58,33 @@ const taglineKey = `ofd.tools.${tool.i18nKey}.desc`;
 
     <p id="ofd-status" class="text-muted-foreground mt-4 min-h-[1.25rem] text-sm" aria-live="polite"></p>
 
-    <div
-      id="ofd-preview"
-      class="ofd-preview mt-6 flex flex-col items-center gap-4"
-      aria-label={ws.previewAria}
-      data-i18n-aria-label="ofd.workspace.previewAria"
-    ></div>
-
-    {
-      tool.mode !== "reader" && (
-        <div class="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-          <button
-            id="ofd-action-btn"
-            type="button"
-            class="interactive bg-accent text-accent-foreground h-14 rounded-[1rem] border-2 border-transparent px-4 text-base font-bold disabled:cursor-not-allowed disabled:opacity-45"
-            disabled
-          >
-            <span data-i18n="ofd.workspace.convert">{ws.convert}</span>
-          </button>
-          <a
-            id="ofd-download-btn"
-            href="#"
-            download
-            class="interactive pointer-events-none flex h-14 items-center justify-center rounded-[1rem] border-2 border-border bg-card px-4 text-base font-bold opacity-45"
-          >
-            <span data-i18n="ofd.workspace.download">{ws.download}</span>
-          </a>
-        </div>
-      )
-    }
+    <div class="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+      <button
+        id="ofd-action-btn"
+        type="button"
+        class="interactive bg-accent text-accent-foreground h-14 rounded-[1rem] border-2 border-transparent px-4 text-base font-bold disabled:cursor-not-allowed disabled:opacity-45"
+        disabled
+      >
+        <span data-i18n="ofd.workspace.convert">{ws.convert}</span>
+      </button>
+      <a
+        id="ofd-download-btn"
+        href="#"
+        download
+        class="interactive pointer-events-none flex h-14 items-center justify-center rounded-[1rem] border-2 border-border bg-card px-4 text-base font-bold opacity-45"
+      >
+        <span data-i18n="ofd.workspace.download">{ws.download}</span>
+      </a>
+    </div>
   </div>
 </section>
+
+<OfdTrustBadge locale={locale} />
 
 <style>
   .ofd-drop-zone--active {
     border-color: color-mix(in oklab, var(--accent) 55%, transparent);
     background: color-mix(in oklab, var(--accent) 8%, var(--muted));
-  }
-
-  .ofd-preview :global(.ofd-preview__page) {
-    width: 100%;
-    max-width: 52rem;
-    overflow: hidden;
-    border-radius: 0.75rem;
-    border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
-    background: white;
-    box-shadow: 0 8px 24px color-mix(in oklab, black 8%, transparent);
-  }
-
-  .ofd-preview :global(canvas) {
-    display: block;
-    width: 100% !important;
-    height: auto !important;
-  }
-
-  .ofd-preview :global(.ofd-preview__fallback-canvas) {
-    max-width: 52rem;
   }
 </style>
 
