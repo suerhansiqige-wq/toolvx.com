@@ -12,7 +12,7 @@ import JSZip from "jszip";
 import { isCanvasMostlyBlank } from "@/scripts/pdf-render";
 import { loadOfdEmbeddedFonts } from "@/scripts/ofd-font-loader";
 import { hydratePagesMedia } from "@/scripts/ofd-image-hydrator";
-import { overlayPagesContent } from "@/scripts/ofd-content-overlay";
+import { overlayPagesContent, getPagePaintContext, paintMissingPageContentOntoCanvas } from "@/scripts/ofd-content-overlay";
 import { stitchLongImageInWorker, terminateOfdRasterWorker } from "@/scripts/ofd-raster-client";
 import {
   BlobUrlRegistry,
@@ -443,23 +443,43 @@ export async function pageDivToCanvas(
 ): Promise<HTMLCanvasElement> {
   await waitForPageResources(pageDiv);
   const { w, h } = parsePageSize(pageDiv, fallbackWidth);
+  const paintCtx = getPagePaintContext(pageDiv);
+  const hasOverlayDom = Boolean(
+    pageDiv.querySelector("[data-ofd-content-overlay]")?.childElementCount
+  );
   const minInk = pageDiv.querySelector("img, image") ? 0.008 : 0.004;
 
   const attempts: HTMLCanvasElement[] = [];
 
+  async function finalizeCanvas(canvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
+    if (paintCtx) await paintMissingPageContentOntoCanvas(canvas, paintCtx);
+    return canvas;
+  }
+
+  // html2canvas first when DOM overlay carries dynamic text/photos
+  if (hasOverlayDom) {
+    try {
+      const domRaster = await finalizeCanvas(await rasterizePageDivWithHtml2Canvas(pageDiv, w, h));
+      const accepted = acceptCanvas(domRaster, minInk);
+      if (accepted) return domRaster;
+      attempts.push(domRaster);
+    } catch {
+      /* fall through */
+    }
+  }
+
   const existing = pageDiv.querySelector("canvas");
   if (existing instanceof HTMLCanvasElement && existing.width > 0 && existing.height > 0) {
-    const cloned = cloneCanvas(existing);
+    const cloned = await finalizeCanvas(cloneCanvas(existing));
     const accepted = acceptCanvas(cloned, minInk);
-    if (accepted) return accepted;
+    if (accepted) return cloned;
     attempts.push(cloned);
   }
 
-  // html2canvas first for complex layered DOM (photos, stamps, absolute text)
   try {
-    const domRaster = await rasterizePageDivWithHtml2Canvas(pageDiv, w, h);
+    const domRaster = await finalizeCanvas(await rasterizePageDivWithHtml2Canvas(pageDiv, w, h));
     const accepted = acceptCanvas(domRaster, minInk);
-    if (accepted) return accepted;
+    if (accepted) return domRaster;
     attempts.push(domRaster);
   } catch {
     /* fall through */
@@ -468,9 +488,9 @@ export async function pageDivToCanvas(
   const svg = pageDiv.querySelector("svg");
   if (svg instanceof SVGSVGElement) {
     try {
-      const rasterized = await rasterizeSvgToCanvas(svg, w, h);
+      const rasterized = await finalizeCanvas(await rasterizeSvgToCanvas(svg, w, h));
       const accepted = acceptCanvas(rasterized, minInk);
-      if (accepted) return accepted;
+      if (accepted) return rasterized;
       attempts.push(rasterized);
     } catch {
       /* fall through */
@@ -479,9 +499,10 @@ export async function pageDivToCanvas(
 
   const composited = await compositePageLayers(pageDiv, w, h);
   if (composited) {
-    const accepted = acceptCanvas(composited, minInk);
-    if (accepted) return accepted;
-    attempts.push(composited);
+    const finalized = await finalizeCanvas(composited);
+    const accepted = acceptCanvas(finalized, minInk);
+    if (accepted) return finalized;
+    attempts.push(finalized);
   }
 
   for (const canvas of attempts) releaseCanvas(canvas);

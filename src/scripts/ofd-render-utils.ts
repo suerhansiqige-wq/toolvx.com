@@ -362,6 +362,47 @@ export function measureCanvasInkRatio(canvas: HTMLCanvasElement): number {
   return totalPixels > 0 ? contentPixels / totalPixels : 0;
 }
 
+/** Sample ink density inside a CSS-pixel rectangle on a Hi-DPI canvas. */
+export function measureRegionInkRatio(
+  canvas: HTMLCanvasElement,
+  cssLeft: number,
+  cssTop: number,
+  cssWidth: number,
+  cssHeight: number
+): number {
+  const ctx = canvas.getContext("2d");
+  if (!ctx || canvas.width < 2 || canvas.height < 2) return 0;
+
+  const styleW = Number(canvas.style.width?.replace("px", "")) || canvas.width;
+  const scaleX = canvas.width / styleW;
+  const scaleY = canvas.height / (Number(canvas.style.height?.replace("px", "")) || canvas.height);
+  const sx = Math.max(0, Math.floor(cssLeft * scaleX));
+  const sy = Math.max(0, Math.floor(cssTop * scaleY));
+  const sw = Math.max(1, Math.min(canvas.width - sx, Math.ceil(cssWidth * scaleX)));
+  const sh = Math.max(1, Math.min(canvas.height - sy, Math.ceil(cssHeight * scaleY)));
+
+  let data: ImageData;
+  try {
+    data = ctx.getImageData(sx, sy, sw, sh);
+  } catch {
+    return 0;
+  }
+
+  let contentPixels = 0;
+  let totalPixels = 0;
+  for (let i = 0; i < data.data.length; i += 4) {
+    totalPixels++;
+    const alpha = data.data[i + 3];
+    if (alpha < 12) continue;
+    const r = data.data[i];
+    const g = data.data[i + 1];
+    const b = data.data[i + 2];
+    if (r < 245 || g < 245 || b < 245) contentPixels++;
+  }
+
+  return totalPixels > 0 ? contentPixels / totalPixels : 0;
+}
+
 /** True when the canvas has enough visible ink to be a meaningful page export. */
 export function isCanvasRenderable(
   canvas: HTMLCanvasElement,
