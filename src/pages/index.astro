@@ -11,6 +11,7 @@ import Card from "@/components/Card.astro";
 import LinkButton from "@/components/LinkButton.astro";
 import HomeToolTags from "@/components/HomeToolTags.astro";
 import HomeRedactGuides from "@/components/HomeRedactGuides.astro";
+import { postsListingSearchSynonyms } from "@/utils/post-search-synonyms";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
@@ -23,6 +24,7 @@ const posts = await getSortedRenderablePosts();
 const featuredPosts = posts.filter(({ data }) => data.featured);
 const recentPosts = posts.filter(({ data }) => !data.featured);
 const homePath = getRelativeLocaleUrl(locale, "");
+const homePostSearchSynonyms = postsListingSearchSynonyms(posts);
 ---
 
 <Layout>
@@ -146,6 +148,14 @@ const homePath = getRelativeLocaleUrl(locale, "");
         <IconArrowRight class="inline-block rtl:-rotate-180" />
       </LinkButton>
     </div>
+
+    {
+      homePostSearchSynonyms && (
+        <div data-pagefind-body data-pagefind-filter="type:post" class="sr-only" aria-hidden="true">
+          {homePostSearchSynonyms}
+        </div>
+      )
+    }
   </main>
   <Footer />
 </Layout>

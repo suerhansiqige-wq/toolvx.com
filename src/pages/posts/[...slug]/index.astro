@@ -15,6 +15,7 @@ import BackButton from "./_components/BackButton.astro";
 import BackToTopButton from "./_components/BackToTopButton.astro";
 import AdjacentPostNav from "./_components/AdjacentPostNav.astro";
 import config from "@/config";
+import { postSearchSynonyms } from "@/utils/post-search-synonyms";
 
 export async function getStaticPaths() {
   const sortedPosts = await getSortedRenderablePosts();
@@ -97,6 +98,13 @@ if (!ogImageUrl && config.features.dynamicOgImage) {
 const ogImage = ogImageUrl
   ? new URL(ogImageUrl, Astro.url.origin).href
   : undefined;
+
+const searchSynonyms = postSearchSynonyms({
+  title,
+  description,
+  i18nKey,
+  tags,
+});
 ---
 
 <PostLayout
@@ -115,7 +123,14 @@ const ogImage = ogImageUrl
     id="main-content"
     class:list={["app-layout", { "mt-8": !config.features.showBackButton }]}
     data-pagefind-body
+    data-pagefind-filter="type:post"
+    data-pagefind-meta={description ? `description:${description}` : undefined}
   >
+    {searchSynonyms && (
+      <p class="sr-only" aria-hidden="true">
+        {searchSynonyms}
+      </p>
+    )}
     <h1
       style={{ viewTransitionName: toTransitionName(title) }}
       class="text-accent inline-block text-2xl font-bold sm:text-3xl"

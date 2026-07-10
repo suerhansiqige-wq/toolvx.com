@@ -3,6 +3,7 @@ import { getRelativeLocaleUrl } from "astro:i18n";
 import { getSortedRenderablePosts } from "@/utils/getRenderablePosts";
 import { getPostUrl } from "@/utils/getPostPaths";
 import { REDACT_GUIDE_TAG } from "@/constants/redactGuides";
+import { postsListingSearchSynonyms } from "@/utils/post-search-synonyms";
 
 type Props = {
   locale?: string;
@@ -19,9 +20,10 @@ const guides = (await getSortedRenderablePosts())
 if (!guides.length) return null;
 
 const tagHref = getRelativeLocaleUrl(locale, `tags/${REDACT_GUIDE_TAG}`);
+const guideSearchSynonyms = postsListingSearchSynonyms(guides);
 ---
 
-<section id="redact-guides" class="home-redact-guides mb-6 sm:mb-8">
+<section id="redact-guides" class="home-redact-guides mb-6 sm:mb-8" data-pagefind-body data-pagefind-filter="type:post">
   <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
     <div>
       <h2
@@ -76,6 +78,13 @@ const tagHref = getRelativeLocaleUrl(locale, `tags/${REDACT_GUIDE_TAG}`);
       })
     }
   </ul>
+  {
+    guideSearchSynonyms && (
+      <p class="sr-only" aria-hidden="true">
+        {guideSearchSynonyms}
+      </p>
+    )
+  }
 </section>
 
 <style>
