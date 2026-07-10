@@ -78,9 +78,13 @@ function findGraphicsBlockBounds(content: string, hitIndex: number): { start: nu
   return findGraphicsBlockFromQ(content, start);
 }
 
+function usesSiteOpacity(body: string): boolean {
+  return /0\.35\s+ca/.test(body) || /\/GS-\d+\s+gs/.test(body);
+}
+
 function isSiteTextWatermarkBlock(body: string): boolean {
   return (
-    /0\.35\s+ca/.test(body) &&
+    usesSiteOpacity(body) &&
     /36\s+Tf/.test(body) &&
     /(Tj|TJ)/.test(body) &&
     /0\.75\s+0\.75\s+0\.75\s+rg/.test(body)
@@ -88,7 +92,7 @@ function isSiteTextWatermarkBlock(body: string): boolean {
 }
 
 function isSiteImageWatermarkBlock(body: string): boolean {
-  return /0\.35\s+ca/.test(body) && /\sDo\b/.test(body);
+  return usesSiteOpacity(body) && /\sDo\b/.test(body) && !/BT/.test(body);
 }
 
 function isSiteWatermarkBlock(body: string): boolean {
@@ -96,7 +100,8 @@ function isSiteWatermarkBlock(body: string): boolean {
 }
 
 function isSmartWatermarkCandidate(body: string): boolean {
-  const hasLowOpacity = /0\.(?:[12]\d?|3[0-5])\s+ca/.test(body);
+  const hasLowOpacity =
+    /0\.(?:[12]\d?|3[0-5])\s+ca/.test(body) || /\/GS-\d+\s+gs/.test(body);
   const hasText = /BT[\s\S]*?(Tj|TJ)/.test(body);
   const hasImage = /\sDo\b/.test(body);
   const hasRotation = /0\.7\d*\s+0\.7\d*/.test(body);
@@ -198,9 +203,9 @@ function findStreamRegions(pdf: Uint8Array): StreamRegion[] {
     if (text[dataEnd - 1] === "\r") dataEnd -= 1;
 
     const dictStart = text.lastIndexOf("<<", streamIdx);
-    const dictEnd = text.indexOf(">>", streamIdx);
+    const dictEnd = text.lastIndexOf(">>", streamIdx);
     const dict =
-      dictStart >= 0 && dictEnd >= 0 && dictEnd < streamIdx
+      dictStart >= 0 && dictEnd > dictStart
         ? text.slice(dictStart, dictEnd + 2)
         : "";
     const flate = /\/Filter\s*\/FlateDecode/.test(dict) || /\/Filter\s*\[\s*\/FlateDecode/.test(dict);
