@@ -1,5 +1,7 @@
 ---
+import { Image } from "astro:assets";
 import { getRelativeLocaleUrl } from "astro:i18n";
+import logo from "@/assets/logo.png";
 import IconUnderline from "@/assets/icons/IconUnderline.svg";
 import IconMenuDeep from "@/assets/icons/IconMenuDeep.svg";
 import IconArchive from "@/assets/icons/IconArchive.svg";
@@ -53,9 +55,18 @@ const showSearch = features.search !== false;
     <div class="flex w-full items-center gap-3 lg:gap-4">
       <a
         href={getRelativeLocaleUrl(locale, "")}
-        class="interactive shrink-0 py-1 text-xl leading-8 font-bold tracking-tight whitespace-nowrap hover:text-accent sm:text-2xl sm:leading-none"
+        class="site-brand interactive shrink-0 rounded-xl py-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        aria-label={site.title}
       >
-        {site.title}
+        <Image
+          src={logo}
+          alt={site.title}
+          width={40}
+          height={40}
+          class="site-brand__logo"
+          loading="eager"
+          decoding="async"
+        />
       </a>
 
       {
@@ -237,6 +248,26 @@ const showSearch = features.search !== false;
 </script>
 
 <style>
+  .site-brand {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .site-brand__logo {
+    display: block;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    object-fit: cover;
+  }
+
+  @media (min-width: 640px) {
+    .site-brand__logo {
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+  }
+
   @media (min-width: 1024px) {
     .header-search--desktop {
       max-width: 32rem;

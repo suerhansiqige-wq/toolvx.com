@@ -35,7 +35,7 @@ const homeToolSearchSynonyms = homeSearchSynonyms();
 const siteUrl = new URL(site.url);
 const canonicalURL = new URL(Astro.url.pathname, siteUrl).href;
 const searchUrlTemplate = new URL("search?q={search_term_string}", siteUrl).href;
-const logoUrl = new URL(getAssetPath("favicon.svg"), siteUrl).href;
+const logoUrl = new URL(getAssetPath("logo.png"), siteUrl).href;
 
 const websiteStructuredData = {
   "@context": "https://schema.org",
