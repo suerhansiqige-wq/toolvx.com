@@ -131,6 +131,14 @@
             >
               Fit
             </button>
+            <button
+              type="button"
+              id="redact-zoom-exit"
+              class="redact-zoom-bar__exit interactive hidden"
+              data-i18n="redact_zoom_exit"
+            >
+              Exit
+            </button>
           </div>
         </div>
         <div id="redact-canvas-stage" class="redact-canvas-stage">
@@ -142,31 +150,35 @@
             ></canvas>
           </div>
         </div>
+
+        <div id="redact-page-controls" class="redact-page-bar redact-page-bar--inline hidden">
+          <button
+            type="button"
+            id="redact-prev-page"
+            class="redact-nav-btn tool-action-btn interactive"
+            data-i18n="common.prevPage"
+          >
+            Previous
+          </button>
+          <span class="redact-page-indicator">
+            <span data-i18n="redact_page_label">Page</span>
+            <span id="redact-page-current" class="redact-page-indicator__num">1</span>
+            <span data-i18n="redact_page_of">of</span>
+            <span id="redact-page-total" class="redact-page-indicator__num">1</span>
+          </span>
+          <button
+            type="button"
+            id="redact-next-page"
+            class="redact-nav-btn tool-action-btn interactive"
+            data-i18n="common.nextPage"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
-      <div id="redact-page-controls" class="redact-page-bar card-surface hidden">
-        <button
-          type="button"
-          id="redact-prev-page"
-          class="redact-nav-btn tool-action-btn interactive"
-          data-i18n="common.prevPage"
-        >
-          Previous
-        </button>
-        <span class="redact-page-indicator">
-          <span data-i18n="redact_page_label">Page</span>
-          <span id="redact-page-current" class="redact-page-indicator__num">1</span>
-          <span data-i18n="redact_page_of">of</span>
-          <span id="redact-page-total" class="redact-page-indicator__num">1</span>
-        </span>
-        <button
-          type="button"
-          id="redact-next-page"
-          class="redact-nav-btn tool-action-btn interactive"
-          data-i18n="common.nextPage"
-        >
-          Next
-        </button>
+      <div id="redact-fs-placeholder" class="redact-fs-placeholder card-surface hidden">
+        <p data-i18n="redact_fs_placeholder">Fullscreen editing — click Fit to return to the layout.</p>
       </div>
     </div>
 
@@ -592,6 +604,70 @@
     color: var(--accent);
   }
 
+  .redact-zoom-bar__exit {
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--foreground);
+    background: var(--card);
+  }
+
+  .redact-zoom-bar__exit:hover,
+  .redact-zoom-bar__exit:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .redact-canvas-wrap--fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    padding: 0.75rem 1rem 1rem;
+    background: var(--background);
+    box-shadow: none;
+    gap: 0.5rem;
+  }
+
+  .redact-canvas-wrap--fullscreen .redact-canvas-stage {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow: auto;
+    align-items: flex-start;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .redact-canvas-wrap--fullscreen .redact-page-bar--inline {
+    flex-shrink: 0;
+    margin: 0;
+    border: 1px solid var(--border);
+  }
+
+  .redact-fs-placeholder {
+    display: flex;
+    min-height: 20rem;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    font-size: 0.9375rem;
+    color: var(--muted-foreground);
+  }
+
+  :global(body.redact-fullscreen-active) {
+    overflow: hidden;
+  }
+
   .redact-canvas-wrap--zoomed .redact-canvas-stage {
     overflow: auto;
     align-items: flex-start;
@@ -636,6 +712,10 @@
     border-radius: var(--redact-radius);
     padding: 0.75rem 1rem;
     text-align: center;
+  }
+
+  .redact-page-bar--inline {
+    background: var(--card);
   }
 
   .redact-nav-btn {

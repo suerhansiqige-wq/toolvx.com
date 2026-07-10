@@ -88,6 +88,7 @@ let isDragging = false;
 let viewZoom = 1;
 let baseCssWidth = 0;
 let baseCssHeight = 0;
+let fullscreenEdit = false;
 
 let originalImageSnapshot: ImageData | null = null;
 
@@ -186,6 +187,11 @@ function syncCanvasAreaHeight() {
   const wrap = $("redact-canvas-wrap");
   const controls = $("redact-control-panel");
   if (!wrap || !controls) return;
+
+  if (fullscreenEdit) {
+    wrap.style.height = "";
+    return;
+  }
 
   const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
   const isActive = !$("redact-editor")?.classList.contains("hidden");
@@ -509,11 +515,18 @@ function updateZoomUi() {
   const outBtn = $("redact-zoom-out") as HTMLButtonElement | null;
   const inBtn = $("redact-zoom-in") as HTMLButtonElement | null;
   const resetBtn = $("redact-zoom-reset") as HTMLButtonElement | null;
-  if (outBtn) outBtn.disabled = viewZoom <= ZOOM_MIN + 0.001;
-  if (inBtn) inBtn.disabled = viewZoom >= ZOOM_MAX - 0.001;
-  if (resetBtn) resetBtn.disabled = Math.abs(viewZoom - 1) < 0.001;
+  const exitBtn = $("redact-zoom-exit");
+  if (outBtn) outBtn.disabled = !fullscreenEdit && viewZoom <= ZOOM_MIN + 0.001;
+  if (inBtn) inBtn.disabled = fullscreenEdit && viewZoom >= ZOOM_MAX - 0.001;
+  if (resetBtn) resetBtn.disabled = !fullscreenEdit && Math.abs(viewZoom - 1) < 0.001;
+  exitBtn?.classList.toggle("hidden", !fullscreenEdit);
 
   $("redact-canvas-wrap")?.classList.toggle("redact-canvas-wrap--zoomed", viewZoom > 1.001);
+  $("redact-canvas-wrap")?.classList.toggle(
+    "redact-canvas-wrap--fullscreen",
+    fullscreenEdit
+  );
+  $("redact-fs-placeholder")?.classList.toggle("hidden", !fullscreenEdit);
 }
 
 function applyViewZoom() {
@@ -536,33 +549,73 @@ function setViewZoom(next: number) {
   applyViewZoom();
 }
 
+function enterFullscreenEdit() {
+  if (fullscreenEdit) return;
+  fullscreenEdit = true;
+  document.body.classList.add("redact-fullscreen-active");
+  fitCanvasToContainer();
+  updateZoomUi();
+}
+
+function exitFullscreenEdit() {
+  if (!fullscreenEdit) {
+    setViewZoom(1);
+    return;
+  }
+  fullscreenEdit = false;
+  viewZoom = 1;
+  document.body.classList.remove("redact-fullscreen-active");
+  const stage = $("redact-canvas-stage");
+  if (stage) {
+    stage.scrollLeft = 0;
+    stage.scrollTop = 0;
+    stage.style.flex = "";
+    stage.style.minHeight = "";
+  }
+  fitCanvasToContainer();
+  updateZoomUi();
+}
+
 function zoomIn() {
+  if (!fullscreenEdit) {
+    enterFullscreenEdit();
+    setViewZoom(1);
+    return;
+  }
   setViewZoom(viewZoom + ZOOM_STEP);
 }
 
 function zoomOut() {
-  setViewZoom(viewZoom - ZOOM_STEP);
+  if (!fullscreenEdit) {
+    setViewZoom(Math.max(ZOOM_MIN, viewZoom - ZOOM_STEP));
+    return;
+  }
+  const next = viewZoom - ZOOM_STEP;
+  if (next <= 1) {
+    exitFullscreenEdit();
+    return;
+  }
+  setViewZoom(next);
 }
 
 function zoomReset() {
-  const stage = $("redact-canvas-stage");
-  setViewZoom(1);
-  if (stage) {
-    stage.scrollLeft = 0;
-    stage.scrollTop = 0;
-  }
+  exitFullscreenEdit();
 }
 
 function resetViewZoom() {
+  fullscreenEdit = false;
   viewZoom = 1;
   baseCssWidth = 0;
   baseCssHeight = 0;
-  updateZoomUi();
+  document.body.classList.remove("redact-fullscreen-active");
   const stage = $("redact-canvas-stage");
   if (stage) {
     stage.scrollLeft = 0;
     stage.scrollTop = 0;
+    stage.style.flex = "";
+    stage.style.minHeight = "";
   }
+  updateZoomUi();
 }
 
 function fitCanvasToContainer() {
@@ -577,10 +630,21 @@ function fitCanvasToContainer() {
   const padX = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
   const padY = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
   const controls = $("redact-control-panel");
+  const zoomBar = $("redact-zoom-bar");
+  const pageBar = $("redact-page-controls");
   let availW = Math.max(1, wrap.clientWidth - padX);
   let availH = Math.max(1, wrap.clientHeight - padY);
   const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
-  if (availH <= 1 && isDesktop) {
+
+  if (fullscreenEdit) {
+    const zoomBarH = zoomBar?.getBoundingClientRect().height ?? 44;
+    const pageBarH =
+      isPdf && pageBar && !pageBar.classList.contains("hidden")
+        ? pageBar.getBoundingClientRect().height + 12
+        : 0;
+    availW = Math.max(1, window.innerWidth - padX - 24);
+    availH = Math.max(1, window.innerHeight - padY - zoomBarH - pageBarH - 24);
+  } else if (availH <= 1 && isDesktop) {
     availH = Math.max(
       CANVAS_MIN_HEIGHT,
       controls?.getBoundingClientRect().height ?? CANVAS_MIN_HEIGHT
@@ -591,7 +655,16 @@ function fitCanvasToContainer() {
   let cssW = availW;
   let cssH = Math.round(cssW * aspect);
 
-  if (isDesktop && wrap.style.height) {
+  if (fullscreenEdit) {
+    if (cssH > availH) {
+      cssH = availH;
+      cssW = Math.round(cssH / aspect);
+    }
+    stage.style.width = "100%";
+    stage.style.height = "auto";
+    stage.style.flex = "1";
+    stage.style.minHeight = "0";
+  } else if (isDesktop && wrap.style.height) {
     if (cssH > availH) {
       cssH = availH;
       cssW = Math.round(cssH / aspect);
@@ -1643,6 +1716,10 @@ function bindGlobalRedactListeners() {
       e.preventDefault();
       zoomReset();
     }
+    if (e.key === "Escape" && fullscreenEdit) {
+      e.preventDefault();
+      exitFullscreenEdit();
+    }
     if (isPdf && e.key === "ArrowLeft" && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       void switchPage(-1);
@@ -1704,6 +1781,7 @@ function initRedactTool() {
   bindRedactButton("redact-zoom-in", zoomIn);
   bindRedactButton("redact-zoom-out", zoomOut);
   bindRedactButton("redact-zoom-reset", zoomReset);
+  bindRedactButton("redact-zoom-exit", exitFullscreenEdit);
   bindRedactButton("redact-thumb-prev", () => {
     thumbViewStart = Math.max(0, thumbViewStart - THUMBS_PER_VIEW);
     renderThumbWindow();
