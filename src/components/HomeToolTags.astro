@@ -16,7 +16,7 @@ type TagItem = {
   href: string;
   label: string;
   labelKey: string;
-  accent?: boolean;
+  tone: number;
 };
 
 const tags: TagItem[] = [
@@ -25,14 +25,14 @@ const tags: TagItem[] = [
     href: getRelativeLocaleUrl(locale, "redact-preview"),
     label: menu.redactImagePdf,
     labelKey: "menu.tools.redactImagePdf",
-    accent: true,
+    tone: 0,
   },
-  ...toolsRegistry.map(tool => ({
+  ...toolsRegistry.map((tool, index) => ({
     id: tool.slug,
     href: getRelativeLocaleUrl(locale, `tools/${tool.slug}`),
     label: menu[tool.i18nKey as keyof typeof menu] ?? tool.i18nKey,
     labelKey: `menu.tools.${tool.i18nKey}`,
-    accent: false,
+    tone: index + 1,
   })),
 ];
 ---
@@ -46,10 +46,7 @@ const tags: TagItem[] = [
     {
       tags.map(tag => (
         <li class="home-tool-tags__item">
-          <a
-            href={tag.href}
-            class:list={["home-tool-tag", tag.accent && "home-tool-tag--accent"]}
-          >
+          <a href={tag.href} class="home-tool-tag" data-tone={String(tag.tone)}>
             <span class="home-tool-tag__label" data-i18n={tag.labelKey}>
               {tag.label}
             </span>
@@ -68,7 +65,7 @@ const tags: TagItem[] = [
   .home-tool-tags__grid {
     display: grid;
     grid-template-columns: repeat(8, minmax(0, 1fr));
-    gap: 0.45rem;
+    gap: 0.5rem;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -79,69 +76,357 @@ const tags: TagItem[] = [
   }
 
   .home-tool-tag {
+    --tag-bg: linear-gradient(145deg, #f4f4f5 0%, #e4e4e7 100%);
+    --tag-border: #d4d4d8;
+    --tag-text: #18181b;
+    --tag-shadow: rgb(0 0 0 / 8%);
+    --tag-hover-lift: rgb(0 0 0 / 14%);
+
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 2.5rem;
+    min-height: 2.55rem;
     height: 100%;
-    padding: 0.4rem 0.35rem;
-    border-radius: 0.55rem;
-    border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
-    background: color-mix(in oklab, var(--card) 92%, var(--muted) 8%);
-    color: var(--foreground);
+    padding: 0.42rem 0.38rem;
+    border-radius: 0.62rem;
+    border: 1px solid var(--tag-border);
+    background: var(--tag-bg);
+    color: var(--tag-text);
     text-decoration: none;
-    box-shadow: 0 1px 2px color-mix(in oklab, black 4%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 42%),
+      0 2px 6px var(--tag-shadow);
     transition:
-      border-color 0.15s ease,
-      background 0.15s ease,
-      transform 0.15s ease,
-      box-shadow 0.15s ease;
+      transform 0.16s ease,
+      box-shadow 0.16s ease,
+      filter 0.16s ease;
   }
 
   .home-tool-tag:hover,
   .home-tool-tag:focus-visible {
-    border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
-    background: color-mix(in oklab, var(--accent) 8%, var(--card));
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px color-mix(in oklab, var(--accent) 12%, transparent);
+    transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 50%),
+      0 6px 14px var(--tag-hover-lift);
+    filter: saturate(1.08) brightness(1.03);
   }
 
   .home-tool-tag:focus-visible {
-    outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
+    outline: 2px solid var(--tag-border);
     outline-offset: 2px;
-  }
-
-  .home-tool-tag--accent {
-    border-color: color-mix(in oklab, #e11d48 35%, var(--border));
-    background: linear-gradient(
-      145deg,
-      color-mix(in oklab, #fb7185 16%, var(--card)) 0%,
-      color-mix(in oklab, #e11d48 10%, var(--card)) 100%
-    );
-    color: color-mix(in oklab, #9f1239 72%, var(--foreground));
-    font-weight: 650;
-  }
-
-  .home-tool-tag--accent:hover,
-  .home-tool-tag--accent:focus-visible {
-    border-color: color-mix(in oklab, #e11d48 55%, var(--border));
-    background: linear-gradient(
-      145deg,
-      color-mix(in oklab, #fb7185 24%, var(--card)) 0%,
-      color-mix(in oklab, #e11d48 16%, var(--card)) 100%
-    );
   }
 
   .home-tool-tag__label {
     display: -webkit-box;
     overflow: hidden;
     font-size: 0.68rem;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.25;
     text-align: center;
     word-break: break-word;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    text-shadow: 0 1px 0 rgb(255 255 255 / 18%);
+  }
+
+  /* 0 redact — rose */
+  .home-tool-tag[data-tone="0"] {
+    --tag-bg: linear-gradient(145deg, #ffe4e6 0%, #fda4af 100%);
+    --tag-border: #f43f5e;
+    --tag-text: #881337;
+    --tag-shadow: rgb(190 18 60 / 22%);
+    --tag-hover-lift: rgb(190 18 60 / 32%);
+  }
+
+  /* 1 compress — violet */
+  .home-tool-tag[data-tone="1"] {
+    --tag-bg: linear-gradient(145deg, #ede9fe 0%, #c4b5fd 100%);
+    --tag-border: #8b5cf6;
+    --tag-text: #4c1d95;
+    --tag-shadow: rgb(109 40 217 / 20%);
+    --tag-hover-lift: rgb(109 40 217 / 30%);
+  }
+
+  /* 2 merge — blue */
+  .home-tool-tag[data-tone="2"] {
+    --tag-bg: linear-gradient(145deg, #dbeafe 0%, #93c5fd 100%);
+    --tag-border: #3b82f6;
+    --tag-text: #1e3a8a;
+    --tag-shadow: rgb(37 99 235 / 20%);
+    --tag-hover-lift: rgb(37 99 235 / 30%);
+  }
+
+  /* 3 split — cyan */
+  .home-tool-tag[data-tone="3"] {
+    --tag-bg: linear-gradient(145deg, #cffafe 0%, #67e8f9 100%);
+    --tag-border: #06b6d4;
+    --tag-text: #155e75;
+    --tag-shadow: rgb(8 145 178 / 20%);
+    --tag-hover-lift: rgb(8 145 178 / 30%);
+  }
+
+  /* 4 rotate — teal */
+  .home-tool-tag[data-tone="4"] {
+    --tag-bg: linear-gradient(145deg, #ccfbf1 0%, #5eead4 100%);
+    --tag-border: #14b8a6;
+    --tag-text: #115e59;
+    --tag-shadow: rgb(13 148 136 / 20%);
+    --tag-hover-lift: rgb(13 148 136 / 30%);
+  }
+
+  /* 5 delete — orange */
+  .home-tool-tag[data-tone="5"] {
+    --tag-bg: linear-gradient(145deg, #ffedd5 0%, #fdba74 100%);
+    --tag-border: #f97316;
+    --tag-text: #9a3412;
+    --tag-shadow: rgb(234 88 12 / 20%);
+    --tag-hover-lift: rgb(234 88 12 / 30%);
+  }
+
+  /* 6 edit — amber */
+  .home-tool-tag[data-tone="6"] {
+    --tag-bg: linear-gradient(145deg, #fef3c7 0%, #fcd34d 100%);
+    --tag-border: #f59e0b;
+    --tag-text: #92400e;
+    --tag-shadow: rgb(217 119 6 / 20%);
+    --tag-hover-lift: rgb(217 119 6 / 30%);
+  }
+
+  /* 7 reader — lime */
+  .home-tool-tag[data-tone="7"] {
+    --tag-bg: linear-gradient(145deg, #ecfccb 0%, #bef264 100%);
+    --tag-border: #84cc16;
+    --tag-text: #3f6212;
+    --tag-shadow: rgb(101 163 13 / 20%);
+    --tag-hover-lift: rgb(101 163 13 / 30%);
+  }
+
+  /* 8 number — emerald */
+  .home-tool-tag[data-tone="8"] {
+    --tag-bg: linear-gradient(145deg, #d1fae5 0%, #6ee7b7 100%);
+    --tag-border: #10b981;
+    --tag-text: #065f46;
+    --tag-shadow: rgb(5 150 105 / 20%);
+    --tag-hover-lift: rgb(5 150 105 / 30%);
+  }
+
+  /* 9 crop — green */
+  .home-tool-tag[data-tone="9"] {
+    --tag-bg: linear-gradient(145deg, #dcfce7 0%, #86efac 100%);
+    --tag-border: #22c55e;
+    --tag-text: #166534;
+    --tag-shadow: rgb(22 163 74 / 20%);
+    --tag-hover-lift: rgb(22 163 74 / 30%);
+  }
+
+  /* 10 watermark — sky */
+  .home-tool-tag[data-tone="10"] {
+    --tag-bg: linear-gradient(145deg, #e0f2fe 0%, #7dd3fc 100%);
+    --tag-border: #0ea5e9;
+    --tag-text: #0c4a6e;
+    --tag-shadow: rgb(2 132 199 / 20%);
+    --tag-hover-lift: rgb(2 132 199 / 30%);
+  }
+
+  /* 11 pdf-to-jpg — indigo */
+  .home-tool-tag[data-tone="11"] {
+    --tag-bg: linear-gradient(145deg, #e0e7ff 0%, #a5b4fc 100%);
+    --tag-border: #6366f1;
+    --tag-text: #312e81;
+    --tag-shadow: rgb(79 70 229 / 20%);
+    --tag-hover-lift: rgb(79 70 229 / 30%);
+  }
+
+  /* 12 jpg-to-pdf — fuchsia */
+  .home-tool-tag[data-tone="12"] {
+    --tag-bg: linear-gradient(145deg, #fae8ff 0%, #f0abfc 100%);
+    --tag-border: #d946ef;
+    --tag-text: #86198f;
+    --tag-shadow: rgb(192 38 211 / 20%);
+    --tag-hover-lift: rgb(192 38 211 / 30%);
+  }
+
+  /* 13 sign — pink */
+  .home-tool-tag[data-tone="13"] {
+    --tag-bg: linear-gradient(145deg, #fce7f3 0%, #f9a8d4 100%);
+    --tag-border: #ec4899;
+    --tag-text: #9d174d;
+    --tag-shadow: rgb(219 39 119 / 20%);
+    --tag-hover-lift: rgb(219 39 119 / 30%);
+  }
+
+  /* 14 unlock — yellow */
+  .home-tool-tag[data-tone="14"] {
+    --tag-bg: linear-gradient(145deg, #fef9c3 0%, #fde047 100%);
+    --tag-border: #eab308;
+    --tag-text: #854d0e;
+    --tag-shadow: rgb(202 138 4 / 20%);
+    --tag-hover-lift: rgb(202 138 4 / 30%);
+  }
+
+  /* 15 protect — slate */
+  .home-tool-tag[data-tone="15"] {
+    --tag-bg: linear-gradient(145deg, #e2e8f0 0%, #94a3b8 100%);
+    --tag-border: #64748b;
+    --tag-text: #1e293b;
+    --tag-shadow: rgb(71 85 105 / 22%);
+    --tag-hover-lift: rgb(71 85 105 / 32%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag__label,
+  :global(.dark) .home-tool-tag__label {
+    text-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag,
+  :global(.dark) .home-tool-tag {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 10%),
+      0 3px 10px var(--tag-shadow);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="0"],
+  :global(.dark) .home-tool-tag[data-tone="0"] {
+    --tag-bg: linear-gradient(145deg, #9f1239 0%, #be123c 100%);
+    --tag-border: #fb7185;
+    --tag-text: #ffe4e6;
+    --tag-shadow: rgb(251 113 133 / 28%);
+    --tag-hover-lift: rgb(251 113 133 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="1"],
+  :global(.dark) .home-tool-tag[data-tone="1"] {
+    --tag-bg: linear-gradient(145deg, #4c1d95 0%, #6d28d9 100%);
+    --tag-border: #a78bfa;
+    --tag-text: #ede9fe;
+    --tag-shadow: rgb(167 139 250 / 28%);
+    --tag-hover-lift: rgb(167 139 250 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="2"],
+  :global(.dark) .home-tool-tag[data-tone="2"] {
+    --tag-bg: linear-gradient(145deg, #1e3a8a 0%, #2563eb 100%);
+    --tag-border: #60a5fa;
+    --tag-text: #dbeafe;
+    --tag-shadow: rgb(96 165 250 / 28%);
+    --tag-hover-lift: rgb(96 165 250 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="3"],
+  :global(.dark) .home-tool-tag[data-tone="3"] {
+    --tag-bg: linear-gradient(145deg, #155e75 0%, #0891b2 100%);
+    --tag-border: #22d3ee;
+    --tag-text: #cffafe;
+    --tag-shadow: rgb(34 211 238 / 28%);
+    --tag-hover-lift: rgb(34 211 238 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="4"],
+  :global(.dark) .home-tool-tag[data-tone="4"] {
+    --tag-bg: linear-gradient(145deg, #115e59 0%, #0d9488 100%);
+    --tag-border: #2dd4bf;
+    --tag-text: #ccfbf1;
+    --tag-shadow: rgb(45 212 191 / 28%);
+    --tag-hover-lift: rgb(45 212 191 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="5"],
+  :global(.dark) .home-tool-tag[data-tone="5"] {
+    --tag-bg: linear-gradient(145deg, #9a3412 0%, #ea580c 100%);
+    --tag-border: #fb923c;
+    --tag-text: #ffedd5;
+    --tag-shadow: rgb(251 146 60 / 28%);
+    --tag-hover-lift: rgb(251 146 60 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="6"],
+  :global(.dark) .home-tool-tag[data-tone="6"] {
+    --tag-bg: linear-gradient(145deg, #92400e 0%, #d97706 100%);
+    --tag-border: #fbbf24;
+    --tag-text: #fef3c7;
+    --tag-shadow: rgb(251 191 36 / 28%);
+    --tag-hover-lift: rgb(251 191 36 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="7"],
+  :global(.dark) .home-tool-tag[data-tone="7"] {
+    --tag-bg: linear-gradient(145deg, #3f6212 0%, #65a30d 100%);
+    --tag-border: #a3e635;
+    --tag-text: #ecfccb;
+    --tag-shadow: rgb(163 230 53 / 28%);
+    --tag-hover-lift: rgb(163 230 53 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="8"],
+  :global(.dark) .home-tool-tag[data-tone="8"] {
+    --tag-bg: linear-gradient(145deg, #065f46 0%, #059669 100%);
+    --tag-border: #34d399;
+    --tag-text: #d1fae5;
+    --tag-shadow: rgb(52 211 153 / 28%);
+    --tag-hover-lift: rgb(52 211 153 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="9"],
+  :global(.dark) .home-tool-tag[data-tone="9"] {
+    --tag-bg: linear-gradient(145deg, #166534 0%, #16a34a 100%);
+    --tag-border: #4ade80;
+    --tag-text: #dcfce7;
+    --tag-shadow: rgb(74 222 128 / 28%);
+    --tag-hover-lift: rgb(74 222 128 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="10"],
+  :global(.dark) .home-tool-tag[data-tone="10"] {
+    --tag-bg: linear-gradient(145deg, #0c4a6e 0%, #0284c7 100%);
+    --tag-border: #38bdf8;
+    --tag-text: #e0f2fe;
+    --tag-shadow: rgb(56 189 248 / 28%);
+    --tag-hover-lift: rgb(56 189 248 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="11"],
+  :global(.dark) .home-tool-tag[data-tone="11"] {
+    --tag-bg: linear-gradient(145deg, #312e81 0%, #4f46e5 100%);
+    --tag-border: #818cf8;
+    --tag-text: #e0e7ff;
+    --tag-shadow: rgb(129 140 248 / 28%);
+    --tag-hover-lift: rgb(129 140 248 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="12"],
+  :global(.dark) .home-tool-tag[data-tone="12"] {
+    --tag-bg: linear-gradient(145deg, #86198f 0%, #c026d3 100%);
+    --tag-border: #e879f9;
+    --tag-text: #fae8ff;
+    --tag-shadow: rgb(232 121 249 / 28%);
+    --tag-hover-lift: rgb(232 121 249 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="13"],
+  :global(.dark) .home-tool-tag[data-tone="13"] {
+    --tag-bg: linear-gradient(145deg, #9d174d 0%, #db2777 100%);
+    --tag-border: #f472b6;
+    --tag-text: #fce7f3;
+    --tag-shadow: rgb(244 114 182 / 28%);
+    --tag-hover-lift: rgb(244 114 182 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="14"],
+  :global(.dark) .home-tool-tag[data-tone="14"] {
+    --tag-bg: linear-gradient(145deg, #854d0e 0%, #ca8a04 100%);
+    --tag-border: #facc15;
+    --tag-text: #fef9c3;
+    --tag-shadow: rgb(250 204 21 / 28%);
+    --tag-hover-lift: rgb(250 204 21 / 40%);
+  }
+
+  :global([data-theme="dark"]) .home-tool-tag[data-tone="15"],
+  :global(.dark) .home-tool-tag[data-tone="15"] {
+    --tag-bg: linear-gradient(145deg, #334155 0%, #475569 100%);
+    --tag-border: #94a3b8;
+    --tag-text: #f1f5f9;
+    --tag-shadow: rgb(148 163 184 / 28%);
+    --tag-hover-lift: rgb(148 163 184 / 40%);
   }
 
   @media (min-width: 640px) {
@@ -150,13 +435,13 @@ const tags: TagItem[] = [
     }
 
     .home-tool-tags__grid {
-      gap: 0.55rem;
+      gap: 0.58rem;
     }
 
     .home-tool-tag {
-      min-height: 2.75rem;
-      padding: 0.45rem 0.4rem;
-      border-radius: 0.65rem;
+      min-height: 2.8rem;
+      padding: 0.46rem 0.42rem;
+      border-radius: 0.68rem;
     }
 
     .home-tool-tag__label {
