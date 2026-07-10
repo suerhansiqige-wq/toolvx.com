@@ -6,6 +6,7 @@ import {
   dataUrlToBlob,
   drawPdfPreviewPlaceholder,
   getPdfRenderScale,
+  HD_JPG_RENDER,
   isCanvasMostlyBlank,
   releaseCanvasMemory,
   renderPdfPageToCanvas,
@@ -21,7 +22,11 @@ import {
 } from "@/scripts/pdf-errors";
 import { onI18nReady, showAppAlert, showAppPrompt, t } from "@/scripts/i18n-client";
 import { openFileInput, prepareLegacyFileInput } from "@/scripts/file-input";
-import { clampImageDimensions, legacyAwareJpegQuality } from "@/utils/canvas-budget";
+import {
+  clampImageDimensions,
+  legacyAwareExportJpegQuality,
+  legacyAwareJpegQuality,
+} from "@/utils/canvas-budget";
 import { generateCompatibleId } from "@/utils/compatible-id";
 
 type EffectType = "blackout" | "pixelate" | "blur";
@@ -36,14 +41,15 @@ type Point = { x: number; y: number };
 
 const DEFAULT_MOSAIC = 12;
 const DEFAULT_BLUR = 14;
-const PDF_RENDER_SCALE = getPdfRenderScale(1.5);
 const LEGACY_PDF = isLegacyPdfEnvironment();
+const PDF_RENDER_SCALE = LEGACY_PDF ? HD_JPG_RENDER.scale : getPdfRenderScale(2);
 const CANVAS_MIN_HEIGHT = 320;
 const THUMBS_PER_VIEW = 5;
 const MIN_JPEG_QUALITY = LEGACY_PDF ? 0.18 : 0.22;
 const THUMB_JPEG_QUALITY = legacyAwareJpegQuality(0.55);
-const EXPORT_JPEG_QUALITY = legacyAwareJpegQuality(0.85);
-const EXPORT_SCALE_STEPS = [1, 0.92, 0.85, 0.75, 0.65, 0.55, 0.45, 0.35, 0.28];
+const EXPORT_JPEG_QUALITY = legacyAwareExportJpegQuality(0.96);
+const EXPORT_JPEG_QUALITY_MAX = 0.98;
+const EXPORT_SCALE_STEPS = [1, 0.96, 0.92, 0.88, 0.82, 0.75, 0.65, 0.55, 0.45, 0.35, 0.28];
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -393,6 +399,9 @@ const PDF_RENDER_RETRY_STRATEGIES: PdfLoadStrategy[] = LEGACY_PDF
 
 const LEGACY_RENDER_SCALES = [
   PDF_RENDER_SCALE,
+  getPdfRenderScale(1.5),
+  getPdfRenderScale(1.2),
+  getPdfRenderScale(0.85),
   getPdfRenderScale(0.72),
   getPdfRenderScale(0.6),
   0.5,
@@ -1002,6 +1011,10 @@ function scaledCanvas(source: HTMLCanvasElement, scale: number): HTMLCanvasEleme
   next.height = Math.max(1, Math.floor(source.height * scale));
   const context = next.getContext("2d");
   if (!context) throw new Error("Canvas not supported");
+  context.imageSmoothingEnabled = true;
+  if ("imageSmoothingQuality" in context) {
+    context.imageSmoothingQuality = "high";
+  }
   context.drawImage(source, 0, 0, next.width, next.height);
   return next;
 }
@@ -1035,10 +1048,10 @@ async function binarySearchBlob(
   }
 
   let low = MIN_JPEG_QUALITY;
-  let high = 0.98;
+  let high = EXPORT_JPEG_QUALITY_MAX;
   let best: Blob | null = null;
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 14; i++) {
     const quality = (low + high) / 2;
     const blob = await canvasToBlob(source, mime, quality);
     if (blob.size <= maxBytes) {
@@ -1132,7 +1145,7 @@ async function exportImageFullQuality(
     return canvasToBlob(source, preferredMime);
   }
   if (preferredMime === "image/webp") {
-    return canvasToBlob(source, "image/webp", 0.92);
+    return canvasToBlob(source, "image/webp", legacyAwareExportJpegQuality(0.95));
   }
   return canvasToBlob(source, "image/jpeg", EXPORT_JPEG_QUALITY);
 }
@@ -1229,10 +1242,10 @@ async function buildPdfWithPerPageBudget(
 async function exportPdfUnderLimit(maxBytes: number): Promise<Uint8Array> {
   for (const scale of EXPORT_SCALE_STEPS) {
     let low = MIN_JPEG_QUALITY;
-    let high = EXPORT_JPEG_QUALITY;
+    let high = EXPORT_JPEG_QUALITY_MAX;
     let best: Uint8Array | null = null;
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 14; i++) {
       const quality = (low + high) / 2;
       const bytes = await buildPdfBytes(quality, scale);
       if (bytes.byteLength <= maxBytes) {

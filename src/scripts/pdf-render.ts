@@ -1,7 +1,7 @@
 import { getPdfjsEngineVersion, isLegacyPdfEnvironment } from "@/scripts/pdf-worker";
 import type { PdfPageProxy } from "@/scripts/pdf-engine-types";
 
-const LEGACY_MAX_CANVAS_DIM = 4096;
+const LEGACY_MAX_CANVAS_DIM = 6144;
 
 function legacyEnv(): boolean {
   return isLegacyPdfEnvironment();

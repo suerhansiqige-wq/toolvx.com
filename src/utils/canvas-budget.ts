@@ -6,12 +6,12 @@ function legacyEnv(): boolean {
 
 /** Max width/height per canvas edge — avoids GPU/RAM exhaustion on old systems. */
 export function getMaxCanvasDim(): number {
-  return legacyEnv() ? 4096 : 8192;
+  return legacyEnv() ? 6144 : 8192;
 }
 
-/** Max total pixels (~12 MP legacy, ~48 MP modern). */
+/** Max total pixels (~24 MP legacy, ~48 MP modern). */
 export function getMaxCanvasPixels(): number {
-  return legacyEnv() ? 12_000_000 : 48_000_000;
+  return legacyEnv() ? 24_000_000 : 48_000_000;
 }
 
 export type ClampedDimensions = {
@@ -52,7 +52,12 @@ export function clampImageDimensions(
   return { width: w, height: h, scale };
 }
 
-/** Default JPEG quality for thumbs/exports on legacy vs modern browsers. */
+/** Default JPEG quality for thumbnails on legacy vs modern browsers. */
 export function legacyAwareJpegQuality(modern = 0.85): number {
   return legacyEnv() ? Math.min(modern, 0.72) : modern;
+}
+
+/** High JPEG quality for final exports — keeps clarity on legacy browsers. */
+export function legacyAwareExportJpegQuality(modern = 0.96): number {
+  return legacyEnv() ? Math.min(modern, 0.92) : modern;
 }
