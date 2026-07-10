@@ -1,7 +1,13 @@
 /**
- * Extract markdown blocks and write Chinese translations to src/locales/zh-posts/{i18nKey}.json.
- * English stays in SSR HTML; zh blocks are loaded on demand by i18n-client.
- * Run: node scripts/sync-redact-i18n-blocks.mjs
+ * Sync redact post i18n blocks.
+ *
+ * Preferred workflow (keeps zh-posts aligned with Astro markdown pipeline):
+ *   1. node scripts/realign-redact-zh.mjs
+ *   2. node scripts/export-missing-redact-zh.mjs  (if any missing)
+ *   3. Fill scripts/filled-redact-zh.json and run merge-filled-redact-zh.mjs
+ *
+ * Legacy markdown-only extractor (deprecated):
+ *   node scripts/sync-redact-i18n-blocks.mjs
  */
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
