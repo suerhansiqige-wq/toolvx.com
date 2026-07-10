@@ -171,6 +171,33 @@ const labelClass = "text-foreground mb-1.5 block text-sm font-medium";
   action === "watermark" && (
     <div class="mb-6 space-y-4 text-start">
       <fieldset>
+        <legend class="text-foreground mb-3 text-sm font-semibold" data-i18n="common.watermarkOperation">
+          Watermark mode
+        </legend>
+        <div
+          class="border-border bg-muted/40 flex flex-wrap gap-1 rounded-xl border p-1"
+          role="radiogroup"
+          aria-label="Watermark mode"
+        >
+          <label class="watermark-op-tab flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors has-[:checked]:bg-background has-[:checked]:text-accent has-[:checked]:shadow-sm">
+            <input type="radio" name="watermark-operation" value="add" checked class="sr-only" />
+            <span data-i18n="common.watermarkAdd">Add watermark</span>
+          </label>
+          <label class="watermark-op-tab flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors has-[:checked]:bg-background has-[:checked]:text-accent has-[:checked]:shadow-sm">
+            <input type="radio" name="watermark-operation" value="remove" class="sr-only" />
+            <span data-i18n="common.watermarkRemove">Remove watermark</span>
+          </label>
+        </div>
+      </fieldset>
+      <p
+        id="watermark-remove-hint"
+        class="text-muted-foreground hidden rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed"
+        data-i18n="common.watermarkRemoveHint"
+      >
+        Enter the exact watermark text or upload the same watermark image used on the PDF. Works best for
+        watermarks added by this tool or similar text/image overlays.
+      </p>
+      <fieldset>
         <legend class="text-foreground mb-3 text-sm font-semibold" data-i18n="common.watermarkMode">
           Watermark type
         </legend>

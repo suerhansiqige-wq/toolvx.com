@@ -258,6 +258,10 @@ export type Messages = {
     pageNumberStartAt: string;
     pageNumberStartFrom: string;
     watermarkMode: string;
+    watermarkOperation: string;
+    watermarkAdd: string;
+    watermarkRemove: string;
+    watermarkRemoveHint: string;
     watermarkTypeText: string;
     watermarkTypeImage: string;
     watermarkImage: string;

@@ -123,6 +123,11 @@ export const en: Messages = {
     pageNumberStartAt: "Start numbering on page",
     pageNumberStartFrom: "First page number",
     watermarkMode: "Watermark type",
+    watermarkOperation: "Watermark mode",
+    watermarkAdd: "Add watermark",
+    watermarkRemove: "Remove watermark",
+    watermarkRemoveHint:
+      "Enter the exact watermark text or upload the same watermark image used on the PDF. Works best for watermarks added by this tool or similar text/image overlays.",
     watermarkTypeText: "Text watermark",
     watermarkTypeImage: "Image watermark",
     watermarkImage: "Watermark image",
@@ -383,7 +388,7 @@ export const en: Messages = {
     ),
     watermarkPdf: tool(
       "Watermark PDF",
-      "Add a text or image watermark to every page of your PDF.",
+      "Add or remove text and image watermarks on every page — all processing stays in your browser.",
       "Add Watermark",
       "Download Watermarked PDF",
       pdfUpload,

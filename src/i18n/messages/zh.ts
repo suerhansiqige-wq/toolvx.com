@@ -122,6 +122,11 @@ export const zh: Messages = {
     pageNumberStartAt: "从第几页开始编号",
     pageNumberStartFrom: "起始页码",
     watermarkMode: "水印类型",
+    watermarkOperation: "水印功能",
+    watermarkAdd: "添加水印",
+    watermarkRemove: "去除水印",
+    watermarkRemoveHint:
+      "请输入 PDF 上已有的水印文字，或上传当时使用的水印图片。对本工具添加的水印及常见文字/图片叠加水印效果最佳。",
     watermarkTypeText: "文字水印",
     watermarkTypeImage: "图片水印",
     watermarkImage: "水印图片",
@@ -375,7 +380,7 @@ export const zh: Messages = {
     ),
     watermarkPdf: tool(
       "PDF 水印",
-      "为 PDF 每一页添加文字或图片水印。",
+      "为 PDF 添加或去除文字/图片水印，全部在浏览器本地完成。",
       "添加水印",
       "下载带水印的 PDF",
       pdfUpload,

@@ -3,7 +3,7 @@ import {
   getMergeFileList,
   updateMergeActionButton,
 } from "@/scripts/merge-file-list";
-import { t, applyI18n, onI18nReady } from "@/scripts/i18n-client";
+import { t, applyI18n, onI18nReady, onLocaleChange } from "@/scripts/i18n-client";
 import { openImageLightbox, closeImageLightbox } from "@/scripts/image-lightbox";
 import { bindDropZones, formatBytes } from "@/scripts/tools";
 import {
@@ -46,6 +46,10 @@ import {
   renderReaderPage,
   type ReaderState,
 } from "@/scripts/pdf-tools";
+import {
+  removeImageWatermarkFromPdf,
+  removeTextWatermarkFromPdf,
+} from "@/scripts/pdf-watermark-remove";
 
 type ToolAction = string;
 
@@ -835,6 +839,13 @@ function initWatermark() {
   const imageWrap = $("watermark-image-wrap");
   const imageInput = $("watermark-image-input") as HTMLInputElement | null;
   const imageName = $("watermark-image-name");
+  const removeHint = $("watermark-remove-hint");
+  const actionBtnLabel = document.querySelector("#tool-action-btn [data-i18n]");
+  const downloadBtnLabel = document.querySelector("#tool-download-btn [data-i18n]");
+
+  const getOperation = () =>
+    (document.querySelector('input[name="watermark-operation"]:checked') as HTMLInputElement)
+      ?.value ?? "add";
 
   const updateMode = () => {
     const mode =
@@ -844,10 +855,32 @@ function initWatermark() {
     imageWrap?.classList.toggle("hidden", mode === "text");
   };
 
+  const updateOperation = () => {
+    const op = getOperation();
+    removeHint?.classList.toggle("hidden", op !== "remove");
+
+    if (actionBtnLabel) {
+      const key = op === "remove" ? "watermark_remove_action" : toolKey("action");
+      actionBtnLabel.setAttribute("data-i18n", key);
+      actionBtnLabel.textContent = t(key);
+    }
+    if (downloadBtnLabel) {
+      const key = op === "remove" ? "watermark_remove_download" : toolKey("download");
+      downloadBtnLabel.setAttribute("data-i18n", key);
+      downloadBtnLabel.textContent = t(key);
+    }
+  };
+
+  onLocaleChange(updateOperation);
+
   document.querySelectorAll('input[name="watermark-mode"]').forEach(radio => {
     radio.addEventListener("change", updateMode);
   });
+  document.querySelectorAll('input[name="watermark-operation"]').forEach(radio => {
+    radio.addEventListener("change", updateOperation);
+  });
   updateMode();
+  updateOperation();
 
   imageInput?.addEventListener("change", () => {
     const file = imageInput.files?.[0];
@@ -857,13 +890,37 @@ function initWatermark() {
   bindActionButton(async () => {
     const file = getFiles()[0];
     if (!file) return;
+    const operation = getOperation();
     const mode =
       (document.querySelector('input[name="watermark-mode"]:checked') as HTMLInputElement)
         ?.value ?? "text";
 
     hideError();
     let bytes: Uint8Array;
-    if (mode === "image") {
+
+    if (operation === "remove") {
+      try {
+        if (mode === "image") {
+          const imageFile = imageInput?.files?.[0];
+          if (!imageFile) {
+            showError(t("watermark_image_required"));
+            return;
+          }
+          bytes = await removeImageWatermarkFromPdf(file, imageFile);
+        } else {
+          const text =
+            (document.getElementById("watermark-text") as HTMLInputElement)?.value.trim() ||
+            t("common.watermarkDefault");
+          bytes = await removeTextWatermarkFromPdf(file, text);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message === "watermark-not-found") {
+          showError(t("watermark_not_found"));
+          return;
+        }
+        throw err;
+      }
+    } else if (mode === "image") {
       const imageFile = imageInput?.files?.[0];
       if (!imageFile) {
         showError(t("watermark_image_required"));
@@ -876,6 +933,7 @@ function initWatermark() {
         t("common.watermarkDefault");
       bytes = await watermarkPdf(file, text);
     }
+
     downloadBytes(bytes, originalPdfFilename(file), "application/pdf");
   });
 }
