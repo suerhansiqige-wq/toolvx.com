@@ -12,22 +12,78 @@ import LinkButton from "@/components/LinkButton.astro";
 import HomeToolTags from "@/components/HomeToolTags.astro";
 import HomeRedactGuides from "@/components/HomeRedactGuides.astro";
 import { postsListingSearchSynonyms } from "@/utils/post-search-synonyms";
+import { homeSearchSynonyms } from "@/utils/tool-search-synonyms";
+import { catalogs, type LocaleCode } from "@/i18n/messages";
 import { useTranslations } from "@/i18n";
+import { getAssetPath } from "@/utils/withBase";
 import config from "@/config";
 
-const { socials, posts: postsConfig } = config;
+const { socials, posts: postsConfig, site } = config;
 
 const locale = Astro.currentLocale ?? config.site.lang;
 const t = useTranslations(locale);
+const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
+const homeSeo = catalog.blog.home.seo;
 
 const posts = await getSortedRenderablePosts();
 const featuredPosts = posts.filter(({ data }) => data.featured);
 const recentPosts = posts.filter(({ data }) => !data.featured);
 const homePath = getRelativeLocaleUrl(locale, "");
 const homePostSearchSynonyms = postsListingSearchSynonyms(posts);
+const homeToolSearchSynonyms = homeSearchSynonyms();
+
+const siteUrl = new URL(site.url);
+const canonicalURL = new URL(Astro.url.pathname, siteUrl).href;
+const searchUrlTemplate = new URL("search?q={search_term_string}", siteUrl).href;
+const logoUrl = new URL(getAssetPath("favicon.svg"), siteUrl).href;
+
+const websiteStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: site.title,
+  url: siteUrl.href,
+  description: homeSeo.description,
+  inLanguage: ["en", "zh"],
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: searchUrlTemplate,
+    },
+    "query-input": "required name=search_term_string",
+  },
+};
+
+const organizationStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: site.title,
+  url: siteUrl.href,
+  logo: logoUrl,
+};
 ---
 
-<Layout>
+<Layout
+  title={homeSeo.title}
+  description={homeSeo.description}
+  canonicalURL={canonicalURL}
+  titleI18n="blog.home.seo.title"
+  descriptionI18n="blog.home.seo.description"
+>
+  <Fragment slot="head">
+    <meta name="keywords" content={homeSeo.keywords} />
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(websiteStructuredData)}
+    />
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(organizationStructuredData)}
+    />
+  </Fragment>
+
   <Header />
   <main
     id="main-content"
@@ -41,13 +97,14 @@ const homePostSearchSynonyms = postsListingSearchSynonyms(posts);
     <section
       id="hero"
       class="card-surface shadow-elevated mb-16 p-8 sm:mb-20 sm:p-12 lg:p-16"
+      data-pagefind-body
     >
       <div class="flex flex-wrap items-start justify-between gap-4">
         <h1
           class="from-accent to-accent/60 bg-gradient-to-r bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl lg:text-6xl"
           data-i18n="blog.hero.title"
         >
-          Mingalaba
+          {catalog.blog.hero.title}
         </h1>
         <a
           target="_blank"
@@ -71,22 +128,13 @@ const homePostSearchSynonyms = postsListingSearchSynonyms(posts);
         class="text-muted-foreground mt-8 max-w-3xl text-base leading-relaxed sm:text-lg"
         data-i18n="blog.hero.description"
       >
-        AstroPaper is a minimal, responsive, accessible and SEO-friendly Astro
-        blog theme. This theme follows best practices and provides accessibility
-        out of the box. Light and dark mode are supported by default. Moreover,
-        additional color schemes can also be configured.
+        {catalog.blog.hero.description}
       </p>
-      <p class="text-muted-foreground mt-4 max-w-3xl text-base leading-relaxed">
-        <span data-i18n="blog.hero.readPostsPrefix">Read the blog posts or check</span>
-        {" "}
-        <LinkButton
-          class="text-accent underline decoration-dashed underline-offset-4"
-          href="https://github.com/satnaing/astro-paper#readme"
-        >
-          <span data-i18n="blog.hero.readme">README</span>
-        </LinkButton>
-        {" "}
-        <span data-i18n="blog.hero.readPostsSuffix">for more info.</span>
+      <p
+        class="text-muted-foreground mt-4 max-w-3xl text-base leading-relaxed"
+        data-i18n="blog.hero.intro"
+      >
+        {catalog.blog.hero.intro}
       </p>
       {
         socials.length > 0 && (
@@ -148,6 +196,19 @@ const homePostSearchSynonyms = postsListingSearchSynonyms(posts);
         <IconArrowRight class="inline-block rtl:-rotate-180" />
       </LinkButton>
     </div>
+
+    {
+      homeToolSearchSynonyms && (
+        <div
+          data-pagefind-body
+          data-pagefind-filter="type:tool"
+          class="sr-only"
+          aria-hidden="true"
+        >
+          {homeToolSearchSynonyms}
+        </div>
+      )
+    }
 
     {
       homePostSearchSynonyms && (

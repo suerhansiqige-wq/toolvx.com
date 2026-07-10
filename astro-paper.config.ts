@@ -6,7 +6,8 @@ export default defineAstroPaperConfig({
   site: {
     url: SITE_URL,
     title: "ToolVX",
-    description: "Free online PDF tools — compress, merge, split, and more in your browser.",
+    description:
+      "Free browser-based PDF tools — compress, merge, split, redact, and convert files locally. No uploads, privacy-first.",
     author: "ToolVX",
     profile: SITE_URL,
     ogImage: "default-og.jpg",

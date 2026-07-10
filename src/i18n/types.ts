@@ -189,6 +189,11 @@ export type Messages = {
         audioDesc: string;
         comingSoon: string;
       };
+      seo: {
+        title: string;
+        description: string;
+        keywords: string;
+      };
     };
     pages: {
       tagTitle: string;
@@ -228,9 +233,7 @@ export type Messages = {
     hero: {
       title: string;
       description: string;
-      readPostsPrefix: string;
-      readme: string;
-      readPostsSuffix: string;
+      intro: string;
       rssFeed: string;
     };
     search: { devWarning: string; devBuildCommand: string; clear: string };

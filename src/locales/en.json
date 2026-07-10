@@ -1,6 +1,10 @@
 {
   "blog": {
     "home": {
+      "seo": {
+        "title": "Free Online PDF Tools & Image Redaction | ToolVX",
+        "description": "Free browser-based PDF tools — compress, merge, split, redact, and convert files locally. No uploads, no cloud processing. Privacy-first image and PDF redaction guides included."
+      },
       "redactGuides": {
         "title": "PDF & Image Redaction Guides",
         "subtitle": "Privacy-first tutorials for browser-local redaction — no uploads, no cloud processing.",

@@ -1,6 +1,10 @@
 {
   "blog": {
     "home": {
+      "seo": {
+        "title": "免费在线 PDF 工具与图片脱敏 | ToolVX",
+        "description": "免费浏览器 PDF 工具 — 本地压缩、合并、拆分、脱敏与格式转换，文件不上传服务器。附带隐私优先的图片与 PDF 脱敏指南。"
+      },
       "redactGuides": {
         "title": "图片与 PDF 脱敏指南",
         "subtitle": "隐私优先的浏览器本地脱敏教程 — 不上传、不经云端处理。",

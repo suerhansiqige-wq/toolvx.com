@@ -1,3 +1,4 @@
+import { toolsRegistry } from "@/data/toolsRegistry";
 import { zh } from "@/i18n/messages/zh";
 import type { ToolMessages } from "@/i18n/types";
 
@@ -17,3 +18,11 @@ export function toolSearchSynonyms(i18nKey: string): string {
 
 export const redactSearchSynonyms =
   "redact pdf online pdf redaction tool image redaction secure redaction redacted pdf black out pdf free pdf redaction redact image online";
+
+/** Homepage Pagefind index: tool names + Chinese aliases + redaction terms. */
+export function homeSearchSynonyms(): string {
+  const toolParts = toolsRegistry
+    .map(tool => toolSearchSynonyms(tool.i18nKey))
+    .filter(Boolean);
+  return [redactSearchSynonyms, ...toolParts].join(" · ");
+}

@@ -45,6 +45,13 @@ export const blogEn: Messages["blog"] = {
       audioDesc: "Convert audio files between popular formats",
       comingSoon: "Coming soon",
     },
+    seo: {
+      title: "Free Online PDF Tools & Image Redaction | ToolVX",
+      description:
+        "Free browser-based PDF tools — compress, merge, split, redact, and convert files locally. No uploads, no cloud processing. Privacy-first image and PDF redaction guides included.",
+      keywords:
+        "free pdf tools, compress pdf, merge pdf, split pdf, redact pdf, pdf redaction, image redaction, browser pdf tools, online pdf editor",
+    },
   },
   pages: {
     tagTitle: "Tag",
@@ -88,12 +95,11 @@ export const blogEn: Messages["blog"] = {
     readMore: "Read more →",
   },
   hero: {
-    title: "Mingalaba",
+    title: "Free PDF & Image Tools in Your Browser",
     description:
-      "AstroPaper is a minimal, responsive, accessible and SEO-friendly Astro blog theme. This theme follows best practices and provides accessibility out of the box. Light and dark mode are supported by default. Moreover, additional color schemes can also be configured.",
-    readPostsPrefix: "Read the blog posts or check",
-    readme: "README",
-    readPostsSuffix: "for more info.",
+      "Compress, merge, split, redact, and convert PDFs and images — 100% local processing in your browser. Files never leave your device.",
+    intro:
+      "Pick a tool above or browse redaction guides and articles below. Every utility runs client-side for maximum privacy.",
     rssFeed: "RSS Feed",
   },
   search: {
@@ -175,6 +181,13 @@ export const blogZh: Messages["blog"] = {
       audioDesc: "在常见音频格式之间快速转换",
       comingSoon: "即将推出",
     },
+    seo: {
+      title: "免费在线 PDF 工具与图片脱敏 | ToolVX",
+      description:
+        "免费浏览器 PDF 工具 — 本地压缩、合并、拆分、脱敏与格式转换，文件不上传服务器。附带隐私优先的图片与 PDF 脱敏指南。",
+      keywords:
+        "免费pdf工具, pdf压缩, pdf合并, pdf拆分, pdf脱敏, 图片脱敏, 在线pdf工具, 浏览器pdf工具",
+    },
   },
   pages: {
     tagTitle: "标签",
@@ -218,12 +231,10 @@ export const blogZh: Messages["blog"] = {
     readMore: "阅读更多 →",
   },
   hero: {
-    title: "Mingalaba",
+    title: "免费浏览器 PDF 与图片工具",
     description:
-      "AstroPaper 是一款极简、响应式、无障碍且 SEO 友好的 Astro 博客主题。遵循最佳实践，开箱即用支持无障碍访问。默认支持浅色与深色模式，还可配置更多配色方案。",
-    readPostsPrefix: "阅读博客文章或查看",
-    readme: "README",
-    readPostsSuffix: "了解更多。",
+      "压缩、合并、拆分、脱敏与格式转换 — 全部在浏览器本地完成，文件不会离开您的设备。",
+    intro: "从上方选择工具，或浏览下方的脱敏指南与文章。所有功能均在客户端运行，隐私优先。",
     rssFeed: "RSS 订阅",
   },
   search: {
