@@ -1,7 +1,7 @@
 ---
 title: "Image Anonymization: Blurring Faces, IDs & License Plates in the Browser"
 description: "Anonymize people and credentials in screenshots and photos while keeping processing entirely on your device."
-pubDatetime: 2026-07-10T16:00:00Z
+pubDatetime: 2026-07-10T07:00:00Z
 author: ToolVX
 featured: false
 draft: false

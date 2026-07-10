@@ -7,7 +7,7 @@ import { getSortedPosts } from "./getSortedPosts";
 export function isRenderablePost(
   post: CollectionEntry<"posts">
 ): boolean {
-  if (!post.filePath || !post.body) return false;
+  if (!post.filePath) return false;
   return existsSync(join(process.cwd(), post.filePath));
 }
 

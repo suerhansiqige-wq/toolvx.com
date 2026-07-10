@@ -81,7 +81,7 @@ const tagHref = getRelativeLocaleUrl(locale, `tags/${REDACT_GUIDE_TAG}`);
 <style>
   .home-redact-guides__grid {
     display: grid;
-    grid-template-columns: repeat(1, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.55rem;
   }
 
@@ -117,15 +117,16 @@ const tagHref = getRelativeLocaleUrl(locale, `tags/${REDACT_GUIDE_TAG}`);
     margin-top: 0.35rem;
     font-size: 0.78rem;
     line-height: 1.45;
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+  }
+
+  @media (min-width: 480px) {
+    .home-redact-guides__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 
   @media (min-width: 640px) {
     .home-redact-guides__grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.65rem;
     }
 
@@ -139,8 +140,8 @@ const tagHref = getRelativeLocaleUrl(locale, `tags/${REDACT_GUIDE_TAG}`);
   }
 
   @media (min-width: 1024px) {
-    .home-redact-guides__grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    .home-redact-guide-card {
+      min-height: 5.5rem;
     }
   }
 </style>

@@ -335,7 +335,62 @@ export function showAppPrompt(
   });
 }
 
+const REDACT_BODY_KEY_RE = /^posts\.redact\.([a-zA-Z]+)\.(b\d+)$/;
+
+const redactZhBlockCache = new Map<string, Record<string, string>>();
+
+async function loadRedactZhBlocks(i18nKey: string): Promise<Record<string, string>> {
+  const cached = redactZhBlockCache.get(i18nKey);
+  if (cached) return cached;
+
+  const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+  try {
+    const res = await fetch(`${base}locales/zh-posts/${i18nKey}.json`);
+    if (!res.ok) {
+      redactZhBlockCache.set(i18nKey, {});
+      return {};
+    }
+    const data = (await res.json()) as Record<string, string>;
+    redactZhBlockCache.set(i18nKey, data);
+    return data;
+  } catch {
+    redactZhBlockCache.set(i18nKey, {});
+    return {};
+  }
+}
+
+async function applyRedactPostBodyI18n(
+  root: ParentNode,
+  locale: LocaleCode
+): Promise<void> {
+  if (locale !== "zh") return;
+
+  const byArticle = new Map<string, { el: HTMLElement; blockKey: string }[]>();
+  for (const el of root.querySelectorAll<HTMLElement>("[data-i18n]")) {
+    const key = el.getAttribute("data-i18n");
+    if (!key) continue;
+    const match = key.match(REDACT_BODY_KEY_RE);
+    if (!match) continue;
+    const i18nKey = match[1];
+    const blockKey = match[2];
+    if (!byArticle.has(i18nKey)) byArticle.set(i18nKey, []);
+    byArticle.get(i18nKey)!.push({ el, blockKey });
+  }
+
+  await Promise.all(
+    [...byArticle.entries()].map(async ([i18nKey, items]) => {
+      const blocks = await loadRedactZhBlocks(i18nKey);
+      for (const { el, blockKey } of items) {
+        const zh = blocks[blockKey];
+        if (zh) el.textContent = zh;
+      }
+    })
+  );
+}
+
 export function applyI18n(root: ParentNode = document): void {
+  const locale = flatLocale();
+
   root.querySelectorAll<HTMLElement>("[data-i18n]").forEach(el => {
     const key = el.getAttribute("data-i18n");
     if (!key) return;
@@ -348,7 +403,22 @@ export function applyI18n(root: ParentNode = document): void {
         /* ignore */
       }
     }
-    el.textContent = t(key, vars);
+
+    const fromBundle = getLocaleBundleMessage(locale, key);
+    if (fromBundle) {
+      let value = fromBundle;
+      if (vars) {
+        for (const [name, val] of Object.entries(vars)) {
+          value = value.replaceAll(`{${name}}`, String(val));
+        }
+      }
+      el.textContent = value;
+      return;
+    }
+
+    if (!key.startsWith("posts.redact.")) {
+      el.textContent = t(key, vars);
+    }
   });
 
   root.querySelectorAll<HTMLOptionElement>("option[data-i18n]").forEach(el => {
@@ -423,6 +493,7 @@ export function applyI18n(root: ParentNode = document): void {
   });
 
   syncToolSidebarWidth(root);
+  void applyRedactPostBodyI18n(root, currentLocale);
 }
 
 export function initI18n(): void {
