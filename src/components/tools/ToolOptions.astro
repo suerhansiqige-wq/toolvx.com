@@ -19,20 +19,22 @@ const labelClass = "text-foreground mb-1.5 block text-sm font-medium";
         Output size limit (optional)
       </legend>
       <div class="flex flex-row items-stretch gap-3">
-        <div class="flex w-[9.5rem] shrink-0 items-center gap-2 sm:w-[11rem]">
+        <div class="flex w-[9.5rem] shrink-0 items-center gap-1.5 sm:w-[11rem]">
           <input
-            type="number"
+            type="text"
             id="compress-max-mb"
-            min="0.1"
-            step="0.1"
             inputmode="decimal"
+            autocomplete="off"
             placeholder="Enter output file size"
-            class={inputClass + " placeholder:text-muted-foreground min-w-0 flex-1"}
+            class={
+              inputClass +
+              " placeholder:text-muted-foreground min-w-0 flex-1 px-2.5 text-sm placeholder:text-[10px] placeholder:leading-tight sm:px-3 sm:placeholder:text-[11px]"
+            }
             data-i18n-placeholder="common.compressSizePlaceholder"
             aria-describedby="compress-size-hint"
           />
           <span
-            class="text-muted-foreground shrink-0 text-sm font-medium"
+            class="text-muted-foreground shrink-0 text-xs font-medium sm:text-sm"
             data-i18n="common.compressSizeUnit"
           >
             MB
