@@ -98,6 +98,8 @@ export type UIStrings = {
     archivesDesc: string;
     searchTitle: string;
     searchDesc: string;
+    sitemapTitle: string;
+    sitemapDesc: string;
   };
   a11y: {
     skipToContent: string;
@@ -201,6 +203,17 @@ export type Messages = {
       searchDesc: string;
       tagPageTitle: string;
       tagPageDesc: string;
+      sitemapTitle: string;
+      sitemapDesc: string;
+    };
+    sitemap: {
+      mainPages: string;
+      pdfTools: string;
+      ofdTools: string;
+      redactTool: string;
+      articles: string;
+      tags: string;
+      xmlHint: string;
     };
     notFound: { title: string; message: string; goHome: string };
     a11y: {

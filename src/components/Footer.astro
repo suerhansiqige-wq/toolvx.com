@@ -1,5 +1,6 @@
 ---
 import type { HTMLAttributes } from "astro/types";
+import { getRelativeLocaleUrl } from "astro:i18n";
 import Socials from "./Socials.astro";
 import { useTranslations } from "@/i18n";
 
@@ -27,6 +28,14 @@ const currentYear = new Date().getFullYear();
       <span><span data-i18n="site.footer.copyright">{t.footer.copyright}</span> &#169; {currentYear}</span>
       <span class="hidden sm:inline">&nbsp;|&nbsp;</span>
       <span data-i18n="site.footer.allRightsReserved">{t.footer.allRightsReserved}</span>
+      <span class="hidden sm:inline">&nbsp;|&nbsp;</span>
+      <a
+        href={getRelativeLocaleUrl(Astro.currentLocale ?? "en", "sitemap")}
+        class="text-accent hover:underline"
+        data-i18n="blog.pages.sitemapTitle"
+      >
+        Sitemap
+      </a>
     </div>
   </div>
 </footer>

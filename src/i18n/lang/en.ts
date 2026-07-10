@@ -66,6 +66,8 @@ export default {
 
     searchTitle: "Search",
     searchDesc: "Search for anything...",
+    sitemapTitle: "Sitemap",
+    sitemapDesc: "Browse all pages, tools, and articles on ToolVX.",
   },
   a11y: {
     skipToContent: "Skip to content",
