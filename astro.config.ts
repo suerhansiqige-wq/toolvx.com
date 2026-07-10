@@ -66,7 +66,7 @@ export default defineConfig({
     ssr: {
       // pdf.js must stay external during prerender — bundling it pulls optional native
       // `canvas` and breaks Cloudflare Pages / Linux CI builds.
-      external: ["pdfjs-dist", "pdfjs-dist-v3", "canvas", "ofd.js", "jspdf", "docx"],
+      external: ["pdfjs-dist", "pdfjs-dist-v3", "canvas", "jspdf", "docx"],
     },
   },
   fonts: [
