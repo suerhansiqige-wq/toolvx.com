@@ -9,7 +9,7 @@ import Footer from "@/components/Footer.astro";
 import Socials from "@/components/Socials.astro";
 import Card from "@/components/Card.astro";
 import LinkButton from "@/components/LinkButton.astro";
-import HomeToolQuickNav from "@/components/HomeToolQuickNav.astro";
+import HomeToolTags from "@/components/HomeToolTags.astro";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
@@ -32,7 +32,7 @@ const homePath = getRelativeLocaleUrl(locale, "");
     data-home-path={homePath}
     class="app-layout pb-16 pt-6 sm:pb-24 sm:pt-10"
   >
-    <HomeToolQuickNav locale={locale} />
+    <HomeToolTags locale={locale} />
 
     <section
       id="hero"

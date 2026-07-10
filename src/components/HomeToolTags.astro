@@ -1,0 +1,182 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import { toolsRegistry } from "@/data/toolsRegistry";
+import { catalogs, type LocaleCode } from "@/i18n/messages";
+
+type Props = {
+  locale?: string;
+};
+
+const { locale = "en" } = Astro.props;
+const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
+const menu = catalog.menu.tools;
+
+type TagItem = {
+  id: string;
+  href: string;
+  label: string;
+  labelKey: string;
+  accent?: boolean;
+};
+
+const tags: TagItem[] = [
+  {
+    id: "redact",
+    href: getRelativeLocaleUrl(locale, "redact-preview"),
+    label: menu.redactImagePdf,
+    labelKey: "menu.tools.redactImagePdf",
+    accent: true,
+  },
+  ...toolsRegistry.map(tool => ({
+    id: tool.slug,
+    href: getRelativeLocaleUrl(locale, `tools/${tool.slug}`),
+    label: menu[tool.i18nKey as keyof typeof menu] ?? tool.i18nKey,
+    labelKey: `menu.tools.${tool.i18nKey}`,
+    accent: false,
+  })),
+];
+---
+
+<nav
+  class="home-tool-tags"
+  aria-label={catalog.blog.home.toolQuick.ariaLabel}
+  data-i18n-aria-label="blog.home.toolQuick.ariaLabel"
+>
+  <ul class="home-tool-tags__grid">
+    {
+      tags.map(tag => (
+        <li class="home-tool-tags__item">
+          <a
+            href={tag.href}
+            class:list={["home-tool-tag", tag.accent && "home-tool-tag--accent"]}
+          >
+            <span class="home-tool-tag__label" data-i18n={tag.labelKey}>
+              {tag.label}
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<style>
+  .home-tool-tags {
+    margin-bottom: 1.25rem;
+  }
+
+  .home-tool-tags__grid {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 0.45rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .home-tool-tags__item {
+    min-width: 0;
+  }
+
+  .home-tool-tag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    height: 100%;
+    padding: 0.4rem 0.35rem;
+    border-radius: 0.55rem;
+    border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+    background: color-mix(in oklab, var(--card) 92%, var(--muted) 8%);
+    color: var(--foreground);
+    text-decoration: none;
+    box-shadow: 0 1px 2px color-mix(in oklab, black 4%, transparent);
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease,
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .home-tool-tag:hover,
+  .home-tool-tag:focus-visible {
+    border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
+    background: color-mix(in oklab, var(--accent) 8%, var(--card));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px color-mix(in oklab, var(--accent) 12%, transparent);
+  }
+
+  .home-tool-tag:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
+    outline-offset: 2px;
+  }
+
+  .home-tool-tag--accent {
+    border-color: color-mix(in oklab, #e11d48 35%, var(--border));
+    background: linear-gradient(
+      145deg,
+      color-mix(in oklab, #fb7185 16%, var(--card)) 0%,
+      color-mix(in oklab, #e11d48 10%, var(--card)) 100%
+    );
+    color: color-mix(in oklab, #9f1239 72%, var(--foreground));
+    font-weight: 650;
+  }
+
+  .home-tool-tag--accent:hover,
+  .home-tool-tag--accent:focus-visible {
+    border-color: color-mix(in oklab, #e11d48 55%, var(--border));
+    background: linear-gradient(
+      145deg,
+      color-mix(in oklab, #fb7185 24%, var(--card)) 0%,
+      color-mix(in oklab, #e11d48 16%, var(--card)) 100%
+    );
+  }
+
+  .home-tool-tag__label {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+    word-break: break-word;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  @media (min-width: 640px) {
+    .home-tool-tags {
+      margin-bottom: 1.5rem;
+    }
+
+    .home-tool-tags__grid {
+      gap: 0.55rem;
+    }
+
+    .home-tool-tag {
+      min-height: 2.75rem;
+      padding: 0.45rem 0.4rem;
+      border-radius: 0.65rem;
+    }
+
+    .home-tool-tag__label {
+      font-size: 0.72rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .home-tool-tag {
+      min-height: 3rem;
+    }
+
+    .home-tool-tag__label {
+      font-size: 0.75rem;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .home-tool-tags__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+</style>
