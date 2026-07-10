@@ -14,7 +14,7 @@ import {
 
 export type LocaleBundle = typeof en;
 
-/** Locales with dedicated OFD translation bundles. */
+/** Locales with dedicated client-side translation bundles. */
 export const localeBundles: Partial<Record<LocaleCode, LocaleBundle>> = {
   en,
   zh,

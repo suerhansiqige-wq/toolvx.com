@@ -1,11 +1,6 @@
 import type { Messages } from "@/i18n/types";
 import { blogEn } from "./blog";
-import { ofdEn } from "./ofd";
 import { attachSeoRich } from "@/i18n/seo-rich/attach";
-import {
-  buildOfdSeoRichFromData,
-  ofdSeoHeadingsEn,
-} from "@/i18n/seo-rich/ofd-attach";
 
 const pdfUpload = "Click to upload or drag & drop a PDF file here";
 const pdfSubhint = "Supports single PDF files";
@@ -58,7 +53,6 @@ export const en: Messages = {
       search: "Search",
       tools: "PDF Tools",
       redact: "Redact",
-      ofdTools: "OFD Tools",
     },
     footer: {
       copyright: "Copyright",
@@ -542,9 +536,4 @@ export const en: Messages = {
       ]
     ),
   }, undefined, { locale: "en" }),
-  ofd: {
-    ...ofdEn,
-    seoHeadings: ofdSeoHeadingsEn,
-    seoRich: buildOfdSeoRichFromData("en"),
-  },
 };

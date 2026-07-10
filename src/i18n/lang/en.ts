@@ -10,7 +10,6 @@ export default {
     search: "Search",
     tools: "PDF Tools",
     redact: "Redact",
-    ofdTools: "OFD Tools",
   },
   post: {
     publishedAt: "Published on",
@@ -45,8 +44,6 @@ export default {
       imageDesc: "Convert between JPG, PNG, WebP, and PDF",
       audio: "Audio Format Conversion",
       audioDesc: "Convert audio files between popular formats",
-      ofd: "OFD to PDF",
-      ofdDesc: "Convert OFD documents to standard PDF",
       comingSoon: "Coming soon",
     },
   },

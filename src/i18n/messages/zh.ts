@@ -1,13 +1,7 @@
 import type { Messages } from "@/i18n/types";
 import { blogZh } from "./blog";
-import { ofdZh } from "./ofd";
 import { attachSeoRich } from "@/i18n/seo-rich/attach";
 import { seoRichZh } from "@/i18n/seo-rich/zh";
-import {
-  buildOfdSeoRichFromData,
-  ofdSeoHeadingsZh,
-} from "@/i18n/seo-rich/ofd-attach";
-import { ofdSeoRichZh } from "@/i18n/seo-rich/ofd-zh";
 
 const pdfUpload = "点击上传或拖拽 PDF 文件到此处";
 const pdfSubhint = "支持单个 PDF 文件";
@@ -58,7 +52,6 @@ export const zh: Messages = {
       search: "搜索",
       tools: "PDF工具",
       redact: "脱敏",
-      ofdTools: "OFD工具",
     },
     footer: {
       copyright: "版权",
@@ -538,9 +531,4 @@ export const zh: Messages = {
     seoRichZh,
     { locale: "zh" }
   ),
-  ofd: {
-    ...ofdZh,
-    seoHeadings: ofdSeoHeadingsZh,
-    seoRich: buildOfdSeoRichFromData("zh", ofdSeoRichZh),
-  },
 };

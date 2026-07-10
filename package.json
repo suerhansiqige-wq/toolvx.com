@@ -6,8 +6,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "node scripts/copy-pdfjs.mjs && node scripts/copy-ofd.mjs && astro dev",
-    "build": "astro check && node scripts/copy-pdfjs.mjs && node scripts/copy-ofd.mjs && astro build && node scripts/write-headers.mjs && pagefind --site dist && node scripts/copy-pagefind.mjs",
+    "dev": "node scripts/copy-pdfjs.mjs && astro dev",
+    "build": "astro check && node scripts/copy-pdfjs.mjs && astro build && node scripts/write-headers.mjs && pagefind --site dist && node scripts/copy-pagefind.mjs",
     "build:site": "astro build",
     "build:search": "pagefind --site dist && node scripts/copy-pagefind.mjs",
     "preview": "astro preview",
@@ -24,12 +24,9 @@
     "@tailwindcss/vite": "^4.3.0",
     "astro": "^6.4.2",
     "dayjs": "^1.11.21",
-    "docx": "^9.7.1",
-    "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lodash.kebabcase": "^4.1.1",
-    "ofd.js": "0.2.6",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.1.200",
     "pdfjs-dist-v3": "npm:pdfjs-dist@^3.11.174",

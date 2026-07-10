@@ -36,7 +36,6 @@ const navLinkClass =
 
 const toolsHref = getRelativeLocaleUrl(locale, "tools/compress-pdf");
 const redactHref = getRelativeLocaleUrl(locale, "redact-preview");
-const ofdToolsHref = getRelativeLocaleUrl(locale, "ofd-tools/ofd-to-pdf");
 const showSearch = features.search !== false;
 ---
 
@@ -114,15 +113,6 @@ const showSearch = features.search !== false;
               data-i18n="site.nav.redact"
             >
               Redact
-            </a>
-          </li>
-          <li class="col-span-2 lg:col-span-1">
-            <a
-              href={ofdToolsHref}
-              class:list={[navLinkClass, { "active-nav": isActive("/ofd-tools") }]}
-              data-i18n="site.nav.ofdTools"
-            >
-              OFD Tools
             </a>
           </li>
           <li class="col-span-2 lg:col-span-1">

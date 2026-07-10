@@ -198,8 +198,7 @@ export function detectBrowserLocale(): LocaleCode {
 
   for (const lang of candidates) {
     const code = resolveLocale(lang);
-    const bundleHit = getLocaleBundleMessage(code, "ofd.workspace.convert");
-    if (bundleHit && code !== "en") return code;
+    if (catalogs[code] && code !== "en") return code;
   }
 
   for (const lang of candidates) {

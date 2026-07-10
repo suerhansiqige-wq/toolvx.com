@@ -18,7 +18,6 @@ export const ja: Messages = {
       search: "検索",
       tools: "PDF ツール",
       redact: "墨消し",
-      ofdTools: "OFD ツール",
     },
     footer: {
       copyright: "Copyright",

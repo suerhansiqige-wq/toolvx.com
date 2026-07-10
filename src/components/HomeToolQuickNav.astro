@@ -11,7 +11,7 @@ const { locale = "en" } = Astro.props;
 const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
 const q = catalog.blog.home.toolQuick;
 
-type TileAccent = "redact" | "pdf" | "image" | "ofd";
+type TileAccent = "redact" | "pdf" | "image";
 
 type QuickTile = {
   id: string;
@@ -55,16 +55,6 @@ const tiles: QuickTile[] = [
     desc: q.imageDesc,
     descKey: "blog.home.toolQuick.imageDesc",
     accent: "image",
-  },
-  {
-    id: "ofd",
-    href: getRelativeLocaleUrl(locale, "ofd-tools/ofd-to-pdf"),
-    icon: "word-pdf",
-    title: q.ofd,
-    titleKey: "blog.home.toolQuick.ofd",
-    desc: q.ofdDesc,
-    descKey: "blog.home.toolQuick.ofdDesc",
-    accent: "ofd",
   },
 ];
 ---
@@ -143,7 +133,7 @@ const tiles: QuickTile[] = [
 
   .home-metro__grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.65rem;
   }
 
@@ -186,10 +176,6 @@ const tiles: QuickTile[] = [
     background: linear-gradient(155deg, #f9a8d4 0%, #db2777 45%, #831843 100%);
   }
 
-  .metro-tile--ofd {
-    background: linear-gradient(155deg, #7dd3fc 0%, #0284c7 45%, #075985 100%);
-  }
-
   .metro-tile--redact .metro-tile__pattern {
     background-image:
       radial-gradient(circle at 82% 18%, color-mix(in oklab, white 22%, transparent) 0%, transparent 28%),
@@ -216,18 +202,6 @@ const tiles: QuickTile[] = [
       radial-gradient(circle at 22% 28%, color-mix(in oklab, white 12%, transparent) 0%, transparent 22%),
       radial-gradient(circle, color-mix(in oklab, white 11%, transparent) 1.5px, transparent 1.5px);
     background-size: auto, auto, 18px 18px;
-  }
-
-  .metro-tile--ofd .metro-tile__pattern {
-    background-image:
-      linear-gradient(160deg, transparent 58%, color-mix(in oklab, white 10%, transparent) 58%, color-mix(in oklab, white 10%, transparent) 60%, transparent 60%),
-      repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 8px,
-        color-mix(in oklab, white 8%, transparent) 8px,
-        color-mix(in oklab, white 8%, transparent) 9px
-      );
   }
 
   .metro-tile--soon {
