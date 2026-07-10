@@ -40,7 +40,6 @@ const PDF_RENDER_SCALE = getPdfRenderScale(1.5);
 const LEGACY_PDF = isLegacyPdfEnvironment();
 const CANVAS_MIN_HEIGHT = 320;
 const THUMBS_PER_VIEW = 5;
-const EXPORT_MAX_BYTES = 2 * 1024 * 1024;
 const MIN_JPEG_QUALITY = LEGACY_PDF ? 0.18 : 0.22;
 const THUMB_JPEG_QUALITY = legacyAwareJpegQuality(0.55);
 const EXPORT_JPEG_QUALITY = legacyAwareJpegQuality(0.85);
@@ -200,7 +199,7 @@ function showWorkspace(active: boolean) {
   $("redact-floating-upload")?.classList.toggle("hidden", !active);
   $("redact-history")?.classList.toggle("hidden", !active);
   $("redact-effects")?.classList.toggle("hidden", !active);
-  $("redact-export-btn")?.classList.toggle("hidden", !active);
+  $("redact-export-wrap")?.classList.toggle("hidden", !active);
   $("redact-page-controls")?.classList.toggle("hidden", !active || !isPdf);
   $("redact-thumb-sidebar")?.classList.toggle("redact-thumb-active", active && isPdf);
   if (active) {
@@ -1080,7 +1079,8 @@ async function encodeCanvasToBudget(
 
 async function encodeImageUnderLimit(
   source: HTMLCanvasElement,
-  preferredMime: string
+  preferredMime: string,
+  maxBytes: number
 ): Promise<Blob> {
   for (const scale of EXPORT_SCALE_STEPS) {
     const canvasSource = scale === 1 ? source : scaledCanvas(source, scale);
@@ -1089,23 +1089,23 @@ async function encodeImageUnderLimit(
       scale === EXPORT_SCALE_STEPS[0] &&
       (preferredMime === "image/png" || preferredMime === "image/gif")
     ) {
-      const lossless = await binarySearchBlob(canvasSource, preferredMime, EXPORT_MAX_BYTES);
+      const lossless = await binarySearchBlob(canvasSource, preferredMime, maxBytes);
       if (lossless) return lossless;
     }
 
     if (preferredMime === "image/webp") {
-      const webp = await binarySearchBlob(canvasSource, "image/webp", EXPORT_MAX_BYTES);
+      const webp = await binarySearchBlob(canvasSource, "image/webp", maxBytes);
       if (webp) return webp;
     }
 
-    const jpeg = await binarySearchBlob(canvasSource, "image/jpeg", EXPORT_MAX_BYTES);
+    const jpeg = await binarySearchBlob(canvasSource, "image/jpeg", maxBytes);
     if (jpeg) return jpeg;
   }
 
   let scale = EXPORT_SCALE_STEPS[EXPORT_SCALE_STEPS.length - 1]!;
   while (scale >= 0.12) {
     const canvasSource = scaledCanvas(source, scale);
-    const jpeg = await binarySearchBlob(canvasSource, "image/jpeg", EXPORT_MAX_BYTES);
+    const jpeg = await binarySearchBlob(canvasSource, "image/jpeg", maxBytes);
     if (jpeg) return jpeg;
     scale *= 0.82;
   }
@@ -1117,11 +1117,42 @@ async function encodeImageUnderLimit(
       "image/jpeg",
       MIN_JPEG_QUALITY
     );
-    if (blob.size <= EXPORT_MAX_BYTES) return blob;
+    if (blob.size <= maxBytes) return blob;
     tinyScale *= 0.75;
   }
 
   return canvasToBlob(scaledCanvas(source, 0.05), "image/jpeg", MIN_JPEG_QUALITY);
+}
+
+async function exportImageFullQuality(
+  source: HTMLCanvasElement,
+  preferredMime: string
+): Promise<Blob> {
+  if (preferredMime === "image/png" || preferredMime === "image/gif") {
+    return canvasToBlob(source, preferredMime);
+  }
+  if (preferredMime === "image/webp") {
+    return canvasToBlob(source, "image/webp", 0.92);
+  }
+  return canvasToBlob(source, "image/jpeg", EXPORT_JPEG_QUALITY);
+}
+
+async function exportPdfFullQuality(): Promise<Uint8Array> {
+  return buildPdfBytes(EXPORT_JPEG_QUALITY, 1);
+}
+
+function parseRedactExportLimitMb(): number | null {
+  const raw = ($("redact-export-max-mb") as HTMLInputElement | null)?.value?.trim();
+  if (!raw) return null;
+  const mb = Number.parseFloat(raw);
+  if (!Number.isFinite(mb) || mb <= 0) return null;
+  return mb;
+}
+
+function getRedactExportMaxBytes(): number | null {
+  const mb = parseRedactExportLimitMb();
+  if (mb === null) return null;
+  return Math.round(mb * 1024 * 1024);
 }
 
 async function buildPdfBytes(jpegQuality: number, scale = 1): Promise<Uint8Array> {
@@ -1165,7 +1196,7 @@ async function buildPdfWithPerPageBudget(
   return out.save({ useObjectStreams: true });
 }
 
-async function exportPdfUnderLimit(): Promise<Uint8Array> {
+async function exportPdfUnderLimit(maxBytes: number): Promise<Uint8Array> {
   for (const scale of EXPORT_SCALE_STEPS) {
     let low = MIN_JPEG_QUALITY;
     let high = EXPORT_JPEG_QUALITY;
@@ -1174,7 +1205,7 @@ async function exportPdfUnderLimit(): Promise<Uint8Array> {
     for (let i = 0; i < 12; i++) {
       const quality = (low + high) / 2;
       const bytes = await buildPdfBytes(quality, scale);
-      if (bytes.byteLength <= EXPORT_MAX_BYTES) {
+      if (bytes.byteLength <= maxBytes) {
         best = bytes;
         low = quality;
       } else {
@@ -1185,16 +1216,16 @@ async function exportPdfUnderLimit(): Promise<Uint8Array> {
     if (best) return best;
 
     const atMinQuality = await buildPdfBytes(MIN_JPEG_QUALITY, scale);
-    if (atMinQuality.byteLength <= EXPORT_MAX_BYTES) return atMinQuality;
+    if (atMinQuality.byteLength <= maxBytes) return atMinQuality;
   }
 
   const pageCount = Math.max(1, pageStores.length);
-  let perPageBudget = Math.floor((EXPORT_MAX_BYTES * 0.88) / pageCount);
+  let perPageBudget = Math.floor((maxBytes * 0.88) / pageCount);
 
   for (let attempt = 0; attempt < 12; attempt++) {
     for (const scale of EXPORT_SCALE_STEPS.slice(3)) {
       const bytes = await buildPdfWithPerPageBudget(perPageBudget, scale);
-      if (bytes.byteLength <= EXPORT_MAX_BYTES) return bytes;
+      if (bytes.byteLength <= maxBytes) return bytes;
     }
     perPageBudget = Math.max(1024, Math.floor(perPageBudget * 0.78));
   }
@@ -1202,7 +1233,7 @@ async function exportPdfUnderLimit(): Promise<Uint8Array> {
   let scale = 0.28;
   let budget = 1024;
   let bytes = await buildPdfWithPerPageBudget(budget, scale);
-  while (bytes.byteLength > EXPORT_MAX_BYTES && budget > 256) {
+  while (bytes.byteLength > maxBytes && budget > 256) {
     budget = Math.max(256, Math.floor(budget * 0.7));
     bytes = await buildPdfWithPerPageBudget(budget, scale);
   }
@@ -1227,10 +1258,14 @@ function reportExportError(err: unknown) {
 
 async function exportFile() {
   saveMainToCurrentPage();
+  const maxBytes = getRedactExportMaxBytes();
 
   if (isPdf) {
-    const pdfBytes = await exportPdfUnderLimit();
-    if (byteSize(pdfBytes) > EXPORT_MAX_BYTES) {
+    const pdfBytes =
+      maxBytes !== null
+        ? await exportPdfUnderLimit(maxBytes)
+        : await exportPdfFullQuality();
+    if (maxBytes !== null && byteSize(pdfBytes) > maxBytes) {
       throw new Error("REDACT_EXPORT_SIZE");
     }
     downloadBytes(pdfBytes, nextExportFilename(originalFileName, "pdf"), "application/pdf");
@@ -1239,8 +1274,11 @@ async function exportFile() {
 
   const store = pageStores[0];
   const preferredMime = originalMime.startsWith("image/") ? originalMime : "image/png";
-  const blob = await encodeImageUnderLimit(store.canvas, preferredMime);
-  if (byteSize(blob) > EXPORT_MAX_BYTES) {
+  const blob =
+    maxBytes !== null
+      ? await encodeImageUnderLimit(store.canvas, preferredMime, maxBytes)
+      : await exportImageFullQuality(store.canvas, preferredMime);
+  if (maxBytes !== null && byteSize(blob) > maxBytes) {
     throw new Error("REDACT_EXPORT_SIZE");
   }
   const mime = blob.type || "image/jpeg";

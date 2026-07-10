@@ -164,6 +164,9 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_select_hint:
       "Drag on the image to select an area. Mosaic and blur apply instantly; blackout uses the fill color above.",
     redact_reset: "Reset to Original",
+    redact_export_size_limit: "Output size limit (optional)",
+    redact_export_size_hint:
+      "Leave empty for full-quality export; enter a max size in MB to compress on download.",
     redact_export: "Download Redacted File",
     redact_editor_mode: "Redaction editor",
     redact_home_aria: "Upload file",
@@ -179,7 +182,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "Redact sensitive areas on images and PDFs in your browser. Draw rectangles to apply mosaic, blur, or solid fill — no upload to any server.",
     redact_file_error: "Could not open this file. Please try another format.",
     redact_export_error_size:
-      "Export could not stay under 2MB. Try fewer pages or a smaller source file.",
+      "Export could not stay under your size limit. Try a larger limit or fewer pages.",
     redact_export_error_generic: "Export failed. Please try again.",
     redact_preview_badge: "Standalone preview",
     redact_preview_title: "Redact Image & PDF Online",
@@ -372,6 +375,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_select_hint:
       "在图片上拖动框选区域。马赛克与模糊即时生效；纯色遮盖使用上方所选颜色。",
     redact_reset: "恢复原始文件",
+    redact_export_size_limit: "输出大小限制（可选）",
+    redact_export_size_hint: "留空则高清原尺寸导出；填写 MB 上限后下载时自动压缩。",
     redact_export: "下载脱敏文件",
     redact_editor_mode: "脱敏编辑",
     redact_home_aria: "上传文件",
@@ -386,7 +391,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_seo_description:
       "在浏览器中对图片和 PDF 敏感区域脱敏。框选即可马赛克、模糊或纯色遮盖，文件不会上传到服务器。",
     redact_file_error: "无法打开此文件，请尝试其他格式。",
-    redact_export_error_size: "导出无法控制在 2MB 以内，请减少页数或使用较小的源文件。",
+    redact_export_error_size: "导出无法控制在您设定的大小以内，请增大上限或减少页数。",
     redact_export_error_generic: "导出失败，请重试。",
     redact_preview_badge: "独立预览页",
     redact_preview_title: "在线图片与 PDF 脱敏",
@@ -586,6 +591,9 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_select_hint:
       "Arrastre sobre la imagen para seleccionar un área. Mosaico y desenfoque se aplican al instante; el relleno usa el color de arriba.",
     redact_reset: "Restaurar original",
+    redact_export_size_limit: "Límite de tamaño de salida (opcional)",
+    redact_export_size_hint:
+      "Déjelo vacío para exportar en alta calidad; indique un máximo en MB para comprimir al descargar.",
     redact_export: "Descargar archivo redactado",
     redact_editor_mode: "Editor de redacción",
     redact_home_aria: "Subir archivo",
@@ -601,7 +609,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "Redacte áreas sensibles en imágenes y PDFs en su navegador. Dibuje rectángulos para mosaico, desenfoque o relleno sólido — sin subir archivos a ningún servidor.",
     redact_file_error: "No se pudo abrir este archivo. Pruebe otro formato.",
     redact_export_error_size:
-      "La exportación no pudo mantenerse bajo 2MB. Pruebe con menos páginas o un archivo más pequeño.",
+      "La exportación no pudo mantenerse bajo su límite. Pruebe con un límite mayor o menos páginas.",
     redact_export_error_generic: "Error al exportar. Inténtelo de nuevo.",
     redact_preview_badge: "Vista previa independiente",
     redact_preview_title: "Redactar imagen y PDF en línea",
@@ -791,6 +799,9 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_select_hint:
       "画像上をドラッグして範囲を選択。モザイクとぼかしは即時適用。塗りつぶしは上の色を使用します。",
     redact_reset: "元のファイルに戻す",
+    redact_export_size_limit: "出力サイズ上限（任意）",
+    redact_export_size_hint:
+      "空欄のままなら高画質で出力します。MB 上限を入力するとダウンロード時に圧縮します。",
     redact_export: "墨消し済みファイルをダウンロード",
     redact_editor_mode: "墨消しエディター",
     redact_home_aria: "ファイルをアップロード",
@@ -806,7 +817,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "ブラウザで画像や PDF の機密領域を墨消し。範囲を選択してモザイク、ぼかし、単色塗りつぶし — サーバーへのアップロードは一切ありません。",
     redact_file_error: "このファイルを開けませんでした。別の形式をお試しください。",
     redact_export_error_size:
-      "エクスポートを 2MB 以内に収められませんでした。ページ数を減らすか、より小さいファイルをお試しください。",
+      "エクスポートを指定サイズ以内に収められませんでした。上限を大きくするか、ページ数を減らしてください。",
     redact_export_error_generic: "エクスポートに失敗しました。もう一度お試しください。",
     redact_preview_badge: "スタンドアロンプレビュー",
     redact_preview_title: "オンライン画像・PDF 墨消し",
