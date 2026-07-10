@@ -167,6 +167,37 @@
         </div>
       </div>
 
+      <div id="redact-export-wrap" class="redact-export-wrap hidden space-y-2">
+        <fieldset class="redact-export-size">
+          <legend class="redact-export-size__label" data-i18n="redact_export_size_limit">
+            Output size limit (optional)
+          </legend>
+          <div class="redact-export-size__row">
+            <input
+              type="text"
+              id="redact-export-max-mb"
+              inputmode="decimal"
+              autocomplete="off"
+              class="redact-export-size__input"
+              placeholder="Enter output file size"
+              data-i18n-placeholder="common.compressSizePlaceholder"
+              aria-describedby="redact-export-size-hint"
+            />
+            <span class="redact-export-size__unit" data-i18n="common.compressSizeUnit">MB</span>
+          </div>
+          <p id="redact-export-size-hint" class="sr-only" data-i18n="redact_export_size_hint">
+            Leave empty to match original file size; enter a max size in MB to compress on download.
+          </p>
+        </fieldset>
+
+        <button type="button" id="redact-export-btn" class="redact-btn-export tool-action-btn interactive">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span data-i18n="redact_export">Download Redacted File</span>
+        </button>
+      </div>
+
       <div id="redact-effects" class="redact-panel card-surface hidden">
         <div class="redact-panel-head">
           <span class="redact-panel-head__icon" aria-hidden="true">
@@ -206,37 +237,6 @@
 
         <button type="button" id="redact-reset" class="redact-btn-danger interactive" data-i18n="redact_reset">
           Reset to Original
-        </button>
-      </div>
-
-      <div id="redact-export-wrap" class="redact-export-wrap hidden space-y-2">
-        <fieldset class="redact-export-size">
-          <legend class="redact-export-size__label" data-i18n="redact_export_size_limit">
-            Output size limit (optional)
-          </legend>
-          <div class="redact-export-size__row">
-            <input
-              type="text"
-              id="redact-export-max-mb"
-              inputmode="decimal"
-              autocomplete="off"
-              class="redact-export-size__input"
-              placeholder="Enter output file size"
-              data-i18n-placeholder="common.compressSizePlaceholder"
-              aria-describedby="redact-export-size-hint"
-            />
-            <span class="redact-export-size__unit" data-i18n="common.compressSizeUnit">MB</span>
-          </div>
-          <p id="redact-export-size-hint" class="sr-only" data-i18n="redact_export_size_hint">
-            Leave empty for full-quality export; enter a max size in MB to compress on download.
-          </p>
-        </fieldset>
-
-        <button type="button" id="redact-export-btn" class="redact-btn-export tool-action-btn interactive">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          <span data-i18n="redact_export">Download Redacted File</span>
         </button>
       </div>
     </aside>

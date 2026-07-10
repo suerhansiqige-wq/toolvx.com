@@ -60,6 +60,7 @@ let pageStores: PageStore[] = [];
 
 let originalFileName = "redacted";
 let originalMime = "image/png";
+let originalFileSize = 0;
 
 let fillColor = "#000000";
 let hasFillColor = false;
@@ -668,6 +669,7 @@ async function loadImageFile(file: File) {
   isPdf = false;
   originalFileName = file.name.replace(/\.[^.]+$/, "") || "image";
   originalMime = file.type || "image/png";
+  originalFileSize = file.size;
 
   const url = URL.createObjectURL(file);
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -803,6 +805,7 @@ async function loadPdfFile(file: File) {
   isPdf = true;
   originalFileName = file.name.replace(/\.pdf$/i, "") || "document";
   originalMime = "application/pdf";
+  originalFileSize = file.size;
 
   setRedactLoading(true);
   try {
@@ -1155,6 +1158,17 @@ function getRedactExportMaxBytes(): number | null {
   return Math.round(mb * 1024 * 1024);
 }
 
+function resolveRedactExportBudget(): { maxBytes: number | null; userLimited: boolean } {
+  const userLimit = getRedactExportMaxBytes();
+  if (userLimit !== null) {
+    return { maxBytes: userLimit, userLimited: true };
+  }
+  if (originalFileSize > 0) {
+    return { maxBytes: originalFileSize, userLimited: false };
+  }
+  return { maxBytes: null, userLimited: false };
+}
+
 async function buildPdfBytes(jpegQuality: number, scale = 1): Promise<Uint8Array> {
   const out = await PDFDocument.create();
 
@@ -1258,14 +1272,14 @@ function reportExportError(err: unknown) {
 
 async function exportFile() {
   saveMainToCurrentPage();
-  const maxBytes = getRedactExportMaxBytes();
+  const { maxBytes, userLimited } = resolveRedactExportBudget();
 
   if (isPdf) {
     const pdfBytes =
       maxBytes !== null
         ? await exportPdfUnderLimit(maxBytes)
         : await exportPdfFullQuality();
-    if (maxBytes !== null && byteSize(pdfBytes) > maxBytes) {
+    if (userLimited && maxBytes !== null && byteSize(pdfBytes) > maxBytes) {
       throw new Error("REDACT_EXPORT_SIZE");
     }
     downloadBytes(pdfBytes, nextExportFilename(originalFileName, "pdf"), "application/pdf");
@@ -1278,7 +1292,7 @@ async function exportFile() {
     maxBytes !== null
       ? await encodeImageUnderLimit(store.canvas, preferredMime, maxBytes)
       : await exportImageFullQuality(store.canvas, preferredMime);
-  if (maxBytes !== null && byteSize(blob) > maxBytes) {
+  if (userLimited && maxBytes !== null && byteSize(blob) > maxBytes) {
     throw new Error("REDACT_EXPORT_SIZE");
   }
   const mime = blob.type || "image/jpeg";
