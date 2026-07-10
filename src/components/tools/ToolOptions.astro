@@ -189,44 +189,92 @@ const labelClass = "text-foreground mb-1.5 block text-sm font-medium";
           </label>
         </div>
       </fieldset>
-      <p
-        id="watermark-remove-hint"
-        class="text-muted-foreground hidden rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed"
-        data-i18n="common.watermarkRemoveHint"
-      >
-        Enter the exact watermark text or upload the same watermark image used on the PDF. Works best for
-        watermarks added by this tool or similar text/image overlays.
-      </p>
-      <fieldset>
-        <legend class="text-foreground mb-3 text-sm font-semibold" data-i18n="common.watermarkMode">
-          Watermark type
-        </legend>
-        <div class="flex flex-wrap gap-4">
-          <label class="flex items-center gap-2 text-sm">
-            <input type="radio" name="watermark-mode" value="text" checked class="accent-accent" />
-            <span data-i18n="common.watermarkTypeText">Text watermark</span>
-          </label>
-          <label class="flex items-center gap-2 text-sm">
-            <input type="radio" name="watermark-mode" value="image" class="accent-accent" />
-            <span data-i18n="common.watermarkTypeImage">Image watermark</span>
-          </label>
+      <div id="watermark-add-panel" class="space-y-4">
+        <fieldset>
+          <legend class="text-foreground mb-3 text-sm font-semibold" data-i18n="common.watermarkMode">
+            Watermark type
+          </legend>
+          <div class="flex flex-wrap gap-4">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="watermark-mode" value="text" checked class="accent-accent" />
+              <span data-i18n="common.watermarkTypeText">Text watermark</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="watermark-mode" value="image" class="accent-accent" />
+              <span data-i18n="common.watermarkTypeImage">Image watermark</span>
+            </label>
+          </div>
+        </fieldset>
+        <div id="watermark-text-wrap">
+          <label for="watermark-text" class={labelClass} data-i18n="common.watermarkText">Watermark text</label>
+          <input type="text" id="watermark-text" value="CONFIDENTIAL" class={inputClass} data-i18n-value="common.watermarkDefault" />
         </div>
-      </fieldset>
-      <div id="watermark-text-wrap">
-        <label for="watermark-text" class={labelClass} data-i18n="common.watermarkText">Watermark text</label>
-        <input type="text" id="watermark-text" value="CONFIDENTIAL" class={inputClass} data-i18n-value="common.watermarkDefault" />
+        <div id="watermark-image-wrap" class="hidden">
+          <label for="watermark-image-input" class={labelClass} data-i18n="common.watermarkImage">
+            Watermark image
+          </label>
+          <input
+            type="file"
+            id="watermark-image-input"
+            accept="image/png,image/jpeg,image/jpg"
+            class={inputClass}
+          />
+          <p id="watermark-image-name" class="text-muted-foreground mt-2 text-xs"></p>
+        </div>
       </div>
-      <div id="watermark-image-wrap" class="hidden">
-        <label for="watermark-image-input" class={labelClass} data-i18n="common.watermarkImage">
-          Watermark image
-        </label>
-        <input
-          type="file"
-          id="watermark-image-input"
-          accept="image/png,image/jpeg,image/jpg"
-          class={inputClass}
-        />
-        <p id="watermark-image-name" class="text-muted-foreground mt-2 text-xs"></p>
+
+      <div id="watermark-remove-panel" class="hidden space-y-4">
+        <p
+          id="watermark-remove-hint"
+          class="text-muted-foreground rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed"
+          data-i18n="common.watermarkRemoveHint"
+        >
+          Automatically detects ToolVX watermarks or common overlay patterns. Preview the result, then download
+          when satisfied.
+        </p>
+        <div id="watermark-preview-panel" class="hidden space-y-3">
+          <p class="text-foreground text-sm font-semibold" data-i18n="watermark_preview_title">
+            Removal preview
+          </p>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <figure class="space-y-2">
+              <figcaption
+                class="text-muted-foreground text-center text-xs font-medium uppercase tracking-wide"
+                data-i18n="watermark_preview_before"
+              >
+                Before
+              </figcaption>
+              <div class="border-border overflow-hidden rounded-xl border bg-white dark:bg-gray-900">
+                <img
+                  id="watermark-preview-before"
+                  alt=""
+                  class="mx-auto max-h-72 w-full object-contain"
+                  data-i18n-alt="watermark_preview_before"
+                />
+              </div>
+            </figure>
+            <figure class="space-y-2">
+              <figcaption
+                class="text-muted-foreground text-center text-xs font-medium uppercase tracking-wide"
+                data-i18n="watermark_preview_after"
+              >
+                After
+              </figcaption>
+              <div class="border-border overflow-hidden rounded-xl border bg-white dark:bg-gray-900">
+                <img
+                  id="watermark-preview-after"
+                  alt=""
+                  class="mx-auto max-h-72 w-full object-contain"
+                  data-i18n-alt="watermark_preview_after"
+                />
+              </div>
+            </figure>
+          </div>
+          <p id="watermark-detection-summary" class="text-muted-foreground text-sm"></p>
+          <p class="text-muted-foreground text-xs" data-i18n="watermark_preview_confirm">
+            If the preview looks correct, click the download button to save your PDF.
+          </p>
+        </div>
       </div>
     </div>
   )

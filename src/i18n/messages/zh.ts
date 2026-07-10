@@ -126,7 +126,7 @@ export const zh: Messages = {
     watermarkAdd: "添加水印",
     watermarkRemove: "去除水印",
     watermarkRemoveHint:
-      "请输入 PDF 上已有的水印文字，或上传当时使用的水印图片。对本工具添加的水印及常见文字/图片叠加水印效果最佳。",
+      "自动识别本站水印（一键去除）或常见叠加水印样式。先预览效果，确认后再下载。",
     watermarkTypeText: "文字水印",
     watermarkTypeImage: "图片水印",
     watermarkImage: "水印图片",

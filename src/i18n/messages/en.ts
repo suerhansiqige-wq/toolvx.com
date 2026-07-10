@@ -127,7 +127,7 @@ export const en: Messages = {
     watermarkAdd: "Add watermark",
     watermarkRemove: "Remove watermark",
     watermarkRemoveHint:
-      "Enter the exact watermark text or upload the same watermark image used on the PDF. Works best for watermarks added by this tool or similar text/image overlays.",
+      "Automatically detects ToolVX watermarks (one-click) or common overlay patterns. Preview the result, then download when satisfied.",
     watermarkTypeText: "Text watermark",
     watermarkTypeImage: "Image watermark",
     watermarkImage: "Watermark image",

@@ -1,41 +1,59 @@
 /**
- * Remove text or image watermarks by editing page content streams in-place.
- * Targets watermarks added by this site (pdf-lib drawText / drawImage) and common
- * diagonal text / centered image overlays in content streams.
+ * Auto-detect and remove text/image watermarks from PDF content streams.
+ * Site watermarks (pdf-lib drawText / drawImage) are removed in one pass;
+ * other PDFs use cross-page heuristics with preview-before-download.
  */
 
 const MAX_BLOCK_SCAN = 4000;
 
-function escapePdfLiteral(text: string): string {
-  return text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-}
+export type WatermarkRemovalMethod = "site" | "smart" | "none";
 
-/** Build search needles for a watermark string in PDF content streams. */
-export function buildTextWatermarkPatterns(text: string): string[] {
-  const trimmed = text.trim();
-  if (!trimmed) return [];
+export type WatermarkRemovalResult = {
+  bytes: Uint8Array;
+  removed: number;
+  method: WatermarkRemovalMethod;
+  summaryKey: string;
+};
 
-  const patterns = new Set<string>();
-  patterns.add(`(${escapePdfLiteral(trimmed)})`);
-
-  let hex = "";
-  for (const ch of trimmed) {
-    hex += ch.charCodeAt(0).toString(16).padStart(4, "0").toUpperCase();
-  }
-  patterns.add(`<${hex}>`);
-  patterns.add(`<FEFF${hex}>`);
-
-  if (/^[\x20-\x7e]+$/.test(trimmed)) {
-    patterns.add(`(${trimmed})`);
-  }
-
-  return [...patterns];
-}
+type GraphicsBlock = { start: number; end: number; body: string };
 
 function isOperatorBoundary(content: string, index: number): boolean {
   if (index <= 0) return true;
   const prev = content[index - 1];
   return /[\s\n\r\[\(<]/.test(prev);
+}
+
+function findGraphicsBlockFromQ(content: string, qPos: number): { start: number; end: number } | null {
+  let depth = 0;
+  for (let i = qPos; i < content.length; i++) {
+    if (content[i] === "q" && isOperatorBoundary(content, i)) depth++;
+    if (content[i] === "Q" && isOperatorBoundary(content, i)) {
+      depth--;
+      if (depth === 0) return { start: qPos, end: i + 1 };
+    }
+  }
+  return null;
+}
+
+function collectAllGraphicsBlocks(content: string): GraphicsBlock[] {
+  const blocks: GraphicsBlock[] = [];
+  let pos = 0;
+  while (pos < content.length) {
+    if (content[pos] === "q" && isOperatorBoundary(content, pos)) {
+      const bounds = findGraphicsBlockFromQ(content, pos);
+      if (bounds) {
+        blocks.push({
+          start: bounds.start,
+          end: bounds.end,
+          body: content.slice(bounds.start, bounds.end),
+        });
+        pos = bounds.end;
+        continue;
+      }
+    }
+    pos++;
+  }
+  return blocks;
 }
 
 function findGraphicsBlockBounds(content: string, hitIndex: number): { start: number; end: number } | null {
@@ -57,44 +75,68 @@ function findGraphicsBlockBounds(content: string, hitIndex: number): { start: nu
     return null;
   }
 
-  let depth = 0;
-  for (let i = start; i < content.length; i++) {
-    if (content[i] === "q" && isOperatorBoundary(content, i)) depth++;
-    if (content[i] === "Q" && isOperatorBoundary(content, i)) {
-      depth--;
-      if (depth === 0) return { start, end: i + 1 };
-    }
-  }
-  return null;
+  return findGraphicsBlockFromQ(content, start);
 }
 
-export function removeTextFromContentStream(content: string, text: string): { content: string; removed: number } {
-  const patterns = buildTextWatermarkPatterns(text);
-  if (!patterns.length) return { content, removed: 0 };
+function isSiteTextWatermarkBlock(body: string): boolean {
+  return (
+    /0\.35\s+ca/.test(body) &&
+    /36\s+Tf/.test(body) &&
+    /(Tj|TJ)/.test(body) &&
+    /0\.75\s+0\.75\s+0\.75\s+rg/.test(body)
+  );
+}
+
+function isSiteImageWatermarkBlock(body: string): boolean {
+  return /0\.35\s+ca/.test(body) && /\sDo\b/.test(body);
+}
+
+function isSiteWatermarkBlock(body: string): boolean {
+  return isSiteTextWatermarkBlock(body) || isSiteImageWatermarkBlock(body);
+}
+
+function isSmartWatermarkCandidate(body: string): boolean {
+  const hasLowOpacity = /0\.(?:[12]\d?|3[0-5])\s+ca/.test(body);
+  const hasText = /BT[\s\S]*?(Tj|TJ)/.test(body);
+  const hasImage = /\sDo\b/.test(body);
+  const hasRotation = /0\.7\d*\s+0\.7\d*/.test(body);
+  if (!hasLowOpacity) return false;
+  if (hasText && hasRotation) return true;
+  if (hasImage && !/BT/.test(body)) return true;
+  return hasText && /36\s+Tf/.test(body);
+}
+
+function normalizeBlockFingerprint(body: string): string {
+  return body
+    .replace(/\d+\.?\d*\s+\d+\.?\d*\s+Td/g, "TD")
+    .replace(
+      /\d+\.?\d*\s+\d+\.?\d*\s+\d+\.?\d*\s+\d+\.?\d*\s+\d+\.?\d*\s+\d+\.?\d*\s+cm/g,
+      "CM"
+    )
+    .replace(/\((?:\\.|[^\\)])*\)/g, "TEXT")
+    .replace(/<[0-9A-Fa-f]+>/g, "TEXT")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function removeMatchingBlocksFromStream(
+  content: string,
+  predicate: (body: string) => boolean
+): { content: string; removed: number } {
+  const blocks = collectAllGraphicsBlocks(content).filter(b => predicate(b.body));
+  if (!blocks.length) return { content, removed: 0 };
 
   let result = content;
   let removed = 0;
-  let changed = true;
-
-  while (changed) {
-    changed = false;
-    for (const pattern of patterns) {
-      let idx = 0;
-      while ((idx = result.indexOf(pattern, idx)) !== -1) {
-        const bounds = findGraphicsBlockBounds(result, idx);
-        if (bounds) {
-          result = result.slice(0, bounds.start) + result.slice(bounds.end);
-          removed++;
-          changed = true;
-          idx = bounds.start;
-        } else {
-          idx += pattern.length;
-        }
-      }
-    }
+  for (const block of [...blocks].sort((a, b) => b.start - a.start)) {
+    result = result.slice(0, block.start) + result.slice(block.end);
+    removed++;
   }
-
   return { content: result, removed };
+}
+
+function removeSiteWatermarksFromStream(content: string): { content: string; removed: number } {
+  return removeMatchingBlocksFromStream(content, isSiteWatermarkBlock);
 }
 
 function copyBytes(data: Uint8Array): Uint8Array<ArrayBuffer> {
@@ -195,121 +237,37 @@ function concatBytes(parts: Uint8Array[]): Uint8Array {
   return out;
 }
 
-async function fingerprintImageBytes(bytes: Uint8Array, mimeHint?: string): Promise<Uint8Array | null> {
-  const blob = new Blob([copyBytes(bytes)], {
-    type: mimeHint ?? "image/png",
-  });
-  try {
-    const bitmap = await createImageBitmap(blob);
-    const canvas = document.createElement("canvas");
-    canvas.width = 16;
-    canvas.height = 16;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      bitmap.close();
+async function decodeContentStream(region: StreamRegion, pdf: Uint8Array): Promise<string | null> {
+  const raw = pdf.slice(region.dataStart, region.dataEnd);
+  if (region.flate) {
+    try {
+      return new TextDecoder("latin1").decode(await zlibInflate(raw));
+    } catch {
       return null;
     }
-    ctx.drawImage(bitmap, 0, 0, 16, 16);
-    bitmap.close();
-    return new Uint8Array(ctx.getImageData(0, 0, 16, 16).data);
-  } catch {
-    return null;
   }
+  return new TextDecoder("latin1").decode(raw);
 }
 
-function fingerprintDistance(a: Uint8Array, b: Uint8Array): number {
-  let sum = 0;
-  const n = Math.min(a.length, b.length);
-  for (let i = 0; i < n; i += 4) {
-    sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
-  }
-  return sum;
+function isPageContentStream(stream: string, pdfText: string, dictStart: number): boolean {
+  return (
+    /Tj|TJ|Do|cm|Tm|BT|ET/.test(stream) ||
+    /\/Type\s*\/Page/.test(pdfText.slice(Math.max(0, dictStart - 500), dictStart))
+  );
 }
 
-function collectXObjectNamesForObject(pdfText: string, objectLabel: string): string[] {
-  const names: string[] = [];
-  const escaped = objectLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`/([A-Za-z0-9]+)\\s+${escaped}\\b`, "g");
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(pdfText))) {
-    names.push(`/${match[1]}`);
-  }
-  return names;
-}
+async function decodePageContentStreams(pdf: Uint8Array): Promise<string[]> {
+  const pdfText = new TextDecoder("latin1").decode(pdf);
+  const streams: string[] = [];
 
-async function findMatchingImageObjectLabels(
-  pdfText: string,
-  pdf: Uint8Array,
-  reference: Uint8Array,
-  mimeHint?: string
-): Promise<string[]> {
-  const refFp = await fingerprintImageBytes(reference, mimeHint);
-  if (!refFp) return [];
-
-  const regions = findStreamRegions(pdf);
-  const matches: string[] = [];
-
-  for (const region of regions) {
-    const dictText = pdfText.slice(region.dictStart, region.dictEnd);
-    if (!/\/Subtype\s*\/Image/.test(dictText)) continue;
-
-    const objPos = pdfText.lastIndexOf("obj", region.dictStart);
-    const objChunk = pdfText.slice(Math.max(0, objPos - 24), objPos);
-    const labelMatch = objChunk.match(/(\d+)\s+(\d+)\s+$/);
-    if (!labelMatch) continue;
-
-    const objectLabel = `${labelMatch[1]} ${labelMatch[2]} R`;
-    const raw = pdf.slice(region.dataStart, region.dataEnd);
-    let decoded: Uint8Array = raw;
-    if (region.flate) {
-      try {
-        decoded = await zlibInflate(raw);
-      } catch {
-        continue;
-      }
-    }
-
-    const mime = /\/Filter\s*\/DCTDecode/.test(dictText)
-      ? "image/jpeg"
-      : /\/Filter\s*\/JPXDecode/.test(dictText)
-        ? "image/jpx"
-        : "image/png";
-
-    const fp = await fingerprintImageBytes(decoded, mime);
-    if (!fp) continue;
-    if (fingerprintDistance(refFp, fp) < 1200) {
-      matches.push(objectLabel);
-    }
+  for (const region of findStreamRegions(pdf)) {
+    const decoded = await decodeContentStream(region, pdf);
+    if (!decoded) continue;
+    if (!isPageContentStream(decoded, pdfText, region.dictStart)) continue;
+    streams.push(decoded);
   }
 
-  return matches;
-}
-
-function removeImageOpsFromStream(content: string, xobjectNames: string[]): { content: string; removed: number } {
-  let result = content;
-  let removed = 0;
-
-  for (const name of xobjectNames) {
-    const token = `${name} Do`;
-    let idx = 0;
-    while ((idx = result.indexOf(token, idx)) !== -1) {
-      const bounds = findGraphicsBlockBounds(result, idx);
-      if (bounds) {
-        result = result.slice(0, bounds.start) + result.slice(bounds.end);
-        removed++;
-        idx = bounds.start;
-      } else {
-        const lineStart = result.lastIndexOf("\n", idx);
-        const lineEnd = result.indexOf("\n", idx);
-        result =
-          result.slice(0, lineStart >= 0 ? lineStart : 0) +
-          result.slice(lineEnd >= 0 ? lineEnd : result.length);
-        removed++;
-      }
-    }
-  }
-
-  return { content: result, removed };
+  return streams;
 }
 
 async function rewritePdfStreams(
@@ -325,23 +283,9 @@ async function rewritePdfStreams(
 
   for (const region of regions) {
     const dictText = pdfText.slice(region.dictStart, region.dictEnd);
-    const raw = pdf.slice(region.dataStart, region.dataEnd);
-
-    let decodedText: string;
-    if (region.flate) {
-      try {
-        decodedText = new TextDecoder("latin1").decode(await zlibInflate(raw));
-      } catch {
-        continue;
-      }
-    } else {
-      decodedText = new TextDecoder("latin1").decode(raw);
-    }
-
-    const looksLikeContent =
-      /Tj|TJ|Do|cm|Tm|BT|ET/.test(decodedText) ||
-      /\/Type\s*\/Page/.test(pdfText.slice(Math.max(0, region.dictStart - 500), region.dictStart));
-    if (!looksLikeContent) continue;
+    const decodedText = await decodeContentStream(region, pdf);
+    if (!decodedText) continue;
+    if (!isPageContentStream(decodedText, pdfText, region.dictStart)) continue;
 
     const { content: edited, removed } = editStream(decodedText);
     if (removed === 0) continue;
@@ -377,36 +321,85 @@ async function rewritePdfStreams(
   return { bytes: result, removed: totalRemoved };
 }
 
-export async function removeTextWatermarkFromPdf(
-  file: File,
-  text: string
-): Promise<Uint8Array> {
-  const pdf = await file.arrayBuffer().then(buf => new Uint8Array(buf));
-  const { bytes, removed } = await rewritePdfStreams(pdf, stream =>
-    removeTextFromContentStream(stream, text)
-  );
-  if (removed === 0) throw new Error("watermark-not-found");
-  return bytes;
+function buildSmartFingerprintPredicate(
+  streams: string[]
+): ((body: string) => boolean) | null {
+  const counts = new Map<string, number>();
+
+  for (const stream of streams) {
+    const seenOnPage = new Set<string>();
+    for (const block of collectAllGraphicsBlocks(stream)) {
+      if (!isSmartWatermarkCandidate(block.body)) continue;
+      const fp = normalizeBlockFingerprint(block.body);
+      if (!fp || seenOnPage.has(fp)) continue;
+      seenOnPage.add(fp);
+      counts.set(fp, (counts.get(fp) ?? 0) + 1);
+    }
+  }
+
+  const threshold = Math.max(1, Math.ceil(streams.length * 0.75));
+  const dominant = [...counts.entries()]
+    .filter(([, count]) => count >= threshold)
+    .map(([fp]) => fp);
+
+  if (!dominant.length) return null;
+  const fpSet = new Set(dominant);
+  return body => fpSet.has(normalizeBlockFingerprint(body));
 }
 
-export async function removeImageWatermarkFromPdf(
-  file: File,
-  imageFile: File
-): Promise<Uint8Array> {
-  const pdf = await file.arrayBuffer().then(buf => new Uint8Array(buf));
-  const pdfText = new TextDecoder("latin1").decode(pdf);
-  const refBytes = new Uint8Array(await imageFile.arrayBuffer());
-  const mime = imageFile.type || (imageFile.name.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg");
+function removeLastSmartCandidateFromStream(content: string): { content: string; removed: number } {
+  const blocks = collectAllGraphicsBlocks(content).filter(b => isSmartWatermarkCandidate(b.body));
+  if (!blocks.length) return { content, removed: 0 };
+  const last = blocks[blocks.length - 1];
+  return {
+    content: content.slice(0, last.start) + content.slice(last.end),
+    removed: 1,
+  };
+}
 
-  const objectLabels = await findMatchingImageObjectLabels(pdfText, pdf, refBytes, mime);
-  if (!objectLabels.length) throw new Error("watermark-not-found");
+/** Auto-detect site or heuristic watermarks and return cleaned PDF bytes. */
+export async function autoRemoveWatermarks(pdfBytes: Uint8Array): Promise<WatermarkRemovalResult> {
+  const siteResult = await rewritePdfStreams(pdfBytes, removeSiteWatermarksFromStream);
+  if (siteResult.removed > 0) {
+    return {
+      bytes: siteResult.bytes,
+      removed: siteResult.removed,
+      method: "site",
+      summaryKey: "watermark_detect_site",
+    };
+  }
 
-  const xobjectNames = [...new Set(objectLabels.flatMap(label => collectXObjectNamesForObject(pdfText, label)))];
-  if (!xobjectNames.length) throw new Error("watermark-not-found");
+  const streams = await decodePageContentStreams(pdfBytes);
+  const smartPredicate = buildSmartFingerprintPredicate(streams);
 
-  const { bytes, removed } = await rewritePdfStreams(pdf, stream =>
-    removeImageOpsFromStream(stream, xobjectNames)
-  );
-  if (removed === 0) throw new Error("watermark-not-found");
-  return bytes;
+  if (smartPredicate) {
+    const smartResult = await rewritePdfStreams(pdfBytes, stream =>
+      removeMatchingBlocksFromStream(stream, smartPredicate)
+    );
+    if (smartResult.removed > 0) {
+      return {
+        bytes: smartResult.bytes,
+        removed: smartResult.removed,
+        method: "smart",
+        summaryKey: "watermark_detect_smart",
+      };
+    }
+  }
+
+  const fallback = await rewritePdfStreams(pdfBytes, removeLastSmartCandidateFromStream);
+  if (fallback.removed > 0) {
+    return {
+      bytes: fallback.bytes,
+      removed: fallback.removed,
+      method: "smart",
+      summaryKey: "watermark_detect_smart_low",
+    };
+  }
+
+  return {
+    bytes: pdfBytes,
+    removed: 0,
+    method: "none",
+    summaryKey: "watermark_not_found",
+  };
 }

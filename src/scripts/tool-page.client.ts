@@ -15,7 +15,8 @@ import {
   zipFilenameFromPdf,
   zipPageFilename,
 } from "@/scripts/export-filename";
-import { canvasToJpegBlob } from "@/scripts/pdf-render";
+import { canvasToJpegBlob, renderPdfPageToCanvas, releaseCanvasMemory } from "@/scripts/pdf-render";
+import { loadPdfBytes } from "@/scripts/pdf-worker";
 import {
   compressPdfBytes,
   compressPdfFile,
@@ -47,8 +48,8 @@ import {
   type ReaderState,
 } from "@/scripts/pdf-tools";
 import {
-  removeImageWatermarkFromPdf,
-  removeTextWatermarkFromPdf,
+  autoRemoveWatermarks,
+  type WatermarkRemovalResult,
 } from "@/scripts/pdf-watermark-remove";
 
 type ToolAction = string;
@@ -835,13 +836,29 @@ function initCrop() {
 }
 
 function initWatermark() {
+  const addPanel = $("watermark-add-panel");
+  const removePanel = $("watermark-remove-panel");
+  const previewPanel = $("watermark-preview-panel");
+  const previewBefore = $("watermark-preview-before") as HTMLImageElement | null;
+  const previewAfter = $("watermark-preview-after") as HTMLImageElement | null;
+  const detectionSummary = $("watermark-detection-summary");
   const textWrap = $("watermark-text-wrap");
   const imageWrap = $("watermark-image-wrap");
   const imageInput = $("watermark-image-input") as HTMLInputElement | null;
   const imageName = $("watermark-image-name");
-  const removeHint = $("watermark-remove-hint");
   const actionBtnLabel = document.querySelector("#tool-action-btn [data-i18n]");
   const downloadBtnLabel = document.querySelector("#tool-download-btn [data-i18n]");
+
+  const previewUrls: string[] = [];
+
+  const clearPreview = () => {
+    previewPanel?.classList.add("hidden");
+    if (previewBefore) previewBefore.removeAttribute("src");
+    if (previewAfter) previewAfter.removeAttribute("src");
+    if (detectionSummary) detectionSummary.textContent = "";
+    for (const url of previewUrls) URL.revokeObjectURL(url);
+    previewUrls.length = 0;
+  };
 
   const getOperation = () =>
     (document.querySelector('input[name="watermark-operation"]:checked') as HTMLInputElement)
@@ -857,7 +874,9 @@ function initWatermark() {
 
   const updateOperation = () => {
     const op = getOperation();
-    removeHint?.classList.toggle("hidden", op !== "remove");
+    addPanel?.classList.toggle("hidden", op !== "add");
+    removePanel?.classList.toggle("hidden", op !== "remove");
+    if (op !== "remove") clearPreview();
 
     if (actionBtnLabel) {
       const key = op === "remove" ? "watermark_remove_action" : toolKey("action");
@@ -871,13 +890,51 @@ function initWatermark() {
     }
   };
 
+  async function renderPdfPreviewThumb(bytes: Uint8Array): Promise<string> {
+    const pdf = await loadPdfBytes(bytes);
+    const page = await pdf.getPage(1);
+    let canvas: HTMLCanvasElement | null = null;
+    try {
+      canvas = await renderPdfPageToCanvas(page, 1.15, { preview: true });
+      const blob = await canvasToJpegBlob(canvas, 0.88);
+      return URL.createObjectURL(blob);
+    } finally {
+      releaseCanvasMemory(canvas);
+    }
+  }
+
+  async function showRemovalPreview(
+    originalBytes: Uint8Array,
+    result: WatermarkRemovalResult
+  ): Promise<void> {
+    clearPreview();
+    const [beforeUrl, afterUrl] = await Promise.all([
+      renderPdfPreviewThumb(originalBytes),
+      renderPdfPreviewThumb(result.bytes),
+    ]);
+    previewUrls.push(beforeUrl, afterUrl);
+    if (previewBefore) previewBefore.src = beforeUrl;
+    if (previewAfter) previewAfter.src = afterUrl;
+    if (detectionSummary) {
+      detectionSummary.textContent = t(result.summaryKey, {
+        count: String(result.removed),
+      });
+    }
+    previewPanel?.classList.remove("hidden");
+    if (previewPanel) applyI18n(previewPanel);
+  }
+
   onLocaleChange(updateOperation);
 
   document.querySelectorAll('input[name="watermark-mode"]').forEach(radio => {
     radio.addEventListener("change", updateMode);
   });
   document.querySelectorAll('input[name="watermark-operation"]').forEach(radio => {
-    radio.addEventListener("change", updateOperation);
+    radio.addEventListener("change", () => {
+      resetToolOutput();
+      clearPreview();
+      updateOperation();
+    });
   });
   updateMode();
   updateOperation();
@@ -891,36 +948,29 @@ function initWatermark() {
     const file = getFiles()[0];
     if (!file) return;
     const operation = getOperation();
+
+    hideError();
+
+    if (operation === "remove") {
+      const originalBytes = new Uint8Array(await file.arrayBuffer());
+      const result = await autoRemoveWatermarks(originalBytes);
+      if (result.removed === 0) {
+        clearPreview();
+        showError(t("watermark_not_found"));
+        return;
+      }
+      await showRemovalPreview(originalBytes, result);
+      const blob = new Blob([new Uint8Array(result.bytes)], { type: "application/pdf" });
+      enableDownload(URL.createObjectURL(blob), originalPdfFilename(file));
+      return;
+    }
+
     const mode =
       (document.querySelector('input[name="watermark-mode"]:checked') as HTMLInputElement)
         ?.value ?? "text";
 
-    hideError();
     let bytes: Uint8Array;
-
-    if (operation === "remove") {
-      try {
-        if (mode === "image") {
-          const imageFile = imageInput?.files?.[0];
-          if (!imageFile) {
-            showError(t("watermark_image_required"));
-            return;
-          }
-          bytes = await removeImageWatermarkFromPdf(file, imageFile);
-        } else {
-          const text =
-            (document.getElementById("watermark-text") as HTMLInputElement)?.value.trim() ||
-            t("common.watermarkDefault");
-          bytes = await removeTextWatermarkFromPdf(file, text);
-        }
-      } catch (err) {
-        if (err instanceof Error && err.message === "watermark-not-found") {
-          showError(t("watermark_not_found"));
-          return;
-        }
-        throw err;
-      }
-    } else if (mode === "image") {
+    if (mode === "image") {
       const imageFile = imageInput?.files?.[0];
       if (!imageFile) {
         showError(t("watermark_image_required"));
