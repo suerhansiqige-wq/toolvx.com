@@ -505,6 +505,18 @@ export function applyI18n(root: ParentNode = document): void {
     el.setAttribute("aria-label", t(key, vars));
   });
 
+  root.querySelectorAll<HTMLMetaElement>("[data-i18n-content]").forEach(el => {
+    const key = el.getAttribute("data-i18n-content");
+    if (!key) return;
+    const value = t(key);
+    el.setAttribute("content", value);
+  });
+
+  root.querySelectorAll<HTMLImageElement>("[data-i18n-alt]").forEach(el => {
+    const key = el.getAttribute("data-i18n-alt");
+    if (key) el.alt = t(key);
+  });
+
   root.querySelectorAll<HTMLButtonElement>("[data-label-open-key]").forEach(btn => {
     const openKey = btn.getAttribute("data-label-open-key");
     const closeKey = btn.getAttribute("data-label-close-key");

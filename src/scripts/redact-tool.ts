@@ -1329,13 +1329,6 @@ async function exportPdfUnderLimit(maxBytes: number): Promise<Uint8Array> {
   throw new Error("REDACT_EXPORT_SIZE");
 }
 
-function applyRedactDocumentMeta() {
-  if (!$("redact-page")) return;
-  document.title = t("redact.seo.title");
-  const meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-  if (meta) meta.content = t("redact.seo.description");
-}
-
 function reportExportError(err: unknown) {
   console.error(err);
   if (err instanceof Error && err.message === "REDACT_EXPORT_SIZE") {
@@ -1667,7 +1660,6 @@ function initRedactTool() {
   if (pageStores.length === 0) {
     showWorkspace(false);
   }
-  applyRedactDocumentMeta();
   void probeLocalPdfAssets();
 }
 

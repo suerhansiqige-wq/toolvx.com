@@ -27,9 +27,12 @@ const i18nPrefix = `tools.${tool.i18nKey}`;
 <ToolLayout
   title={seo.title}
   description={seo.description}
+  titleI18n={`${i18nPrefix}.seoTitle`}
+  descriptionI18n={`${i18nPrefix}.seoDescription`}
   keywords={seo.keywords.join(", ")}
   appName={seo.h1}
   faqs={seo.faqs}
+  steps={seo.steps}
 >
   <div
     id="tool-root"

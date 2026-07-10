@@ -27,6 +27,9 @@ export default defineConfig({
     sitemap({
       filter: page =>
         config.features?.showArchives !== false || !page.endsWith("/archives/"),
+      changefreq: "weekly",
+      priority: 0.7,
+      lastmod: new Date(),
     }),
   ],
   i18n: {

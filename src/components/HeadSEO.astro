@@ -1,0 +1,90 @@
+---
+import { Font } from "astro:assets";
+import { getRelativeLocaleUrl } from "astro:i18n";
+import { resolveDefaultOgImagePath } from "@/utils/resolveDefaultOgImagePath";
+import { getAssetPath } from "@/utils/withBase";
+import config from "@/config";
+
+type Props = {
+  title: string;
+  description: string;
+  ogImage?: string;
+  canonicalURL: string;
+  ogType?: "website" | "article";
+  titleI18n?: string;
+  descriptionI18n?: string;
+  robots?: string;
+};
+
+const { site } = config;
+
+const {
+  title,
+  description,
+  ogImage = resolveDefaultOgImagePath(config),
+  canonicalURL,
+  ogType = "website",
+  titleI18n,
+  descriptionI18n,
+  robots = "index, follow",
+} = Astro.props;
+
+const socialImageURL = new URL(ogImage, Astro.site ?? Astro.url);
+const rssHref = getRelativeLocaleUrl("en", "rss.xml");
+
+const titleI18nAttr = titleI18n ? { "data-i18n": titleI18n } : {};
+const titleContentI18nAttr = titleI18n ? { "data-i18n-content": titleI18n } : {};
+const descriptionI18nAttr = descriptionI18n
+  ? { "data-i18n-content": descriptionI18n }
+  : {};
+---
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/svg+xml" href={getAssetPath("favicon.svg")} />
+<link rel="icon" href={getAssetPath("favicon.ico")} />
+<link rel="canonical" href={canonicalURL} />
+<meta name="generator" content={Astro.generator} />
+<meta name="robots" content={robots} />
+
+<Font
+  cssVariable="--font-google-sans-code"
+  preload={[{ subset: "latin", weight: 400, style: "normal" }]}
+/>
+
+<!-- Primary meta (SSR English + data-i18n for client locale switching) -->
+<title {...titleI18nAttr}>{title}</title>
+<meta name="title" content={title} {...titleContentI18nAttr} />
+<meta name="description" content={description} {...descriptionI18nAttr} />
+<meta name="author" content={site.author} />
+
+<link rel="sitemap" href={getAssetPath("sitemap-index.xml")} />
+
+<!-- Open Graph -->
+<meta property="og:type" content={ogType} />
+<meta property="og:site_name" content={site.title} />
+<meta property="og:title" content={title} {...titleContentI18nAttr} />
+<meta property="og:description" content={description} {...descriptionI18nAttr} />
+<meta property="og:url" content={canonicalURL} />
+<meta property="og:image" content={socialImageURL} />
+<meta property="og:locale" content="en_US" />
+<meta property="og:locale:alternate" content="zh_CN" />
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:url" content={canonicalURL} />
+<meta name="twitter:title" content={title} {...titleContentI18nAttr} />
+<meta name="twitter:description" content={description} {...descriptionI18nAttr} />
+<meta name="twitter:image" content={socialImageURL} />
+
+<!-- RSS autodiscovery -->
+<link
+  rel="alternate"
+  type="application/rss+xml"
+  title={site.title}
+  href={new URL(rssHref, Astro.site)}
+/>
+
+<meta name="theme-color" content="" />
+
+<slot />

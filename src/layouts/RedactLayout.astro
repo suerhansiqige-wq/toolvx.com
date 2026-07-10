@@ -14,6 +14,9 @@ type Props = {
   canonicalURL?: string;
   appName?: string;
   faqs?: FAQItem[];
+  steps?: string[];
+  titleI18n?: string;
+  descriptionI18n?: string;
   /** When true, adds noindex (staging only). Production redact page should stay indexable. */
   noIndex?: boolean;
 };
@@ -26,6 +29,9 @@ const {
   canonicalURL = new URL(Astro.url.pathname, Astro.site).href,
   appName,
   faqs = [],
+  steps = [],
+  titleI18n = "redact.seo.title",
+  descriptionI18n = "redact.seo.description",
   noIndex = false,
 } = Astro.props;
 
@@ -36,8 +42,8 @@ const structuredData = {
   description,
   url: canonicalURL,
   applicationCategory: "BusinessApplication",
-  operatingSystem: "Any",
-  browserRequirements: "Requires JavaScript. Requires HTML5.",
+  operatingSystem: "All",
+  browserRequirements: "Requires JavaScript. Runs entirely in the browser.",
   featureList: [
     "PDF redaction",
     "Image redaction",
@@ -69,19 +75,40 @@ const faqStructuredData =
         })),
       }
     : null;
+
+const howToStructuredData =
+  steps.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        name: `How to use ${appName ?? "PDF & Image Redaction Tool"}`,
+        step: steps.map((text, index) => ({
+          "@type": "HowToStep",
+          position: index + 1,
+          text,
+        })),
+      }
+    : null;
 ---
 
-<Layout {title} {description} {ogImage} {canonicalURL}>
+<Layout
+  {title}
+  {description}
+  {ogImage}
+  {canonicalURL}
+  {titleI18n}
+  {descriptionI18n}
+  robots={noIndex ? "noindex, nofollow" : "index, follow"}
+>
   <Fragment slot="head">
     {keywords && <meta name="keywords" content={keywords} />}
-    <meta property="og:locale" content="en_US" />
     <meta name="language" content="English" />
-    {noIndex ? (
-      <meta name="robots" content="noindex, nofollow" />
-    ) : (
-      <meta name="robots" content="index, follow" />
-    )}
     <script type="application/ld+json" is:inline set:html={JSON.stringify(structuredData)} />
+    {
+      howToStructuredData && (
+        <script type="application/ld+json" is:inline set:html={JSON.stringify(howToStructuredData)} />
+      )
+    }
     {
       faqStructuredData && (
         <script type="application/ld+json" is:inline set:html={JSON.stringify(faqStructuredData)} />

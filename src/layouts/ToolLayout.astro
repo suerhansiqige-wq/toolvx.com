@@ -24,9 +24,12 @@ type Props = {
   faqs?: FAQItem[];
   /** Short app name for WebApplication schema. */
   appName?: string;
+  /** How-to steps for HowTo JSON-LD (must match visible steps). */
+  steps?: string[];
+  /** i18n keys for client-side head meta switching. */
+  titleI18n?: string;
+  descriptionI18n?: string;
 };
-
-const { site } = config;
 
 const {
   title,
@@ -37,6 +40,9 @@ const {
   hideBottomAd = false,
   faqs = [],
   appName,
+  steps = [],
+  titleI18n,
+  descriptionI18n,
 } = Astro.props;
 
 const structuredData = {
@@ -45,13 +51,15 @@ const structuredData = {
   name: appName ?? title.split("|")[0]?.trim() ?? title,
   description,
   url: canonicalURL,
-  applicationCategory: "UtilitiesApplication",
-  operatingSystem: "Any",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "All",
+  browserRequirements: "Requires JavaScript. Runs entirely in the browser.",
   offers: {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
   },
+  isAccessibleForFree: true,
   inLanguage: "en",
 };
 
@@ -70,19 +78,47 @@ const faqStructuredData =
         })),
       }
     : null;
+
+const howToStructuredData =
+  steps.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        name: `How to use ${appName ?? title.split("|")[0]?.trim() ?? title}`,
+        step: steps.map((text, index) => ({
+          "@type": "HowToStep",
+          position: index + 1,
+          text,
+        })),
+      }
+    : null;
 ---
 
-<Layout {title} {description} {ogImage} {canonicalURL}>
+<Layout
+  {title}
+  {description}
+  {ogImage}
+  {canonicalURL}
+  {titleI18n}
+  {descriptionI18n}
+>
   <Fragment slot="head">
     {keywords && <meta name="keywords" content={keywords} />}
-    <meta property="og:locale" content="en_US" />
     <meta name="language" content="English" />
-    <meta name="robots" content="index, follow" />
     <script
       type="application/ld+json"
       is:inline
       set:html={JSON.stringify(structuredData)}
     />
+    {
+      howToStructuredData && (
+        <script
+          type="application/ld+json"
+          is:inline
+          set:html={JSON.stringify(howToStructuredData)}
+        />
+      )
+    }
     {
       faqStructuredData && (
         <script
@@ -132,7 +168,6 @@ const faqStructuredData =
         data-pagefind-ignore
       >
         <div class="sticky top-24">
-          {/* After AdSense approval, replace AdSlot inner content with <ins class="adsbygoogle"> */}
           <AdSlot
             variant="skyscraper"
             class="my-0"
@@ -145,7 +180,6 @@ const faqStructuredData =
     {
       !hideBottomAd && (
         <div class="mt-8 lg:mt-10">
-          {/* After AdSense approval, replace AdSlot inner content with <ins class="adsbygoogle"> */}
           <AdSlot
             variant="leaderboard"
             class="shrink-0"

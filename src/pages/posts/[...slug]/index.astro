@@ -114,6 +114,8 @@ const searchSynonyms = postSearchSynonyms({
   canonicalURL={canonicalURL}
   pubDatetime={pubDatetime}
   modDatetime={modDatetime}
+  titleI18n={i18nKey ? `posts.redact.${i18nKey}.title` : undefined}
+  descriptionI18n={i18nKey ? `posts.redact.${i18nKey}.description` : undefined}
 >
   <Header />
 

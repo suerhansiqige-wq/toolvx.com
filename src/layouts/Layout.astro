@@ -1,9 +1,6 @@
 ---
-import { Font } from "astro:assets";
 import { ClientRouter } from "astro:transitions";
-import { getRelativeLocaleUrl } from "astro:i18n";
-import { resolveDefaultOgImagePath } from "@/utils/resolveDefaultOgImagePath";
-import { getAssetPath } from "@/utils/withBase";
+import HeadSEO from "@/components/HeadSEO.astro";
 import config from "@/config";
 import "@/styles/global.css";
 
@@ -12,6 +9,10 @@ type Props = {
   description?: string;
   ogImage?: string;
   canonicalURL?: string;
+  ogType?: "website" | "article";
+  titleI18n?: string;
+  descriptionI18n?: string;
+  robots?: string;
 };
 
 const { site } = config;
@@ -19,12 +20,13 @@ const { site } = config;
 const {
   title = site.title,
   description = site.description,
-  ogImage = resolveDefaultOgImagePath(config),
+  ogImage,
   canonicalURL = new URL(Astro.url.pathname, Astro.site).href,
+  ogType = "website",
+  titleI18n,
+  descriptionI18n,
+  robots,
 } = Astro.props;
-
-const socialImageURL = new URL(ogImage, Astro.site ?? Astro.url);
-const rssHref = getRelativeLocaleUrl("en", "rss.xml");
 ---
 
 <!doctype html>
@@ -61,54 +63,18 @@ const rssHref = getRelativeLocaleUrl("en", "rss.xml");
       })();
     </script>
 
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href={getAssetPath("favicon.svg")} />
-    <link rel="icon" href={getAssetPath("favicon.ico")} />
-    <link rel="canonical" href={canonicalURL} />
-    <meta name="generator" content={Astro.generator} />
-
-    <!-- Font -->
-    <Font
-      cssVariable="--font-google-sans-code"
-      preload={[{ subset: "latin", weight: 400, style: "normal" }]}
-    />
-
-    <!-- Primary meta -->
-    <title>{title}</title>
-    <meta name="title" content={title} />
-    <meta name="description" content={description} />
-    <meta name="author" content={site.author} />
-    <link rel="sitemap" href={getAssetPath("sitemap-index.xml")} />
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content={site.title} />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonicalURL} />
-    <meta property="og:image" content={socialImageURL} />
-
-    <!-- Twitter / X -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content={canonicalURL} />
-    <meta property="twitter:title" content={title} />
-    <meta property="twitter:description" content={description} />
-    <meta property="twitter:image" content={socialImageURL} />
-
-    <!-- RSS autodiscovery -->
-    <link
-      rel="alternate"
-      type="application/rss+xml"
-      title={site.title}
-      href={new URL(rssHref, Astro.site)}
-    />
-
-    <!-- Filled at runtime by theme.ts to match the current background colour -->
-    <meta name="theme-color" content="" />
-
-    <!-- Extra head content injected by child layouts (e.g. JSON-LD, article meta) -->
-    <slot name="head" />
+    <HeadSEO
+      title={title}
+      description={description}
+      ogImage={ogImage}
+      canonicalURL={canonicalURL}
+      ogType={ogType}
+      titleI18n={titleI18n}
+      descriptionI18n={descriptionI18n}
+      robots={robots}
+    >
+      <slot name="head" />
+    </HeadSEO>
 
     {
       site.googleVerification && (
