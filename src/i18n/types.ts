@@ -170,6 +170,11 @@ export type Messages = {
       featured: string;
       recentPosts: string;
       allPosts: string;
+      redactGuides: {
+        title: string;
+        subtitle: string;
+        viewAll: string;
+      };
       toolQuick: {
         ariaLabel: string;
         redact: string;

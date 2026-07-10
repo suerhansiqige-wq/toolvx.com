@@ -12,7 +12,7 @@ import {
   type LocaleCode,
 } from "@/i18n/messages";
 
-export type LocaleBundle = typeof en;
+export type LocaleBundle = Partial<typeof en>;
 
 /** Locales with dedicated client-side translation bundles. */
 export const localeBundles: Partial<Record<LocaleCode, LocaleBundle>> = {

@@ -3,14 +3,12 @@ import { getRelativeLocaleUrl } from "astro:i18n";
 import { getSortedRenderablePosts } from "@/utils/getRenderablePosts";
 import { getPostUrl } from "@/utils/getPostPaths";
 import { REDACT_GUIDE_TAG } from "@/constants/redactGuides";
-import { catalogs, type LocaleCode } from "@/i18n/messages";
 
 type Props = {
   locale?: string;
 };
 
 const { locale = "en" } = Astro.props;
-const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
 
 const guides = (await getSortedRenderablePosts())
   .filter(post => post.data.tags.includes(REDACT_GUIDE_TAG))
