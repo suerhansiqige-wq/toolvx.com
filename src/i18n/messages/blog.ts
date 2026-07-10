@@ -27,6 +27,12 @@ export const blogEn: Messages["blog"] = {
     featured: "Featured",
     recentPosts: "Recent Posts",
     allPosts: "All Posts",
+    redactGuides: {
+      title: "PDF & Image Redaction Guides",
+      subtitle:
+        "Privacy-first tutorials for browser-local redaction — no uploads, no cloud processing.",
+      viewAll: "View all guides →",
+    },
     toolQuick: {
       ariaLabel: "Quick tool access",
       redact: "Redaction Tool",
@@ -141,6 +147,11 @@ export const blogZh: Messages["blog"] = {
     featured: "精选",
     recentPosts: "最新文章",
     allPosts: "全部文章",
+    redactGuides: {
+      title: "图片与 PDF 脱敏指南",
+      subtitle: "隐私优先的浏览器本地脱敏教程 — 不上传、不经云端处理。",
+      viewAll: "查看全部指南 →",
+    },
     toolQuick: {
       ariaLabel: "工具快速入口",
       redact: "脱敏工具",

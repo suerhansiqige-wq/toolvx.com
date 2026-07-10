@@ -1,0 +1,148 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import { getSortedRenderablePosts } from "@/utils/getRenderablePosts";
+import { getPostUrl } from "@/utils/getPostPaths";
+import { REDACT_GUIDE_TAG } from "@/constants/redactGuides";
+import { catalogs, type LocaleCode } from "@/i18n/messages";
+
+type Props = {
+  locale?: string;
+};
+
+const { locale = "en" } = Astro.props;
+const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
+
+const guides = (await getSortedRenderablePosts())
+  .filter(post => post.data.tags.includes(REDACT_GUIDE_TAG))
+  .sort(
+    (a, b) => a.data.pubDatetime.getTime() - b.data.pubDatetime.getTime()
+  );
+
+if (!guides.length) return null;
+
+const tagHref = getRelativeLocaleUrl(locale, `tags/${REDACT_GUIDE_TAG}`);
+---
+
+<section id="redact-guides" class="home-redact-guides mb-6 sm:mb-8">
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h2
+        class="text-foreground text-xl font-bold tracking-tight sm:text-2xl"
+        data-i18n="blog.home.redactGuides.title"
+      >
+        PDF &amp; Image Redaction Guides
+      </h2>
+      <p
+        class="text-muted-foreground mt-1 text-sm sm:text-base"
+        data-i18n="blog.home.redactGuides.subtitle"
+      >
+        Privacy-first tutorials for browser-local redaction — no uploads, no cloud processing.
+      </p>
+    </div>
+    <a
+      href={tagHref}
+      class="text-accent text-sm font-semibold hover:underline"
+      data-i18n="blog.home.redactGuides.viewAll"
+    >
+      View all guides →
+    </a>
+  </div>
+
+  <ul class="home-redact-guides__grid list-none p-0">
+    {
+      guides.map(post => {
+        const { title, description, i18nKey } = post.data;
+        const titleKey = i18nKey ? `posts.redact.${i18nKey}.title` : undefined;
+        const descKey = i18nKey ? `posts.redact.${i18nKey}.description` : undefined;
+        return (
+          <li>
+            <a
+              href={getPostUrl(post.id, post.filePath, locale)}
+              class="home-redact-guide-card interactive"
+            >
+              <h3
+                class="home-redact-guide-card__title"
+                {...(titleKey ? { "data-i18n": titleKey } : {})}
+              >
+                {title}
+              </h3>
+              <p
+                class="home-redact-guide-card__desc"
+                {...(descKey ? { "data-i18n": descKey } : {})}
+              >
+                {description}
+              </p>
+            </a>
+          </li>
+        );
+      })
+    }
+  </ul>
+</section>
+
+<style>
+  .home-redact-guides__grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .home-redact-guide-card {
+    display: block;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
+    background: color-mix(in oklab, var(--card) 94%, var(--muted) 6%);
+    padding: 0.85rem 1rem;
+    text-decoration: none;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  .home-redact-guide-card:hover,
+  .home-redact-guide-card:focus-visible {
+    border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
+    box-shadow: 0 6px 18px color-mix(in oklab, var(--accent) 10%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .home-redact-guide-card__title {
+    color: var(--foreground);
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .home-redact-guide-card__desc {
+    color: var(--muted-foreground);
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  @media (min-width: 640px) {
+    .home-redact-guides__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    .home-redact-guide-card__title {
+      font-size: 0.95rem;
+    }
+
+    .home-redact-guide-card__desc {
+      font-size: 0.8rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .home-redact-guides__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+</style>

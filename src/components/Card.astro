@@ -10,7 +10,9 @@ type Props = {
 
 const { variant: Heading = "h2", id, data, filePath } = Astro.props;
 
-const { title, description, ...props } = data;
+const { title, description, i18nKey, ...props } = data;
+const titleI18n = i18nKey ? `posts.redact.${i18nKey}.title` : undefined;
+const descI18n = i18nKey ? `posts.redact.${i18nKey}.description` : undefined;
 ---
 
 <li class="list-none">
@@ -24,13 +26,17 @@ const { title, description, ...props } = data;
       <Heading
         transition:name={toTransitionName(title)}
         class="text-foreground text-lg leading-snug font-semibold transition-all duration-300 ease-out group-hover:bg-gradient-to-r group-hover:from-accent group-hover:to-accent/60 group-hover:bg-clip-text group-hover:text-transparent sm:text-xl"
+        {...(titleI18n ? { "data-i18n": titleI18n } : {})}
       >
         {title}
       </Heading>
       <Datetime {...props} />
       {
         description && (
-          <p class="text-muted-foreground line-clamp-3 flex-1 text-sm leading-relaxed sm:text-base">
+          <p
+            class="text-muted-foreground line-clamp-3 flex-1 text-sm leading-relaxed sm:text-base"
+            {...(descI18n ? { "data-i18n": descI18n } : {})}
+          >
             {description}
           </p>
         )

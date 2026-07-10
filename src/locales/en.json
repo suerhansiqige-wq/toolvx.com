@@ -1,1 +1,47 @@
-{}
+{
+  "blog": {
+    "home": {
+      "redactGuides": {
+        "title": "PDF & Image Redaction Guides",
+        "subtitle": "Privacy-first tutorials for browser-local redaction — no uploads, no cloud processing.",
+        "viewAll": "View all guides →"
+      }
+    }
+  },
+  "posts": {
+    "redact": {
+      "fakeRedaction": {
+        "title": "The Danger of \"Fake\" Redaction: Why Highlighting Is Not Enough",
+        "description": "Learn why superficial PDF edits fail compliance reviews and how true browser-local redaction permanently destroys sensitive pixels."
+      },
+      "imageGuide": {
+        "title": "Complete Browser Image Redaction Guide: JPG, PNG, GIF & WebP",
+        "description": "Step-by-step instructions to blur, mosaic, or mask photos locally without uploading files to any server."
+      },
+      "localVsCloud": {
+        "title": "Local vs. Cloud Redaction: A Privacy Analysis for Sensitive Documents",
+        "description": "Compare on-device redaction with cloud-based tools and understand why files should never leave your browser."
+      },
+      "compliance": {
+        "title": "GDPR, HIPAA & CCPA: Choosing Compliant Browser Redaction Tools",
+        "description": "How local processing supports data-minimization principles and what to document before sharing redacted files."
+      },
+      "multiPagePdf": {
+        "title": "Black Out Multi-Page PDFs Without Adobe Acrobat",
+        "description": "Permanently mask confidential paragraphs across every page using a free, 100% browser-based redaction workflow."
+      },
+      "freelancerSecurity": {
+        "title": "Freelancer Security: Redacting Invoices, Contracts & Client Data",
+        "description": "Protect payment details and signatures before portfolio uploads with solid-fill, blur, and mosaic techniques."
+      },
+      "faceIdAnonymization": {
+        "title": "Image Anonymization: Blurring Faces, IDs & License Plates in the Browser",
+        "description": "Anonymize people and credentials in screenshots and photos while keeping processing entirely on your device."
+      },
+      "redactionFaq": {
+        "title": "PDF Redaction FAQ: Data Recovery Myths & Security Questions Answered",
+        "description": "Definitive answers about whether redacted text can be recovered, how local tools work, and what \"permanent\" really means."
+      }
+    }
+  }
+}

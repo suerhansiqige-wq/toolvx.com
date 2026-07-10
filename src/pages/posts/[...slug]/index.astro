@@ -68,7 +68,10 @@ const {
   timezone,
   tags,
   hideEditPost,
+  i18nKey,
 } = post.data;
+
+const titleI18n = i18nKey ? `posts.redact.${i18nKey}.title` : undefined;
 
 const { Content } = await render(post);
 
@@ -113,6 +116,7 @@ const ogImage = ogImageUrl
     <h1
       style={{ viewTransitionName: toTransitionName(title) }}
       class="text-accent inline-block text-2xl font-bold sm:text-3xl"
+      {...(titleI18n ? { "data-i18n": titleI18n } : {})}
     >
       {title}
     </h1>

@@ -1,1 +1,47 @@
-{}
+{
+  "blog": {
+    "home": {
+      "redactGuides": {
+        "title": "图片与 PDF 脱敏指南",
+        "subtitle": "隐私优先的浏览器本地脱敏教程 — 不上传、不经云端处理。",
+        "viewAll": "查看全部指南 →"
+      }
+    }
+  },
+  "posts": {
+    "redact": {
+      "fakeRedaction": {
+        "title": "「假脱敏」的危险：为什么高亮遮盖不等于真正脱敏",
+        "description": "了解为什么表面修改无法通过合规审查，以及浏览器本地脱敏如何永久销毁敏感像素。"
+      },
+      "imageGuide": {
+        "title": "浏览器图片脱敏完整指南：JPG、PNG、GIF 与 WebP",
+        "description": "逐步教你如何在本地模糊、马赛克或涂黑照片，无需将文件上传到任何服务器。"
+      },
+      "localVsCloud": {
+        "title": "本地脱敏 vs 云端脱敏：敏感文档隐私分析",
+        "description": "对比设备端与云端工具，理解为什么文件不应离开你的浏览器。"
+      },
+      "compliance": {
+        "title": "GDPR、HIPAA 与 CCPA：如何选择合规的浏览器脱敏工具",
+        "description": "本地处理如何支持数据最小化原则，以及分享脱敏文件前需要记录什么。"
+      },
+      "multiPagePdf": {
+        "title": "无需 Adobe Acrobat 涂黑多页 PDF",
+        "description": "用免费的纯浏览器工作流，在每一页永久遮盖机密段落。"
+      },
+      "freelancerSecurity": {
+        "title": "自由职业者安全：发票、合同与客户数据脱敏",
+        "description": "在作品集上传前，用纯色遮盖、模糊和马赛克保护付款信息与签名。"
+      },
+      "faceIdAnonymization": {
+        "title": "图像匿名化：在浏览器中模糊人脸、证件与车牌",
+        "description": "在截图和照片中匿名化人物与证件信息，处理全程留在你的设备上。"
+      },
+      "redactionFaq": {
+        "title": "PDF 脱敏常见问题：数据恢复误区与安全问答",
+        "description": "关于脱敏文字能否恢复、本地工具如何工作以及「永久性」真正含义的权威解答。"
+      }
+    }
+  }
+}

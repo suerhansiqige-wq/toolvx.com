@@ -10,6 +10,7 @@ import Socials from "@/components/Socials.astro";
 import Card from "@/components/Card.astro";
 import LinkButton from "@/components/LinkButton.astro";
 import HomeToolTags from "@/components/HomeToolTags.astro";
+import HomeRedactGuides from "@/components/HomeRedactGuides.astro";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
@@ -33,6 +34,7 @@ const homePath = getRelativeLocaleUrl(locale, "");
     class="app-layout pb-16 pt-6 sm:pb-24 sm:pt-10"
   >
     <HomeToolTags locale={locale} />
+    <HomeRedactGuides locale={locale} />
 
     <section
       id="hero"
