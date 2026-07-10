@@ -408,3 +408,22 @@
     max-height: calc(100dvh - 4.5rem);
   }
 }
+
+/* --- Homepage hero title (gradient text with solid-color fallback) --- */
+.hero-title {
+  color: var(--accent);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .hero-title {
+    background-image: linear-gradient(
+      to right,
+      var(--accent),
+      color-mix(in oklab, var(--accent) 60%, transparent)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+}
