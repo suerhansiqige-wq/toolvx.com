@@ -29,6 +29,7 @@ export async function getStaticPaths() {
               id: sortedPosts[index - 1].id,
               title: sortedPosts[index - 1].data.title,
               filePath: sortedPosts[index - 1].filePath,
+              i18nKey: sortedPosts[index - 1].data.i18nKey,
             }
           : null,
       nextPost:
@@ -37,6 +38,7 @@ export async function getStaticPaths() {
               id: sortedPosts[index + 1].id,
               title: sortedPosts[index + 1].data.title,
               filePath: sortedPosts[index + 1].filePath,
+              i18nKey: sortedPosts[index + 1].data.i18nKey,
             }
           : null,
     },
@@ -47,6 +49,7 @@ type AdjacentPost = {
   id: string;
   title: string;
   filePath: string | undefined;
+  i18nKey?: string;
 } | null;
 
 type Props = {

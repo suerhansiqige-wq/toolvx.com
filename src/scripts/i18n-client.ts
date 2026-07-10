@@ -359,6 +359,30 @@ async function loadRedactZhBlocks(i18nKey: string): Promise<Record<string, strin
   }
 }
 
+/** Minimal inline markdown → HTML for redact post body blocks. */
+function redactBlockToHtml(text: string): string {
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  return html;
+}
+
+function applyRedactBlockText(el: HTMLElement, zh: string): void {
+  const needsHtml =
+    /\[.+\]\(.+\)|\*\*.+\*\*|`.+`/.test(zh) ||
+    Boolean(el.querySelector("a, strong, em, code"));
+  if (needsHtml) {
+    el.innerHTML = redactBlockToHtml(zh);
+  } else {
+    el.textContent = zh;
+  }
+}
+
 async function applyRedactPostBodyI18n(
   root: ParentNode,
   locale: LocaleCode
@@ -382,7 +406,7 @@ async function applyRedactPostBodyI18n(
       const blocks = await loadRedactZhBlocks(i18nKey);
       for (const { el, blockKey } of items) {
         const zh = blocks[blockKey];
-        if (zh) el.textContent = zh;
+        if (zh) applyRedactBlockText(el, zh);
       }
     })
   );
