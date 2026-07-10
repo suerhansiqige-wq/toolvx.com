@@ -55,6 +55,9 @@ const LIMITED_EXPORT_SCALE_STEPS = LEGACY_PDF
   : [1, 0.96, 0.92, 0.88, 0.82, 0.75, 0.65, 0.55, 0.45];
 const LIMITED_BINARY_SEARCH_ITERATIONS = LEGACY_PDF ? 7 : 10;
 const EXPORT_OPERATION_TIMEOUT_MS = LEGACY_PDF ? 90_000 : 150_000;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 4;
+const ZOOM_STEP = 0.25;
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -81,6 +84,10 @@ let blurRadius = DEFAULT_BLUR;
 let selectionStart: Point | null = null;
 let selectionEnd: Point | null = null;
 let isDragging = false;
+
+let viewZoom = 1;
+let baseCssWidth = 0;
+let baseCssHeight = 0;
 
 let originalImageSnapshot: ImageData | null = null;
 
@@ -495,6 +502,69 @@ function canvasToThumbUrl(canvas: HTMLCanvasElement, quality = THUMB_JPEG_QUALIT
   return "";
 }
 
+function updateZoomUi() {
+  const label = $("redact-zoom-level");
+  if (label) label.textContent = `${Math.round(viewZoom * 100)}%`;
+
+  const outBtn = $("redact-zoom-out") as HTMLButtonElement | null;
+  const inBtn = $("redact-zoom-in") as HTMLButtonElement | null;
+  const resetBtn = $("redact-zoom-reset") as HTMLButtonElement | null;
+  if (outBtn) outBtn.disabled = viewZoom <= ZOOM_MIN + 0.001;
+  if (inBtn) inBtn.disabled = viewZoom >= ZOOM_MAX - 0.001;
+  if (resetBtn) resetBtn.disabled = Math.abs(viewZoom - 1) < 0.001;
+
+  $("redact-canvas-wrap")?.classList.toggle("redact-canvas-wrap--zoomed", viewZoom > 1.001);
+}
+
+function applyViewZoom() {
+  const inner = $("redact-canvas-inner");
+  if (!inner || !baseCssWidth || !canvas?.width) return;
+
+  const cssW = Math.round(baseCssWidth * viewZoom);
+  const cssH = Math.round(baseCssHeight * viewZoom);
+  inner.style.width = `${cssW}px`;
+  inner.style.height = `${cssH}px`;
+  canvas.style.width = `${cssW}px`;
+  canvas.style.height = `${cssH}px`;
+  syncOverlaySize();
+  updateZoomUi();
+}
+
+function setViewZoom(next: number) {
+  const snapped = Math.round(next / ZOOM_STEP) * ZOOM_STEP;
+  viewZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, snapped));
+  applyViewZoom();
+}
+
+function zoomIn() {
+  setViewZoom(viewZoom + ZOOM_STEP);
+}
+
+function zoomOut() {
+  setViewZoom(viewZoom - ZOOM_STEP);
+}
+
+function zoomReset() {
+  const stage = $("redact-canvas-stage");
+  setViewZoom(1);
+  if (stage) {
+    stage.scrollLeft = 0;
+    stage.scrollTop = 0;
+  }
+}
+
+function resetViewZoom() {
+  viewZoom = 1;
+  baseCssWidth = 0;
+  baseCssHeight = 0;
+  updateZoomUi();
+  const stage = $("redact-canvas-stage");
+  if (stage) {
+    stage.scrollLeft = 0;
+    stage.scrollTop = 0;
+  }
+}
+
 function fitCanvasToContainer() {
   const wrap = $("redact-canvas-wrap");
   const stage = $("redact-canvas-stage");
@@ -533,11 +603,9 @@ function fitCanvasToContainer() {
     stage.style.height = `${cssH}px`;
   }
 
-  inner.style.width = `${cssW}px`;
-  inner.style.height = `${cssH}px`;
-  canvas.style.width = `${cssW}px`;
-  canvas.style.height = `${cssH}px`;
-  syncOverlaySize();
+  baseCssWidth = cssW;
+  baseCssHeight = cssH;
+  applyViewZoom();
 }
 
 function loadPageToMain(pageNum: number) {
@@ -559,6 +627,10 @@ function saveMainToCurrentPage() {
 }
 
 async function goToRedactPage(pageNum: number) {
+  const stage = $("redact-canvas-stage");
+  const scrollLeft = stage?.scrollLeft ?? 0;
+  const scrollTop = stage?.scrollTop ?? 0;
+
   const store = pageStores[pageNum - 1];
   if (
     LEGACY_PDF &&
@@ -575,6 +647,13 @@ async function goToRedactPage(pageNum: number) {
   }
   saveMainToCurrentPage();
   loadPageToMain(pageNum);
+
+  if (stage && viewZoom > 1.001) {
+    requestAnimationFrame(() => {
+      stage.scrollLeft = scrollLeft;
+      stage.scrollTop = scrollTop;
+    });
+  }
 }
 
 async function switchPage(delta: number) {
@@ -811,6 +890,7 @@ function resetRedactState() {
   originalImageSnapshot = null;
   thumbViewStart = 0;
   pdfPreviewDegraded = false;
+  resetViewZoom();
 }
 
 async function loadPdfFile(file: File) {
@@ -1551,6 +1631,26 @@ function bindGlobalRedactListeners() {
       e.preventDefault();
       redo();
     }
+    if (e.key === "+" || e.key === "=") {
+      e.preventDefault();
+      zoomIn();
+    }
+    if (e.key === "-") {
+      e.preventDefault();
+      zoomOut();
+    }
+    if (e.key === "0") {
+      e.preventDefault();
+      zoomReset();
+    }
+    if (isPdf && e.key === "ArrowLeft" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      void switchPage(-1);
+    }
+    if (isPdf && e.key === "ArrowRight" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      void switchPage(1);
+    }
   });
 
   window.addEventListener("resize", () => {
@@ -1601,6 +1701,9 @@ function initRedactTool() {
   bindRedactButton("redact-clear-color", clearFillColor);
   bindRedactButton("redact-prev-page", () => void switchPage(-1));
   bindRedactButton("redact-next-page", () => void switchPage(1));
+  bindRedactButton("redact-zoom-in", zoomIn);
+  bindRedactButton("redact-zoom-out", zoomOut);
+  bindRedactButton("redact-zoom-reset", zoomReset);
   bindRedactButton("redact-thumb-prev", () => {
     thumbViewStart = Math.max(0, thumbViewStart - THUMBS_PER_VIEW);
     renderThumbWindow();
@@ -1660,6 +1763,7 @@ function initRedactTool() {
   if (pageStores.length === 0) {
     showWorkspace(false);
   }
+  updateZoomUi();
   void probeLocalPdfAssets();
 }
 
