@@ -183,6 +183,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_file_error: "Could not open this file. Please try another format.",
     redact_export_error_size:
       "Export could not stay under your size limit. Try a larger limit or fewer pages.",
+    redact_export_error_timeout:
+      "Export is taking too long. Try a larger size limit or use uncompressed export.",
     redact_export_error_generic: "Export failed. Please try again.",
     redact_preview_badge: "Standalone preview",
     redact_preview_title: "Redact Image & PDF Online",
@@ -392,6 +394,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "在浏览器中对图片和 PDF 敏感区域脱敏。框选即可马赛克、模糊或纯色遮盖，文件不会上传到服务器。",
     redact_file_error: "无法打开此文件，请尝试其他格式。",
     redact_export_error_size: "导出无法控制在您设定的大小以内，请增大上限或减少页数。",
+    redact_export_error_timeout: "导出耗时过长，请增大大小限制或留空以无损导出。",
     redact_export_error_generic: "导出失败，请重试。",
     redact_preview_badge: "独立预览页",
     redact_preview_title: "在线图片与 PDF 脱敏",
@@ -610,6 +613,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_file_error: "No se pudo abrir este archivo. Pruebe otro formato.",
     redact_export_error_size:
       "La exportación no pudo mantenerse bajo su límite. Pruebe con un límite mayor o menos páginas.",
+    redact_export_error_timeout:
+      "La exportación tarda demasiado. Pruebe con un límite mayor o sin límite de tamaño.",
     redact_export_error_generic: "Error al exportar. Inténtelo de nuevo.",
     redact_preview_badge: "Vista previa independiente",
     redact_preview_title: "Redactar imagen y PDF en línea",
@@ -818,6 +823,8 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_file_error: "このファイルを開けませんでした。別の形式をお試しください。",
     redact_export_error_size:
       "エクスポートを指定サイズ以内に収められませんでした。上限を大きくするか、ページ数を減らしてください。",
+    redact_export_error_timeout:
+      "エクスポートに時間がかかりすぎています。サイズ上限を大きくするか、空欄で無圧縮出力をお試しください。",
     redact_export_error_generic: "エクスポートに失敗しました。もう一度お試しください。",
     redact_preview_badge: "スタンドアロンプレビュー",
     redact_preview_title: "オンライン画像・PDF 墨消し",

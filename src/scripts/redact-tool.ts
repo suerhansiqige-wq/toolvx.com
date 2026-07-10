@@ -50,6 +50,11 @@ const THUMB_JPEG_QUALITY = legacyAwareJpegQuality(0.55);
 const EXPORT_JPEG_QUALITY = legacyAwareExportJpegQuality(0.96);
 const EXPORT_JPEG_QUALITY_MAX = 0.98;
 const EXPORT_SCALE_STEPS = [1, 0.96, 0.92, 0.88, 0.82, 0.75, 0.65, 0.55, 0.45, 0.35, 0.28];
+const LIMITED_EXPORT_SCALE_STEPS = LEGACY_PDF
+  ? [1, 0.75, 0.55, 0.4, 0.28]
+  : [1, 0.96, 0.92, 0.88, 0.82, 0.75, 0.65, 0.55, 0.45];
+const LIMITED_BINARY_SEARCH_ITERATIONS = LEGACY_PDF ? 7 : 10;
+const EXPORT_OPERATION_TIMEOUT_MS = LEGACY_PDF ? 90_000 : 150_000;
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -1030,6 +1035,82 @@ function mimeToExt(mime: string): string {
   return "png";
 }
 
+function yieldToMain(): Promise<void> {
+  return new Promise(resolve => window.setTimeout(resolve, 0));
+}
+
+function withExportTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error("REDACT_EXPORT_TIMEOUT"));
+    }, EXPORT_OPERATION_TIMEOUT_MS);
+    promise.then(
+      value => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      err => {
+        window.clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+async function binarySearchJpegUnderLimit(
+  source: HTMLCanvasElement,
+  maxBytes: number,
+  iterations: number
+): Promise<Blob | null> {
+  const minBlob = await canvasToBlob(source, "image/jpeg", MIN_JPEG_QUALITY);
+  if (minBlob.size > maxBytes) return null;
+
+  let low = MIN_JPEG_QUALITY;
+  let high = EXPORT_JPEG_QUALITY_MAX;
+  let best: Blob = minBlob;
+
+  for (let i = 0; i < iterations; i++) {
+    const quality = (low + high) / 2;
+    const blob = await canvasToBlob(source, "image/jpeg", quality);
+    await yieldToMain();
+    if (blob.size <= maxBytes) {
+      best = blob;
+      low = quality;
+    } else {
+      high = quality;
+    }
+  }
+
+  return best;
+}
+
+async function binarySearchPdfUnderLimit(
+  maxBytes: number,
+  scale: number,
+  iterations: number
+): Promise<Uint8Array | null> {
+  const minBytes = await buildPdfBytes(MIN_JPEG_QUALITY, scale);
+  if (minBytes.byteLength > maxBytes) return null;
+
+  let low = MIN_JPEG_QUALITY;
+  let high = EXPORT_JPEG_QUALITY_MAX;
+  let best: Uint8Array = minBytes;
+
+  for (let i = 0; i < iterations; i++) {
+    const quality = (low + high) / 2;
+    const bytes = await buildPdfBytes(quality, scale);
+    await yieldToMain();
+    if (bytes.byteLength <= maxBytes) {
+      best = bytes;
+      low = quality;
+    } else {
+      high = quality;
+    }
+  }
+
+  return best;
+}
+
 function nextExportFilename(baseName: string, ext: string): string {
   const storageKey = "redact-export:" + baseName;
   const serial = Number(sessionStorage.getItem(storageKey) || "0") + 1;
@@ -1072,21 +1153,18 @@ async function encodeCanvasToBudget(
   source: HTMLCanvasElement,
   maxBytes: number
 ): Promise<Uint8Array> {
-  for (const scale of EXPORT_SCALE_STEPS) {
+  for (const scale of LIMITED_EXPORT_SCALE_STEPS) {
     const canvasSource = scale === 1 ? source : scaledCanvas(source, scale);
-    const blob = await binarySearchBlob(canvasSource, "image/jpeg", maxBytes);
+    const blob = await binarySearchJpegUnderLimit(
+      canvasSource,
+      maxBytes,
+      LIMITED_BINARY_SEARCH_ITERATIONS
+    );
     if (blob) return new Uint8Array(await blob.arrayBuffer());
   }
 
-  let scale = EXPORT_SCALE_STEPS[EXPORT_SCALE_STEPS.length - 1]!;
-  while (scale >= 0.12) {
-    const canvasSource = scaledCanvas(source, scale);
-    const blob = await canvasToBlob(canvasSource, "image/jpeg", MIN_JPEG_QUALITY);
-    if (blob.size <= maxBytes) return new Uint8Array(await blob.arrayBuffer());
-    scale *= 0.82;
-  }
-
-  const tiny = scaledCanvas(source, 0.12);
+  const lastScale = LIMITED_EXPORT_SCALE_STEPS[LIMITED_EXPORT_SCALE_STEPS.length - 1]!;
+  const tiny = scaledCanvas(source, lastScale);
   return canvasToJpegBytes(tiny, MIN_JPEG_QUALITY);
 }
 
@@ -1095,46 +1173,31 @@ async function encodeImageUnderLimit(
   preferredMime: string,
   maxBytes: number
 ): Promise<Blob> {
-  for (const scale of EXPORT_SCALE_STEPS) {
+  const scaleSteps = LIMITED_EXPORT_SCALE_STEPS;
+  const iterations = LIMITED_BINARY_SEARCH_ITERATIONS;
+
+  for (const scale of scaleSteps) {
     const canvasSource = scale === 1 ? source : scaledCanvas(source, scale);
 
     if (
-      scale === EXPORT_SCALE_STEPS[0] &&
+      !LEGACY_PDF &&
+      scale === scaleSteps[0] &&
       (preferredMime === "image/png" || preferredMime === "image/gif")
     ) {
-      const lossless = await binarySearchBlob(canvasSource, preferredMime, maxBytes);
-      if (lossless) return lossless;
+      const lossless = await canvasToBlob(canvasSource, preferredMime);
+      if (lossless.size <= maxBytes) return lossless;
     }
 
-    if (preferredMime === "image/webp") {
+    if (!LEGACY_PDF && preferredMime === "image/webp" && scale === scaleSteps[0]) {
       const webp = await binarySearchBlob(canvasSource, "image/webp", maxBytes);
       if (webp) return webp;
     }
 
-    const jpeg = await binarySearchBlob(canvasSource, "image/jpeg", maxBytes);
+    const jpeg = await binarySearchJpegUnderLimit(canvasSource, maxBytes, iterations);
     if (jpeg) return jpeg;
   }
 
-  let scale = EXPORT_SCALE_STEPS[EXPORT_SCALE_STEPS.length - 1]!;
-  while (scale >= 0.12) {
-    const canvasSource = scaledCanvas(source, scale);
-    const jpeg = await binarySearchBlob(canvasSource, "image/jpeg", maxBytes);
-    if (jpeg) return jpeg;
-    scale *= 0.82;
-  }
-
-  let tinyScale = 0.12;
-  while (tinyScale >= 0.05) {
-    const blob = await canvasToBlob(
-      scaledCanvas(source, tinyScale),
-      "image/jpeg",
-      MIN_JPEG_QUALITY
-    );
-    if (blob.size <= maxBytes) return blob;
-    tinyScale *= 0.75;
-  }
-
-  return canvasToBlob(scaledCanvas(source, 0.05), "image/jpeg", MIN_JPEG_QUALITY);
+  throw new Error("REDACT_EXPORT_SIZE");
 }
 
 async function exportImageFullQuality(
@@ -1240,47 +1303,30 @@ async function buildPdfWithPerPageBudget(
 }
 
 async function exportPdfUnderLimit(maxBytes: number): Promise<Uint8Array> {
-  for (const scale of EXPORT_SCALE_STEPS) {
-    let low = MIN_JPEG_QUALITY;
-    let high = EXPORT_JPEG_QUALITY_MAX;
-    let best: Uint8Array | null = null;
+  const scaleSteps = LIMITED_EXPORT_SCALE_STEPS;
+  const iterations = LIMITED_BINARY_SEARCH_ITERATIONS;
 
-    for (let i = 0; i < 14; i++) {
-      const quality = (low + high) / 2;
-      const bytes = await buildPdfBytes(quality, scale);
-      if (bytes.byteLength <= maxBytes) {
-        best = bytes;
-        low = quality;
-      } else {
-        high = quality;
-      }
-    }
-
-    if (best) return best;
-
-    const atMinQuality = await buildPdfBytes(MIN_JPEG_QUALITY, scale);
-    if (atMinQuality.byteLength <= maxBytes) return atMinQuality;
+  for (const scale of scaleSteps) {
+    const result = await binarySearchPdfUnderLimit(maxBytes, scale, iterations);
+    if (result) return result;
   }
 
   const pageCount = Math.max(1, pageStores.length);
-  let perPageBudget = Math.floor((maxBytes * 0.88) / pageCount);
+  let perPageBudget = Math.floor((maxBytes * 0.82) / pageCount);
 
-  for (let attempt = 0; attempt < 12; attempt++) {
-    for (const scale of EXPORT_SCALE_STEPS.slice(3)) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    for (const scale of scaleSteps.slice(-3)) {
       const bytes = await buildPdfWithPerPageBudget(perPageBudget, scale);
       if (bytes.byteLength <= maxBytes) return bytes;
+      await yieldToMain();
     }
-    perPageBudget = Math.max(1024, Math.floor(perPageBudget * 0.78));
+    perPageBudget = Math.max(256, Math.floor(perPageBudget * 0.72));
   }
 
-  let scale = 0.28;
-  let budget = 1024;
-  let bytes = await buildPdfWithPerPageBudget(budget, scale);
-  while (bytes.byteLength > maxBytes && budget > 256) {
-    budget = Math.max(256, Math.floor(budget * 0.7));
-    bytes = await buildPdfWithPerPageBudget(budget, scale);
-  }
-  return bytes;
+  const lastScale = scaleSteps[scaleSteps.length - 1]!;
+  const lastResort = await buildPdfBytes(MIN_JPEG_QUALITY, lastScale);
+  if (lastResort.byteLength <= maxBytes) return lastResort;
+  throw new Error("REDACT_EXPORT_SIZE");
 }
 
 function applyRedactDocumentMeta() {
@@ -1294,6 +1340,10 @@ function reportExportError(err: unknown) {
   console.error(err);
   if (err instanceof Error && err.message === "REDACT_EXPORT_SIZE") {
     showAppAlert(t("redact_export_error_size"));
+    return;
+  }
+  if (err instanceof Error && err.message === "REDACT_EXPORT_TIMEOUT") {
+    showAppAlert(t("redact_export_error_timeout"));
     return;
   }
   showAppAlert(t("redact_export_error_generic"));
@@ -1547,7 +1597,7 @@ function initRedactTool() {
       setRedactExportLoading(true);
       await paintFrame();
       try {
-        await exportFile();
+        await withExportTimeout(exportFile());
       } catch (err) {
         reportExportError(err);
       } finally {

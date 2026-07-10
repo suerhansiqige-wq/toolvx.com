@@ -361,8 +361,14 @@ export async function canvasToJpegBlob(
   canvas: HTMLCanvasElement,
   quality: number
 ): Promise<Blob> {
-  const blob = await tryCanvasToBlob(canvas, quality, legacyEnv() ? 45_000 : 90_000);
+  const blob = await tryCanvasToBlob(canvas, quality, legacyEnv() ? 12_000 : 30_000);
   if (blob) return blob;
+
+  const pixels = canvas.width * canvas.height;
+  const maxDataUrlPixels = legacyEnv() ? 6_000_000 : 16_000_000;
+  if (pixels > maxDataUrlPixels) {
+    throw new Error("JPEG encode failed");
+  }
 
   try {
     const dataUrl = canvas.toDataURL("image/jpeg", quality);
