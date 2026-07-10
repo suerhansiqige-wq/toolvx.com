@@ -58,6 +58,7 @@ const FLAT_ALIASES: Record<string, string> = {
   "common.compressSizeLimit": "compress_size_limit",
   "common.compressSizeUnit": "compress_size_unit",
   "common.compressSizeHint": "compress_size_hint",
+  "common.compressSizePlaceholder": "compress_size_placeholder",
   "common.compressDefault": "compress_default",
   "common.compressToLimit": "compress_to_limit",
   "common.compressLimitRequired": "compress_limit_required",

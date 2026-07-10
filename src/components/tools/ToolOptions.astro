@@ -26,8 +26,9 @@ const labelClass = "text-foreground mb-1.5 block text-sm font-medium";
             min="0.1"
             step="0.1"
             inputmode="decimal"
-            placeholder="2"
-            class={inputClass + " min-w-0 flex-1"}
+            placeholder="Enter output file size"
+            class={inputClass + " placeholder:text-muted-foreground min-w-0 flex-1"}
+            data-i18n-placeholder="common.compressSizePlaceholder"
             aria-describedby="compress-size-hint"
           />
           <span

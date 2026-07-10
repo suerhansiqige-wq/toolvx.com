@@ -97,19 +97,25 @@ async function compressToByteLimit(
   bytes: Uint8Array,
   maxBytes: number
 ): Promise<Uint8Array> {
-  let best = await rasterizePdfBytes(
-    bytes,
-    SIZE_TIER_PRESETS[0].scale,
-    SIZE_TIER_PRESETS[0].quality
-  );
+  const sourceSize = bytes.byteLength;
+  if (maxBytes >= sourceSize) {
+    return compressDefault(bytes);
+  }
+
+  let best: Uint8Array | null = null;
+
+  const consider = (candidate: Uint8Array) => {
+    if (candidate.byteLength > sourceSize) return;
+    if (!best || candidate.byteLength < best.byteLength) best = candidate;
+  };
 
   for (const preset of SIZE_TIER_PRESETS) {
     const result = await rasterizePdfBytes(bytes, preset.scale, preset.quality);
-    best = result;
+    consider(result);
     if (result.byteLength <= maxBytes) return result;
   }
 
-  return best;
+  return best ?? compressDefault(bytes);
 }
 
 /** Smart compress: never return a file larger than the source. */
