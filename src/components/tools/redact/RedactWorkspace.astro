@@ -186,7 +186,7 @@
             <span class="redact-export-size__unit" data-i18n="common.compressSizeUnit">MB</span>
           </div>
           <p id="redact-export-size-hint" class="sr-only" data-i18n="redact_export_size_hint">
-            Leave empty to match original file size; enter a max size in MB to compress on download.
+            Leave empty for uncompressed export; enter a max size in MB to compress on download.
           </p>
         </fieldset>
 
@@ -966,6 +966,21 @@
     box-shadow:
       0 10px 28px color-mix(in oklab, var(--accent) 38%, transparent),
       inset 0 1px 0 color-mix(in oklab, white 20%, transparent);
+  }
+
+  .redact-btn-export:disabled {
+    opacity: 0.88;
+    cursor: wait;
+  }
+
+  .redact-btn-export--loading svg {
+    animation: redact-export-spin 0.75s linear infinite;
+  }
+
+  @keyframes redact-export-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* —— Drop & thumb states —— */

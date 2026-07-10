@@ -60,7 +60,6 @@ let pageStores: PageStore[] = [];
 
 let originalFileName = "redacted";
 let originalMime = "image/png";
-let originalFileSize = 0;
 
 let fillColor = "#000000";
 let hasFillColor = false;
@@ -669,7 +668,6 @@ async function loadImageFile(file: File) {
   isPdf = false;
   originalFileName = file.name.replace(/\.[^.]+$/, "") || "image";
   originalMime = file.type || "image/png";
-  originalFileSize = file.size;
 
   const url = URL.createObjectURL(file);
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -805,7 +803,6 @@ async function loadPdfFile(file: File) {
   isPdf = true;
   originalFileName = file.name.replace(/\.pdf$/i, "") || "document";
   originalMime = "application/pdf";
-  originalFileSize = file.size;
 
   setRedactLoading(true);
   try {
@@ -1158,15 +1155,34 @@ function getRedactExportMaxBytes(): number | null {
   return Math.round(mb * 1024 * 1024);
 }
 
-function resolveRedactExportBudget(): { maxBytes: number | null; userLimited: boolean } {
-  const userLimit = getRedactExportMaxBytes();
-  if (userLimit !== null) {
-    return { maxBytes: userLimit, userLimited: true };
+function paintFrame(): Promise<void> {
+  return new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+let exportLabelRestore: string | null = null;
+
+function setRedactExportLoading(loading: boolean): void {
+  const btn = $("redact-export-btn") as HTMLButtonElement | null;
+  const sizeInput = $("redact-export-max-mb") as HTMLInputElement | null;
+  const label = btn?.querySelector<HTMLElement>("[data-i18n='redact_export']");
+
+  if (btn) {
+    btn.disabled = loading;
+    btn.classList.toggle("redact-btn-export--loading", loading);
+    btn.setAttribute("aria-busy", loading ? "true" : "false");
   }
-  if (originalFileSize > 0) {
-    return { maxBytes: originalFileSize, userLimited: false };
+  if (sizeInput) sizeInput.disabled = loading;
+
+  if (!label) return;
+  if (loading) {
+    if (exportLabelRestore === null) exportLabelRestore = label.textContent ?? "";
+    label.textContent = t("processing");
+    return;
   }
-  return { maxBytes: null, userLimited: false };
+  label.textContent = exportLabelRestore ?? t("redact_export");
+  exportLabelRestore = null;
 }
 
 async function buildPdfBytes(jpegQuality: number, scale = 1): Promise<Uint8Array> {
@@ -1272,14 +1288,14 @@ function reportExportError(err: unknown) {
 
 async function exportFile() {
   saveMainToCurrentPage();
-  const { maxBytes, userLimited } = resolveRedactExportBudget();
+  const maxBytes = getRedactExportMaxBytes();
 
   if (isPdf) {
     const pdfBytes =
       maxBytes !== null
         ? await exportPdfUnderLimit(maxBytes)
         : await exportPdfFullQuality();
-    if (userLimited && maxBytes !== null && byteSize(pdfBytes) > maxBytes) {
+    if (maxBytes !== null && byteSize(pdfBytes) > maxBytes) {
       throw new Error("REDACT_EXPORT_SIZE");
     }
     downloadBytes(pdfBytes, nextExportFilename(originalFileName, "pdf"), "application/pdf");
@@ -1292,7 +1308,7 @@ async function exportFile() {
     maxBytes !== null
       ? await encodeImageUnderLimit(store.canvas, preferredMime, maxBytes)
       : await exportImageFullQuality(store.canvas, preferredMime);
-  if (userLimited && maxBytes !== null && byteSize(blob) > maxBytes) {
+  if (maxBytes !== null && byteSize(blob) > maxBytes) {
     throw new Error("REDACT_EXPORT_SIZE");
   }
   const mime = blob.type || "image/jpeg";
@@ -1514,7 +1530,17 @@ function initRedactTool() {
   bindRedactButton("redact-redo", redo);
   bindRedactButton("redact-reset", resetToOriginal);
   bindRedactButton("redact-export-btn", () => {
-    void exportFile().catch(reportExportError);
+    void (async () => {
+      setRedactExportLoading(true);
+      await paintFrame();
+      try {
+        await exportFile();
+      } catch (err) {
+        reportExportError(err);
+      } finally {
+        setRedactExportLoading(false);
+      }
+    })();
   });
   bindRedactButton("redact-clear-color", clearFillColor);
   bindRedactButton("redact-prev-page", () => void switchPage(-1));

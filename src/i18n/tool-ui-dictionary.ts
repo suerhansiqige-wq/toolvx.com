@@ -166,7 +166,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_reset: "Reset to Original",
     redact_export_size_limit: "Output size limit (optional)",
     redact_export_size_hint:
-      "Leave empty to match original file size; enter a max size in MB to compress on download.",
+      "Leave empty for uncompressed export; enter a max size in MB to compress on download.",
     redact_export: "Download Redacted File",
     redact_editor_mode: "Redaction editor",
     redact_home_aria: "Upload file",
@@ -376,7 +376,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
       "在图片上拖动框选区域。马赛克与模糊即时生效；纯色遮盖使用上方所选颜色。",
     redact_reset: "恢复原始文件",
     redact_export_size_limit: "输出大小限制（可选）",
-    redact_export_size_hint: "留空则按原文件大小导出；填写 MB 上限后下载时自动压缩。",
+    redact_export_size_hint: "留空则不压缩原尺寸导出；填写 MB 上限后下载时自动压缩。",
     redact_export: "下载脱敏文件",
     redact_editor_mode: "脱敏编辑",
     redact_home_aria: "上传文件",
@@ -593,7 +593,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_reset: "Restaurar original",
     redact_export_size_limit: "Límite de tamaño de salida (opcional)",
     redact_export_size_hint:
-      "Déjelo vacío para igualar el tamaño del archivo original; indique un máximo en MB para comprimir al descargar.",
+      "Déjelo vacío para exportar sin comprimir; indique un máximo en MB para comprimir al descargar.",
     redact_export: "Descargar archivo redactado",
     redact_editor_mode: "Editor de redacción",
     redact_home_aria: "Subir archivo",
@@ -801,7 +801,7 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     redact_reset: "元のファイルに戻す",
     redact_export_size_limit: "出力サイズ上限（任意）",
     redact_export_size_hint:
-      "空欄のままなら元ファイルと同じサイズ目安で出力します。MB 上限を入力するとダウンロード時に圧縮します。",
+      "空欄のままなら非圧縮で出力します。MB 上限を入力するとダウンロード時に圧縮します。",
     redact_export: "墨消し済みファイルをダウンロード",
     redact_editor_mode: "墨消しエディター",
     redact_home_aria: "ファイルをアップロード",
