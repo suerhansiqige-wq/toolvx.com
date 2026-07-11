@@ -1,6 +1,7 @@
 ---
 title: "Terms of Service"
 description: "ToolVX Terms of Service — governing the use of our free, client-side PDF and image processing tools."
+staticPageI18n: terms
 ---
 
 **Last updated:** July 2026

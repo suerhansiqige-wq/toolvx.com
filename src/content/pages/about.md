@@ -1,6 +1,7 @@
 ---
 title: "About ToolVX"
 description: "ToolVX is a free, privacy-first, browser-based PDF and image processing workstation. All 16 tools run 100% client-side — zero data leaves your device."
+staticPageI18n: about
 ---
 
 ## Our Mission
