@@ -100,20 +100,14 @@ const size = adSizes[variant];
         className,
       ]}
     >
-      <a
-        href="/about"
-        class="block w-full"
-        title="Learn more about ToolVX"
-      >
-        <img
-          src={bannerSrc}
-          alt="ToolVX — Free browser-based PDF & image tools"
-          loading="lazy"
-          decoding="async"
-          class="ad-banner-img block w-full h-auto object-cover rounded-xl"
-          style={`min-height: ${size.height === 'auto' ? '120px' : size.height + 'px'};`}
-        />
-      </a>
+      <img
+        src={bannerSrc}
+        alt="ToolVX — Free browser-based PDF & image tools"
+        loading="lazy"
+        decoding="async"
+        class="ad-banner-img block w-full h-auto object-cover rounded-xl"
+        style={`min-height: ${size.height === 'auto' ? '120px' : size.height + 'px'};`}
+      />
     </div>
   )
 }
