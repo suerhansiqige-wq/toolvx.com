@@ -219,6 +219,19 @@ export type Messages = {
       articles: string;
       tags: string;
       xmlHint: string;
+      xmlDesc: string;
+      ofdHub: string;
+      ofdItems: {
+        ofdToPdf: string;
+        ofdMerge: string;
+        ofdToImage: string;
+        ofdToSvg: string;
+        ofdToWeb: string;
+        ofdToText: string;
+        ofdCompress: string;
+        ofdReader: string;
+        ofdToLongImage: string;
+      };
     };
     notFound: { title: string; message: string; goHome: string };
     a11y: {
