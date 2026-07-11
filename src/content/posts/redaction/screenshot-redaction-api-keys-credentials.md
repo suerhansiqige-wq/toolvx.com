@@ -1,7 +1,7 @@
 ---
 title: "Secure Screenshot Redaction: Masking API Keys and Credentials"
 description: "Developers, learn how to mask internal environment variables and private API tokens in screenshots safely via localized processing."
-pubDatetime: 2026-07-11T14:00:00Z
+pubDatetime: 2026-07-09T14:00:00Z
 author: ToolVX
 featured: false
 draft: false

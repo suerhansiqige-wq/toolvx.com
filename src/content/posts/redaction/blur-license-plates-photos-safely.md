@@ -1,7 +1,7 @@
 ---
 title: "How to Blur License Plates in Photos Safely Before Sharing Online"
 description: "A step-by-step guide to redacting car license plates inside your browser locally without compromising your dynamic vehicle data."
-pubDatetime: 2026-07-11T11:00:00Z
+pubDatetime: 2026-07-09T11:00:00Z
 author: ToolVX
 featured: false
 draft: false

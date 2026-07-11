@@ -1,7 +1,7 @@
 ---
 title: "Batch Image Redaction: Speed Up Privacy Compliance at Scale"
 description: "Discover how to safely sanitize multiple corporate image attachments simultaneously without relying on cloud processing."
-pubDatetime: 2026-07-11T18:00:00Z
+pubDatetime: 2026-07-09T18:00:00Z
 author: ToolVX
 featured: false
 draft: false

@@ -1,7 +1,7 @@
 ---
 title: "AI Image Editors vs. Local Canvas Redaction: Which is More Secure?"
 description: "A technical evaluation comparing cloud-based AI generation models with local browser canvas redaction algorithms."
-pubDatetime: 2026-07-11T16:00:00Z
+pubDatetime: 2026-07-09T16:00:00Z
 author: ToolVX
 featured: false
 draft: false

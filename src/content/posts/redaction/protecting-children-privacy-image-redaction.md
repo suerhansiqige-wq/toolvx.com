@@ -1,7 +1,7 @@
 ---
 title: "Protecting Children's Privacy Online with Proper Image Redaction"
 description: "A comprehensive parent guide on how to safely redact children's faces and school uniform badges before posting on social media."
-pubDatetime: 2026-07-11T19:00:00Z
+pubDatetime: 2026-07-09T19:00:00Z
 author: ToolVX
 featured: false
 draft: false

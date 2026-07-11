@@ -1,7 +1,7 @@
 ---
 title: "How to Securely Redact Credit Card Numbers and Financial Scans"
 description: "Protect your banking credentials by wiping out card numbers locally prior to digital submission."
-pubDatetime: 2026-07-11T15:00:00Z
+pubDatetime: 2026-07-09T15:00:00Z
 author: ToolVX
 featured: false
 draft: false

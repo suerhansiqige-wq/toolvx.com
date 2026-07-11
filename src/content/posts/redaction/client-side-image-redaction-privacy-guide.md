@@ -1,7 +1,7 @@
 ---
 title: "Why 100% Client-Side Image Redaction is the Only Safe Way to Protect Your Privacy"
 description: "Learn why uploading images to online servers for redaction poses massive privacy risks and how ToolVX keeps your data 100% in your browser."
-pubDatetime: 2026-07-11T10:00:00Z
+pubDatetime: 2026-07-09T10:00:00Z
 author: ToolVX
 featured: false
 draft: false

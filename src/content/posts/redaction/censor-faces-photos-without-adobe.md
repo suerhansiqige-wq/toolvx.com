@@ -1,7 +1,7 @@
 ---
 title: "How to Censor Faces in Photos Automatically Without Adobe Software"
 description: "Skip expensive, complex desktop apps. Protect user faces via instant web-browser based redaction engines."
-pubDatetime: 2026-07-11T17:00:00Z
+pubDatetime: 2026-07-09T17:00:00Z
 author: ToolVX
 featured: false
 draft: false

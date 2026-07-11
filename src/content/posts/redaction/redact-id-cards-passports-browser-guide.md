@@ -1,7 +1,7 @@
 ---
 title: "Complete Guide: How to Redact ID Cards and Passports in Your Browser"
 description: "Safely sanitize your government-issued identity documents locally before sending them over to digital verification platforms."
-pubDatetime: 2026-07-11T12:00:00Z
+pubDatetime: 2026-07-09T12:00:00Z
 author: ToolVX
 featured: false
 draft: false
