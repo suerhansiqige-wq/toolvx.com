@@ -13,8 +13,6 @@ tags:
   - gdpr
 ---
 
-# How to Redact Faces in Photos Locally: 3 Best Methods for Privacy Protection
-
 Master the art of face redaction with secure, local techniques that keep your data private and your identities safe from unauthorized exposure.
 
 ## Quick Answer
@@ -39,21 +37,13 @@ The bottom line: if the photo contains faces you need to protect, the redaction 
 
 Pixelation is the most common face redaction technique. It reduces the resolution of a selected facial area into large, visible blocks, making identification impossible while preserving the overall composition of the photo.
 
-### How Pixelation Works
-
 When you apply a mosaic effect, the tool divides the selected region into a grid of cells and replaces each cell with a single averaged color. The result is a blocky, unrecognizable pattern that clearly signals intentional redaction to viewers.
-
-### Advantages
 
 - **Maintains photo context and atmosphere.** The surrounding scene remains intact, so the image still tells its story.
 - **Fast and easy to apply.** Most tools let you draw a selection box and apply the effect in one click.
 - **Recognizable as intentional redaction.** Viewers immediately understand that a face has been deliberately obscured, which is useful for journalistic or editorial contexts.
 
-### Limitations
-
 Modern AI image restoration models can sometimes reconstruct heavily pixelated faces. For high-stakes scenarios (legal, medical, confidential), avoid relying solely on pixelation. In those cases, combine pixelation with other methods or use blackout redaction instead.
-
-### When to Use Pixelation
 
 Pixelation is ideal for social media posts, blog articles, news reports, and any context where you want to acknowledge a person's presence while protecting their identity. It strikes a good balance between privacy and visual communication.
 
@@ -61,29 +51,19 @@ Pixelation is ideal for social media posts, blog articles, news reports, and any
 
 Blackout redaction replaces the selected facial area with a solid color block (typically black). This is the gold standard for legal, government, and corporate compliance documents because it completely destroys underlying pixel data.
 
-### How Blackout Redaction Works
-
 Unlike pixelation, which merely obscures pixels, blackout redaction overwrites the original pixel values with a uniform color. Once exported as a flattened image (JPG or PNG), the original face data is permanently gone — no algorithm, no AI model, and no forensic tool can recover it.
-
-### Advantages
 
 - **Irreversible.** Original pixels are permanently destroyed. There is no "undo" once the file is saved.
 - **Compliant with legal and regulatory standards.** Courts, government agencies, and compliance auditors accept blackout redaction as a valid method of identity protection.
 - **No AI can reconstruct the original face.** Because the underlying data no longer exists, even the most advanced de-obscuration models have nothing to work with.
 
-### Limitations
-
 Blackout blocks are visually aggressive. They draw attention to the redacted area and can make photos look censored or incomplete. For casual sharing or editorial use, this may not be the desired aesthetic.
-
-### When to Use Blackout Redaction
 
 Use blackout redaction when you need absolute, irreversible privacy protection: legal filings, medical records, government submissions, HR documents, insurance claims, and any scenario where a data breach involving facial images could have serious consequences.
 
 ## Method 3: Local Browser Processing — The Best Balance
 
 The most advanced approach combines the best of both worlds: powerful redaction capabilities with absolute privacy. Using modern WebAssembly and Canvas APIs, sophisticated image processing can happen entirely within your browser — no uploads, no servers, no data leaks.
-
-### How Local Browser Processing Works
 
 When you use a browser-based redaction tool like [ToolVX](/redact-preview), the entire workflow happens on your device:
 
@@ -92,14 +72,10 @@ When you use a browser-based redaction tool like [ToolVX](/redact-preview), the 
 3. **Redact Faces.** You draw selection boxes over faces and choose your preferred effect: mosaic, blur, or blackout.
 4. **Secure Export.** The redacted image is generated and downloaded to your device. The original file remains untouched.
 
-### Advantages
-
 - **Zero server uploads.** Complete data isolation — your photos never touch an external server.
 - **Works offline after initial page load.** Once the tool is loaded, you can disconnect from the internet and continue redacting.
 - **Supports both pixelation and blackout methods.** Choose the right effect for each use case without switching tools.
 - **Multi-format support.** Works with JPG, PNG, GIF, WebP, and even PDF files containing images.
-
-### When to Use Local Browser Processing
 
 Local browser processing is the best choice for virtually every scenario. Whether you're a journalist protecting sources, a healthcare worker anonymizing patient photos, a teacher sharing classroom images, or a parent posting family pictures online, local processing gives you the privacy guarantees that cloud tools simply cannot match.
 
@@ -107,15 +83,15 @@ Local browser processing is the best choice for virtually every scenario. Whethe
 
 Here's how to redact faces in photos using [ToolVX's free local image redaction tool](/redact-preview):
 
-### Step 1: Upload Your Photo
+**Step 1: Upload Your Photo**
 
 Drag and drop your image onto the ToolVX homepage, or click to browse. Supported formats include JPG, PNG, GIF, WebP, and PDF. Your file is loaded directly into your browser — no upload to any server occurs.
 
-### Step 2: Select Faces to Redact
+**Step 2: Select Faces to Redact**
 
 Click and drag to draw a selection box around each face you want to protect. Choose your preferred effect: **Mosaic (Pixelate)** for social sharing, **Gaussian Blur** for a softer look, or **Blackout** for maximum security. You can apply different effects to different faces in the same photo.
 
-### Step 3: Preview and Export
+**Step 3: Preview and Export**
 
 Review each redacted region at full zoom to ensure complete coverage. Then click "Download" to save the redacted image. The original filename is preserved. Choose mosaic or blur for casual sharing; use blackout when you need irreversible removal.
 
