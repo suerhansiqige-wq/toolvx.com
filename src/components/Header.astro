@@ -34,7 +34,7 @@ const isActive = (path: string) => {
 };
 
 const navLinkClass =
-  "interactive flex items-center gap-1 rounded-xl px-4 py-2.5 text-center font-medium text-muted-foreground hover:text-accent hover:bg-muted/50 sm:px-3 sm:py-2";
+  "interactive flex items-center gap-1 rounded-xl px-3 py-1.5 text-center font-medium text-muted-foreground hover:text-accent hover:bg-muted/50 sm:px-3 sm:py-1.5 whitespace-nowrap";
 
 const toolsHref = getRelativeLocaleUrl(locale, "tools/compress-pdf");
 const redactHref = getRelativeLocaleUrl(locale, "redact-preview");
@@ -51,7 +51,7 @@ const showSearch = features.search !== false;
 </a>
 
 <header class="sticky top-0 z-40 glass-nav border-b border-border/60">
-  <div class="app-layout py-4 sm:py-5">
+  <div class="app-layout py-2.5 sm:py-3">
     <div class="flex w-full items-center gap-3 lg:gap-4">
       <a
         href={getRelativeLocaleUrl(locale, "")}
@@ -72,22 +72,20 @@ const showSearch = features.search !== false;
         </span>
       </a>
 
-      {
-        showSearch && (
+      {showSearch && (
           <HeaderSearch
             locale={locale}
             class="header-search--desktop hidden min-w-0 shrink-0 lg:ms-8 lg:flex"
           />
-        )
-      }
+        )}
 
       <nav
         id="nav-menu"
-        class="ms-auto flex min-w-0 flex-col items-stretch lg:ms-0 lg:flex-row lg:items-center lg:justify-end lg:space-x-1"
+        class="ms-auto flex min-w-0 flex-col items-stretch lg:ms-0 lg:flex-row lg:flex-nowrap lg:items-center lg:justify-end lg:space-x-1"
       >
         <button
           id="menu-btn"
-          class="focus-outline interactive self-end rounded-xl p-2.5 hover:bg-muted/50 lg:hidden"
+          class="focus-outline interactive self-end rounded-xl p-2 hover:bg-muted/50 lg:hidden"
           aria-label={t.a11y.openMenu}
           aria-expanded="false"
           aria-controls="menu-items"
@@ -162,7 +160,7 @@ const showSearch = features.search !== false;
                 <LinkButton
                   href={getRelativeLocaleUrl(locale, "archives")}
                   class:list={[
-                    "focus-outline interactive flex size-full justify-center rounded-xl p-3 hover:bg-muted/50 lg:relative lg:size-10 lg:p-0",
+                    "focus-outline interactive flex size-full justify-center rounded-xl p-2.5 hover:bg-muted/50 lg:relative lg:size-9 lg:p-0",
                     { "active-nav": isActive("/archives") },
                   ]}
                   title={t.nav.archives}
@@ -187,7 +185,7 @@ const showSearch = features.search !== false;
               <li class="col-span-1 flex items-center justify-center">
                 <button
                   id="theme-btn"
-                  class="focus-outline interactive hover:[&>svg]:stroke-accent relative size-10 rounded-xl p-2 hover:bg-muted/50"
+                  class="focus-outline interactive hover:[&>svg]:stroke-accent relative size-9 rounded-xl p-1.5 hover:bg-muted/50"
                   title={t.a11y.toggleTheme}
                   aria-label={t.a11y.toggleTheme}
                   aria-live="polite"
@@ -310,13 +308,13 @@ const showSearch = features.search !== false;
 
   @media (min-width: 1024px) {
     .header-search--desktop {
-      width: 2.75rem;
-      max-width: 2.75rem;
+      width: 10rem;
+      max-width: 10rem;
     }
 
     .header-search--desktop:focus-within {
-      width: 8rem;
-      max-width: 8rem;
+      width: 18rem;
+      max-width: 18rem;
     }
   }
 </style>
