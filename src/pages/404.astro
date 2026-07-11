@@ -1,7 +1,6 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
-import Footer from "@/components/Footer.astro";
 import LinkButton from "@/components/LinkButton.astro";
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { useTranslations } from "@/i18n";
@@ -40,7 +39,7 @@ const tags: TagItem[] = [
 ];
 ---
 
-<Layout title={`${t.notFound.title} | ${config.site.title}`}>
+<Layout title={`Oops! Page Not Found - ${config.site.title}`} robots="noindex, nofollow">
   <Header />
 
   <main
@@ -81,9 +80,16 @@ const tags: TagItem[] = [
         </ul>
       </nav>
     </div>
-  </main>
 
-  <Footer />
+    <div class="mx-auto mt-12 max-w-4xl border-t border-border/60 pt-8 text-center">
+      <p class="text-muted-foreground text-sm">
+        Contact us:{" "}
+        <a href="mailto:admin@toolvx.com" class="text-accent hover:underline">
+          admin@toolvx.com
+        </a>
+      </p>
+    </div>
+  </main>
 </Layout>
 
 <style>
