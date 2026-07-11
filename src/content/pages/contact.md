@@ -1,7 +1,6 @@
 ---
 title: "Contact"
 description: "Get in touch with ToolVX for business inquiries, technical feedback, or partnership opportunities."
-i18nKey: contact
 ---
 
 # Contact Us
