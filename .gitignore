@@ -36,3 +36,26 @@ public/pdfjs-v3
 
 # docker compose
 compose.override.yaml
+
+# temp files
+.tmp-*.pdf
+.tmp-*.ofd
+temp-*/
+temp-*.zip
+temp-*.ofd
+test-*.pdf
+pnpm-build.log
+pnpm-install.log
+scripts/.zh-posts-backup/
+scripts/*.json
+scripts/audit-*.mjs
+scripts/count-*.mjs
+scripts/generate-*.mjs
+scripts/list-*.mjs
+scripts/merge-*.mjs
+scripts/realign-*.mjs
+scripts/sync-*.mjs
+scripts/verify-*.mjs
+scripts/write-*.mjs
+scripts/zh-translations-*.mjs
+scripts/export-*.mjs
