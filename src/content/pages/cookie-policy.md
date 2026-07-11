@@ -4,8 +4,6 @@ description: "ToolVX Cookie Policy — explaining how we use cookies, what types
 staticPageI18n: cookie
 ---
 
-**Last Updated:** June 21, 2026
-
 ## 1. What Are Cookies?
 
 Cookies are small text files that are stored on your device (computer, smartphone, or tablet) when you visit a website. They help websites remember information about your visit, which can both make it easier to visit the site again and make the site more useful to you.
