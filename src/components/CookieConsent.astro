@@ -1,0 +1,341 @@
+---
+/**
+ * CookieConsent.astro — GDPR / CCPA / Google Publisher Policy compliant
+ * cookie consent banner for ToolVX (toolvx.com).
+ *
+ * Compliance notes:
+ * - Text explicitly discloses cookie usage for traffic analysis & ad optimization.
+ * - "Privacy Policy" links to /privacy-policy (the site's own legal page).
+ * - The only disclosed contact channel is admin@toolvx.com — no social media,
+ *   no phone numbers, no third-party links.
+ * - User choice is persisted in localStorage for 365 days.
+ * - No personalised ad / tracking scripts are loaded until the user clicks
+ *   "Accept All" (opt-in model, highest compliance level).
+ */
+---
+
+<!--
+  FOUC-prevention: this inline script runs synchronously BEFORE the browser
+  paints. If the user has already made a choice (and it hasn't expired), the
+  banner is hidden at the DOM level — zero flash, zero layout shift.
+-->
+<script is:inline>
+  (function () {
+    var KEY = "toolvx_cookie_consent";
+    var TTL_MS = 365 * 24 * 60 * 60 * 1000; // 365 days
+
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var data = JSON.parse(raw);
+        if (data && data.ts && Date.now() - data.ts < TTL_MS) {
+          // Valid, non-expired consent record exists → hide banner entirely.
+          document.documentElement.setAttribute("data-cookie-consent", "done");
+        }
+      }
+    } catch (_) {
+      // localStorage unavailable (private mode, quota, etc.) — show banner.
+    }
+  })();
+</script>
+
+<div
+  id="cookie-consent-banner"
+  role="dialog"
+  aria-live="polite"
+  aria-label="Cookie consent"
+  class="cookie-consent"
+>
+  <div class="cookie-consent__inner">
+    <p class="cookie-consent__text">
+      We use cookies to analyze website traffic and optimize your advertising
+      experience. By clicking "Accept All", you agree to our use of cookies
+      according to our
+      <a href="/privacy-policy" class="cookie-consent__link">Privacy Policy</a>.
+    </p>
+
+    <div class="cookie-consent__actions">
+      <button
+        type="button"
+        id="cookie-accept-btn"
+        class="cookie-consent__btn cookie-consent__btn--accept"
+        aria-label="Accept all cookies"
+      >
+        Accept All
+      </button>
+      <button
+        type="button"
+        id="cookie-reject-btn"
+        class="cookie-consent__btn cookie-consent__btn--reject"
+        aria-label="Reject non-essential cookies"
+      >
+        Reject Non-Essential
+      </button>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  /* ── Base banner ── */
+  .cookie-consent {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface, #ffffff);
+    border-top: 1px solid var(--color-border, #e5e7eb);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(100%);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  /* Visible state — triggered by JS after mount */
+  .cookie-consent.is-visible {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Hidden when consent already recorded (set by inline FOUC script) */
+  [data-cookie-consent="done"] .cookie-consent,
+  .cookie-consent.is-hidden {
+    display: none !important;
+  }
+
+  .cookie-consent__inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  @media (min-width: 640px) {
+    .cookie-consent__inner {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+  }
+
+  .cookie-consent__text {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--color-foreground, #1f2937);
+    flex: 1;
+  }
+
+  .cookie-consent__link {
+    color: var(--color-primary, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .cookie-consent__link:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  .cookie-consent__actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .cookie-consent__btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    border: none;
+    white-space: nowrap;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .cookie-consent__btn:focus-visible {
+    outline: 2px solid var(--color-primary, #2563eb);
+    outline-offset: 2px;
+  }
+
+  /* Accept All — green, filled */
+  .cookie-consent__btn--accept {
+    background-color: #16a34a;
+    color: #ffffff;
+  }
+
+  .cookie-consent__btn--accept:hover {
+    background-color: #15803d;
+  }
+
+  /* Reject Non-Essential — flat / ghost */
+  .cookie-consent__btn--reject {
+    background-color: transparent;
+    color: var(--color-foreground, #1f2937);
+    border: 1px solid var(--color-border, #d1d5db);
+  }
+
+  .cookie-consent__btn--reject:hover {
+    background-color: var(--color-muted, #f3f4f6);
+  }
+
+  /* Dark mode overrides */
+  [data-theme="dark"] .cookie-consent {
+    background: var(--color-surface, #1e1e2e);
+    border-top-color: var(--color-border, #374151);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  [data-theme="dark"] .cookie-consent__text {
+    color: var(--color-foreground, #e5e7eb);
+  }
+
+  [data-theme="dark"] .cookie-consent__btn--reject {
+    color: var(--color-foreground, #e5e7eb);
+    border-color: var(--color-border, #4b5563);
+  }
+
+  [data-theme="dark"] .cookie-consent__btn--reject:hover {
+    background-color: #374151;
+  }
+</style>
+
+<script>
+  /**
+   * CookieConsent client-side logic.
+   *
+   * Storage key: "toolvx_cookie_consent"
+   * Value shape:  { choice: "accepted" | "rejected", ts: <epoch ms> }
+   * TTL: 365 days
+   */
+  (function () {
+    var KEY = "toolvx_cookie_consent";
+    var TTL_MS = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+
+    // ── Helper: persist user choice ──
+    function saveConsent(choice: "accepted" | "rejected") {
+      try {
+        localStorage.setItem(
+          KEY,
+          JSON.stringify({ choice: choice, ts: Date.now() })
+        );
+      } catch (_) {
+        // localStorage unavailable — silently degrade.
+      }
+    }
+
+    // ── Helper: check if consent already recorded & valid ──
+    function hasValidConsent(): boolean {
+      try {
+        var raw = localStorage.getItem(KEY);
+        if (!raw) return false;
+        var data = JSON.parse(raw);
+        return data && data.ts && Date.now() - data.ts < TTL_MS;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    // ── Placeholder: dynamic ad / tracking script loader ──
+    //
+    // INSTRUCTIONS FOR FUTURE INTEGRATION (after Google AdSense approval):
+    //
+    // 1. Replace the body of this function with your actual script injection
+    //    logic. Example:
+    //
+    //    function triggerGtagAndAds() {
+    //      // Load Google Analytics (gtag.js)
+    //      var gtagScript = document.createElement("script");
+    //      gtagScript.async = true;
+    //      gtagScript.src = "https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX";
+    //      document.head.appendChild(gtagScript);
+    //
+    //      var initScript = document.createElement("script");
+    //      initScript.textContent = `
+    //        window.dataLayer = window.dataLayer || [];
+    //        function gtag(){dataLayer.push(arguments);}
+    //        gtag("js", new Date());
+    //        gtag("config", "G-XXXXXXXXXX");
+    //      `;
+    //      document.head.appendChild(initScript);
+    //
+    //      // Load Google AdSense
+    //      var adsScript = document.createElement("script");
+    //      adsScript.async = true;
+    //      adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX";
+    //      adsScript.crossOrigin = "anonymous";
+    //      document.head.appendChild(adsScript);
+    //    }
+    //
+    // 2. Replace G-XXXXXXXXXX with your actual Google Analytics measurement ID.
+    // 3. Replace ca-pub-XXXXXXXXXXXXXXXX with your AdSense publisher ID.
+    // 4. This function is ONLY called when the user clicks "Accept All",
+    //    ensuring personalised ads are NEVER loaded without explicit consent.
+    function triggerGtagAndAds() {
+      // TODO: Insert dynamic script injection for Google Analytics (gtag.js)
+      //       and Google AdSense (adsbygoogle.js) here after approval.
+      //       See detailed instructions in the JSDoc comment above.
+      console.info(
+        "[CookieConsent] Ad/tracking scripts will be loaded here after AdSense approval."
+      );
+    }
+
+    // ── Main: initialise banner ──
+    function init() {
+      var banner = document.getElementById("cookie-consent-banner");
+      if (!banner) return;
+
+      // If user already consented/rejected (and not expired), hide immediately.
+      if (hasValidConsent()) {
+        banner.classList.add("is-hidden");
+        return;
+      }
+
+      // Slide banner up after a short delay for smooth entrance.
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          banner!.classList.add("is-visible");
+        });
+      });
+
+      // ── Accept All ──
+      var acceptBtn = document.getElementById("cookie-accept-btn");
+      if (acceptBtn) {
+        acceptBtn.addEventListener("click", function () {
+          saveConsent("accepted");
+          banner!.classList.remove("is-visible");
+          banner!.classList.add("is-hidden");
+
+          // Activate personalised ads / tracking ONLY on explicit accept.
+          triggerGtagAndAds();
+        });
+      }
+
+      // ── Reject Non-Essential ──
+      var rejectBtn = document.getElementById("cookie-reject-btn");
+      if (rejectBtn) {
+        rejectBtn.addEventListener("click", function () {
+          saveConsent("rejected");
+          banner!.classList.remove("is-visible");
+          banner!.classList.add("is-hidden");
+
+          // No tracking scripts loaded — only essential cookies remain.
+        });
+      }
+    }
+
+    // Run after DOM is ready.
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  })();
+</script>

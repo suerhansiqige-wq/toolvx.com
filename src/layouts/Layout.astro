@@ -1,6 +1,7 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import HeadSEO from "@/components/HeadSEO.astro";
+import CookieConsent from "@/components/CookieConsent.astro";
 import config from "@/config";
 import "@/styles/global.css";
 
@@ -124,6 +125,7 @@ const {
     class="bg-background font-app text-foreground selection:bg-accent/75 selection:text-accent-foreground flex min-h-svh flex-col"
   >
     <slot />
+    <CookieConsent />
     <script>
       import "@/scripts/legacy-polyfills";
       import "@/scripts/theme";
