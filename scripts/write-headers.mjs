@@ -4,7 +4,14 @@ import { fileURLToPath } from "node:url";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dist = path.join(root, "dist");
-const headers = `# Cloudflare Pages — pdf.js static assets
+const headers = `# Sitemap XML
+/sitemap-index.xml
+  Content-Type: application/xml; charset=utf-8
+
+/sitemap-*.xml
+  Content-Type: application/xml; charset=utf-8
+
+# Cloudflare Pages — pdf.js static assets
 /pdfjs/*.mjs
   Content-Type: text/javascript; charset=utf-8
 

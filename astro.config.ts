@@ -19,6 +19,7 @@ import {
 } from "@shikijs/transformers";
 import { transformerFileName } from "./src/utils/transformers/fileName";
 import config from "./astro-paper.config";
+import { serializeSitemapItem } from "./src/utils/sitemap-serialize";
 
 export default defineConfig({
   site: config.site.url,
@@ -30,6 +31,7 @@ export default defineConfig({
       changefreq: "weekly",
       priority: 0.7,
       lastmod: new Date(),
+      serialize: serializeSitemapItem,
     }),
   ],
   i18n: {
