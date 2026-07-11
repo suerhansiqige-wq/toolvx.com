@@ -52,7 +52,7 @@ export const en: Messages = {
       archives: "Archives",
       search: "Search",
       tools: "PDF Tools",
-      redact: "Redact",
+      redact: "Redaction",
     },
     footer: {
       copyright: "Copyright",

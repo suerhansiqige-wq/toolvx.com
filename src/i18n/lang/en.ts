@@ -9,7 +9,7 @@ export default {
     archives: "Archives",
     search: "Search",
     tools: "PDF Tools",
-    redact: "Redact",
+    redact: "Redaction",
   },
   post: {
     publishedAt: "Published on",
