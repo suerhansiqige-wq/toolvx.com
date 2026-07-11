@@ -440,7 +440,7 @@ export function applyI18n(root: ParentNode = document): void {
       return;
     }
 
-    if (!key.startsWith("posts.redact.")) {
+    if (!key.startsWith("posts.redact.") && !key.startsWith("pages.")) {
       el.textContent = t(key, vars);
     }
   });
