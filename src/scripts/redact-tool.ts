@@ -180,6 +180,7 @@ function scheduleEditorLayoutRefresh() {
 function syncCanvasAreaHeight() {
   const wrap = $("redact-canvas-wrap");
   const controls = $("redact-control-panel");
+  const pageBar = $("redact-page-controls");
   if (!wrap || !controls) return;
 
   if (fullscreenEdit) {
@@ -195,7 +196,18 @@ function syncCanvasAreaHeight() {
     return;
   }
 
-  const panelHeight = Math.round(controls.getBoundingClientRect().height);
+  let panelHeight = Math.round(controls.getBoundingClientRect().height);
+  if (
+    isPdf &&
+    pageBar &&
+    !pageBar.classList.contains("hidden")
+  ) {
+    const column = wrap.parentElement;
+    const columnGap = column
+      ? parseFloat(getComputedStyle(column).rowGap) || 0
+      : 0;
+    panelHeight -= Math.round(pageBar.getBoundingClientRect().height + columnGap);
+  }
   wrap.style.height = `${Math.max(CANVAS_MIN_HEIGHT, panelHeight)}px`;
 }
 
@@ -597,11 +609,13 @@ function fitCanvasToContainer() {
   if (fullscreenEdit) {
     const column = wrap.parentElement;
     if (column) {
+      const columnStyles = getComputedStyle(column);
+      const columnGap = parseFloat(columnStyles.rowGap) || 0;
       availW = Math.max(1, column.clientWidth - padX);
       availH = Math.max(1, column.clientHeight - padY);
       const pageBarH =
         isPdf && pageBar && !pageBar.classList.contains("hidden")
-          ? pageBar.getBoundingClientRect().height + 12
+          ? pageBar.getBoundingClientRect().height + columnGap
           : 0;
       availH = Math.max(1, availH - pageBarH);
     }
@@ -622,8 +636,8 @@ function fitCanvasToContainer() {
       cssW = Math.round(cssH / aspect);
     }
     stage.style.width = "100%";
-    stage.style.height = "auto";
-    stage.style.flex = "1";
+    stage.style.height = "";
+    stage.style.flex = "1 1 0";
     stage.style.minHeight = "0";
   } else if (isDesktop && wrap.style.height) {
     if (cssH > availH) {

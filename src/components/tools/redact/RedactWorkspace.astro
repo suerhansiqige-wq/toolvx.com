@@ -122,31 +122,31 @@
             ></canvas>
           </div>
         </div>
+      </div>
 
-        <div id="redact-page-controls" class="redact-page-bar redact-page-bar--inline hidden">
-          <button
-            type="button"
-            id="redact-prev-page"
-            class="redact-nav-btn tool-action-btn interactive"
-            data-i18n="common.prevPage"
-          >
-            Previous
-          </button>
-          <span class="redact-page-indicator">
-            <span data-i18n="redact_page_label">Page</span>
-            <span id="redact-page-current" class="redact-page-indicator__num">1</span>
-            <span data-i18n="redact_page_of">of</span>
-            <span id="redact-page-total" class="redact-page-indicator__num">1</span>
-          </span>
-          <button
-            type="button"
-            id="redact-next-page"
-            class="redact-nav-btn tool-action-btn interactive"
-            data-i18n="common.nextPage"
-          >
-            Next
-          </button>
-        </div>
+      <div id="redact-page-controls" class="redact-page-bar redact-page-bar--inline hidden">
+        <button
+          type="button"
+          id="redact-prev-page"
+          class="redact-nav-btn tool-action-btn interactive"
+          data-i18n="common.prevPage"
+        >
+          Previous
+        </button>
+        <span class="redact-page-indicator">
+          <span data-i18n="redact_page_label">Page</span>
+          <span id="redact-page-current" class="redact-page-indicator__num">1</span>
+          <span data-i18n="redact_page_of">of</span>
+          <span id="redact-page-total" class="redact-page-indicator__num">1</span>
+        </span>
+        <button
+          type="button"
+          id="redact-next-page"
+          class="redact-nav-btn tool-action-btn interactive"
+          data-i18n="common.nextPage"
+        >
+          Next
+        </button>
       </div>
     </div>
 
@@ -539,6 +539,7 @@
     flex-direction: column;
     position: relative;
     width: 100%;
+    flex: 1 1 0;
     min-height: 0;
     overflow: hidden;
     border-radius: var(--redact-radius);
@@ -637,27 +638,36 @@
     flex-direction: column;
     min-height: 0;
     height: 100%;
+    gap: 0.5rem;
   }
 
   .redact-fullscreen-host .redact-canvas-wrap {
-    flex: 1;
+    flex: 1 1 0;
     min-height: 0;
     height: auto !important;
   }
 
   .redact-fullscreen-host .redact-canvas-stage {
-    flex: 1;
+    flex: 1 1 0;
     min-height: 0;
     width: 100%;
     overflow: auto;
-    align-items: flex-start;
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: center;
     -webkit-overflow-scrolling: touch;
   }
 
+  .redact-fullscreen-host .redact-page-bar--inline {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 4;
+  }
+
+  .redact-fullscreen-host .redact-left-column,
   .redact-fullscreen-host .redact-controls {
-    max-height: calc(100vh - 5rem);
+    max-height: calc(100vh - 4.5rem);
     overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   :global(body.redact-fullscreen-active) {
@@ -666,18 +676,20 @@
 
   .redact-canvas-stage {
     display: flex;
-    flex: 1;
+    flex: 1 1 0;
     align-items: center;
     justify-content: center;
     position: relative;
     width: 100%;
     min-height: 0;
+    overflow: auto;
     line-height: 0;
+    -webkit-overflow-scrolling: touch;
   }
 
   .redact-canvas-inner {
     position: relative;
-    width: 100%;
+    flex-shrink: 0;
     line-height: 0;
     box-shadow: 0 2px 16px color-mix(in oklab, black 10%, transparent);
   }
@@ -704,7 +716,11 @@
   }
 
   .redact-page-bar--inline {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 4;
     background: var(--card);
+    box-shadow: 0 -2px 12px color-mix(in oklab, black 6%, transparent);
   }
 
   .redact-nav-btn {
