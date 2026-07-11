@@ -58,7 +58,9 @@ const searchHref = getRelativeLocaleUrl(locale, "search");
     transition:
       border-color 0.2s ease,
       background-color 0.2s ease,
-      box-shadow 0.2s ease;
+      box-shadow 0.2s ease,
+      width 0.22s ease,
+      max-width 0.22s ease;
   }
 
   .header-search:focus-within {
@@ -92,6 +94,42 @@ const searchHref = getRelativeLocaleUrl(locale, "search");
     line-height: 1.25rem;
     color: var(--foreground);
     outline: none;
+  }
+
+  :global(.header-search--desktop) .header-search__input {
+    font-size: 0.8125rem;
+    text-overflow: ellipsis;
+    transition:
+      width 0.22s ease,
+      padding 0.22s ease,
+      opacity 0.18s ease;
+  }
+
+  :global(.header-search--desktop:not(:focus-within)) .header-search__input {
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    opacity: 0;
+  }
+
+  :global(.header-search--desktop:not(:focus-within)) .header-search__input::placeholder {
+    color: transparent;
+  }
+
+  :global(.header-search--desktop:not(:focus-within)) .header-search__icon {
+    inset-inline: 50% auto auto;
+    transform: translateX(-50%);
+  }
+
+  :global(.header-search--desktop:focus-within) .header-search__input {
+    width: 100%;
+    padding: 0.6rem 0.75rem 0.6rem 2.35rem;
+    opacity: 1;
+  }
+
+  :global(.header-search--desktop:focus-within) .header-search__icon {
+    inset-inline-start: 0.8rem;
+    transform: none;
   }
 
   .header-search__input::placeholder {
