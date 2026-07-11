@@ -1,12 +1,47 @@
 ---
 import type { HTMLAttributes } from "astro/types";
 
+/**
+ * ────────────────────────────────────────────
+ *  AdSense approval toggle
+ * ────────────────────────────────────────────
+ *  Set to `false` (default) → render a branded
+ *  banner image that links to /about.
+ *
+ *  Set to `true`            → render the real
+ *  Google AdSense <ins> tag.
+ *
+ *  Flip this single flag to go live.
+ */
+const isAdApproved = false;
+
+// ── Banner image mapping ──────────────────────
+// Each variant picks a banner from /assets/banners/.
+// Add or swap filenames here as needed.
+//
+//  leaderboard → wide horizontal banner (≈728×90 / 970×250)
+//  rectangle   → medium rectangle (≈336×280 / 300×250)
+//  skyscraper  → tall vertical (≈300×600)
+//  in-article  → inline article banner
+//
+// ──────────────────────────────────────────────┐
+// │  REMINDER: update the filenames below if you │
+// │  rename or replace the images in             │
+// │  public/assets/banners/                      │
+// └──────────────────────────────────────────────┘
+const bannerImages: Record<string, string> = {
+  leaderboard: "/assets/banners/banner-leaderboard-1.png",
+  rectangle: "/assets/banners/banner-rectangle-1.png",
+  skyscraper: "/assets/banners/banner-rectangle-2.png",
+  "in-article": "/assets/banners/banner-leaderboard-2.png",
+};
+
 type AdVariant = "leaderboard" | "skyscraper" | "rectangle" | "in-article";
 
 type Props = {
   /** Visual layout preset for the placeholder / future ad unit. */
   variant?: AdVariant;
-  /** Google AdSense `data-ad-slot` ID — placeholder until approval. */
+  /** Google AdSense `data-ad-slot` ID — used when isAdApproved is true. */
   slotId?: string;
   class?: string;
 } & HTMLAttributes<"div">;
@@ -18,42 +53,110 @@ const {
   ...attrs
 } = Astro.props;
 
-const variantClass: Record<AdVariant, string> = {
-  leaderboard: "min-h-[90px] w-full",
-  skyscraper: "mx-auto min-h-[600px] w-full max-w-[300px]",
-  rectangle: "mx-auto min-h-[250px] w-full max-w-[336px] lg:max-w-none",
-  "in-article": "my-8 min-h-[120px] w-full",
+const bannerSrc = bannerImages[variant] ?? bannerImages.leaderboard;
+
+// Dimension hints for the AdSense <ins> element
+const adSizes: Record<AdVariant, { width: string; height: string }> = {
+  leaderboard: { width: "728", height: "90" },
+  skyscraper: { width: "300", height: "600" },
+  rectangle: { width: "336", height: "280" },
+  "in-article": { width: "100%", height: "auto" },
 };
 
-const label = slotId
-  ? `[Google AdSense Slot: ${slotId}]`
-  : `[Google AdSense Slot: ${variant}]`;
+const size = adSizes[variant];
 ---
 
-<!--
-  AdSense pre-approval placeholder.
-  After approval, replace inner content with:
-  <ins class="adsbygoogle" data-ad-client="ca-pub-XXXX" data-ad-slot={slotId} ...></ins>
-  and (adsbygoogle = window.adsbygoogle || []).push({});
--->
-<div
-  role="complementary"
-  aria-label="Advertisement placeholder"
-  data-i18n-aria-label="ad_aria"
-  data-ad-slot={slotId ?? variant}
-  data-ad-variant={variant}
-  class:list={[
-    "ad-slot flex items-center justify-center rounded-xl px-4 py-3 text-center",
-    "border border-dashed border-gray-200 bg-gray-50/50",
-    "dark:border-gray-800 dark:bg-gray-900/30",
-    variantClass[variant],
-    className,
-  ]}
-  {...attrs}
->
-  <span
-    class="pointer-events-none select-none text-xs font-medium tracking-wide text-gray-400"
-  >
-    {label}
-  </span>
-</div>
+<Fragment {...attrs}>
+{
+  isAdApproved ? (
+    /* ── Google AdSense live mode ── */
+    <div
+      role="complementary"
+      aria-label="Advertisement"
+      data-ad-slot={slotId ?? variant}
+      data-ad-variant={variant}
+      class:list={[
+        "ad-slot rounded-xl overflow-hidden",
+        className,
+      ]}
+    >
+      <ins
+        class="adsbygoogle"
+        style="display:block"
+        data-ad-client="ca-pub-XXXX"
+        data-ad-slot={slotId ?? variant}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+    </div>
+  ) : (
+    /* ── Banner placeholder mode (pre-approval) ── */
+    <div
+      role="complementary"
+      aria-label="Advertisement placeholder"
+      data-ad-variant={variant}
+      class:list={[
+        "ad-slot rounded-xl overflow-hidden",
+        className,
+      ]}
+    >
+      <a
+        href="/about"
+        class="block w-full"
+        title="Learn more about ToolVX"
+      >
+        <img
+          src={bannerSrc}
+          alt="ToolVX — Free browser-based PDF & image tools"
+          loading="lazy"
+          decoding="async"
+          class="ad-banner-img block w-full h-auto object-cover rounded-xl"
+          style={`min-height: ${size.height === 'auto' ? '120px' : size.height + 'px'};`}
+        />
+      </a>
+    </div>
+  )
+}
+</Fragment>
+
+<style>
+  .ad-banner-img {
+    max-width: 100%;
+    height: auto;
+    object-fit: cover;
+    transition: opacity 0.2s ease;
+  }
+
+  .ad-banner-img:hover {
+    opacity: 0.92;
+  }
+
+  /* Variant-specific sizing constraints */
+  .ad-slot[data-ad-variant="leaderboard"] {
+    width: 100%;
+  }
+
+  .ad-slot[data-ad-variant="skyscraper"] {
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .ad-slot[data-ad-variant="rectangle"] {
+    max-width: 336px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  @media (min-width: 1024px) {
+    .ad-slot[data-ad-variant="rectangle"] {
+      max-width: none;
+    }
+  }
+
+  .ad-slot[data-ad-variant="in-article"] {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    width: 100%;
+  }
+</style>
