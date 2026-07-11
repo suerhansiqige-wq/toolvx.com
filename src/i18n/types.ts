@@ -108,6 +108,8 @@ export type UIStrings = {
     termsDesc: string;
     privacyTitle: string;
     privacyDesc: string;
+    cookieTitle: string;
+    cookieDesc: string;
     cookieText: string;
     cookiePrivacyLink: string;
     cookieAccept: string;
@@ -232,6 +234,8 @@ export type Messages = {
       termsDesc: string;
       privacyTitle: string;
       privacyDesc: string;
+      cookieTitle: string;
+      cookieDesc: string;
       cookieText: string;
       cookiePrivacyLink: string;
       cookieAccept: string;

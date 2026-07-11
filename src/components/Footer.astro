@@ -42,6 +42,13 @@ const currentYear = new Date().getFullYear();
       </a>
       <span class="hidden sm:inline">&nbsp;|&nbsp;</span>
       <a
+        href={getRelativeLocaleUrl(Astro.currentLocale ?? "en", "cookie-policy")}
+        class="text-accent hover:underline"
+      >
+        Cookie Policy
+      </a>
+      <span class="hidden sm:inline">&nbsp;|&nbsp;</span>
+      <a
         href={getRelativeLocaleUrl(Astro.currentLocale ?? "en", "contact")}
         class="text-accent hover:underline"
       >
