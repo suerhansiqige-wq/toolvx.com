@@ -27,7 +27,26 @@ const currentYear = new Date().getFullYear();
     >
       <span><span data-i18n="site.footer.copyright">{t.footer.copyright}</span> &#169; {currentYear}</span>
       <span class="hidden sm:inline">&nbsp;|&nbsp;</span>
-      <span data-i18n="site.footer.allRightsReserved">{t.footer.allRightsReserved}</span>
+      <a
+        href={getRelativeLocaleUrl(Astro.currentLocale ?? "en", "privacy-policy")}
+        class="text-accent hover:underline"
+      >
+        Privacy Policy
+      </a>
+      <span class="hidden sm:inline">&nbsp;|&nbsp;</span>
+      <a
+        href={getRelativeLocaleUrl(Astro.currentLocale ?? "en", "terms")}
+        class="text-accent hover:underline"
+      >
+        Terms of Service
+      </a>
+      <span class="hidden sm:inline">&nbsp;|&nbsp;</span>
+      <a
+        href={getRelativeLocaleUrl(Astro.currentLocale ?? "en", "contact")}
+        class="text-accent hover:underline"
+      >
+        Contact
+      </a>
       <span class="hidden sm:inline">&nbsp;|&nbsp;</span>
       <a
         href={getRelativeLocaleUrl(Astro.currentLocale ?? "en", "sitemap")}

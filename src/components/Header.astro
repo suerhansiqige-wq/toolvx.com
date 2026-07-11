@@ -138,6 +138,14 @@ const redactHref = getRelativeLocaleUrl(locale, "redact-preview");
               {t.nav.about}
             </a>
           </li>
+          <li>
+            <a
+              href={getRelativeLocaleUrl(locale, "contact")}
+              class:list={[navLinkClass, { "active-nav": isActive("/contact") }]}
+            >
+              Contact
+            </a>
+          </li>
           {
             features.showArchives && (
               <li class="flex items-center">

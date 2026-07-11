@@ -8,6 +8,10 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
+# Google AdSense / Ad bot — required for ad review and serving
+User-agent: Mediapartners-Google
+Allow: /
+
 # AI crawlers — allow indexing (set Disallow to block)
 User-agent: GPTBot
 Allow: /
