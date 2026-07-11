@@ -1,6 +1,7 @@
 ---
 title: "Privacy Policy"
 description: "ToolVX Privacy Policy — your data never leaves your device. All PDF and image processing is 100% client-side."
+i18nKey: privacy
 ---
 
 **Last updated:** July 2026

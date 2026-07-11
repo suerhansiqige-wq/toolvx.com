@@ -76,6 +76,12 @@ export default {
     termsDesc: "ToolVX Terms of Service — governing the use of our free, client-side PDF and image processing tools.",
     privacyTitle: "Privacy Policy",
     privacyDesc: "ToolVX Privacy Policy — your data never leaves your device. All PDF and image processing is 100% client-side.",
+    cookieText: 'We use cookies to analyze website traffic and optimize your advertising experience. By clicking "Accept All", you agree to our use of cookies according to our',
+    cookiePrivacyLink: "Privacy Policy",
+    cookieAccept: "Accept All",
+    cookieReject: "Reject Non-Essential",
+    cookieAcceptAria: "Accept all cookies",
+    cookieRejectAria: "Reject non-essential cookies",
   },
   a11y: {
     skipToContent: "Skip to content",

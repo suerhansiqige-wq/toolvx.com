@@ -12,6 +12,7 @@ import remarkToc from "remark-toc";
 import remarkCollapse from "remark-collapse";
 import rehypeCallouts from "rehype-callouts";
 import { rehypeRedactPostI18n } from "./src/utils/rehype-redact-post-i18n";
+import { rehypeStaticPageI18n } from "./src/utils/rehype-static-page-i18n";
 import {
   transformerNotationDiff,
   transformerNotationHighlight,
@@ -47,7 +48,7 @@ export default defineConfig({
         remarkToc,
         [remarkCollapse, { test: "Table of contents" }],
       ],
-      rehypePlugins: [rehypeCallouts, rehypeRedactPostI18n],
+      rehypePlugins: [rehypeCallouts, rehypeRedactPostI18n, rehypeStaticPageI18n],
     }),
     shikiConfig: {
       themes: { light: "min-light", dark: "night-owl" },

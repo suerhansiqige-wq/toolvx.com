@@ -108,6 +108,12 @@ export type UIStrings = {
     termsDesc: string;
     privacyTitle: string;
     privacyDesc: string;
+    cookieText: string;
+    cookiePrivacyLink: string;
+    cookieAccept: string;
+    cookieReject: string;
+    cookieAcceptAria: string;
+    cookieRejectAria: string;
   };
   a11y: {
     skipToContent: string;
@@ -226,6 +232,12 @@ export type Messages = {
       termsDesc: string;
       privacyTitle: string;
       privacyDesc: string;
+      cookieText: string;
+      cookiePrivacyLink: string;
+      cookieAccept: string;
+      cookieReject: string;
+      cookieAcceptAria: string;
+      cookieRejectAria: string;
     };
     sitemap: {
       mainPages: string;

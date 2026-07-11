@@ -47,11 +47,11 @@
   class="cookie-consent"
 >
   <div class="cookie-consent__inner">
-    <p class="cookie-consent__text">
+    <p class="cookie-consent__text" data-i18n="blog.pages.cookieText">
       We use cookies to analyze website traffic and optimize your advertising
       experience. By clicking "Accept All", you agree to our use of cookies
       according to our
-      <a href="/privacy-policy" class="cookie-consent__link">Privacy Policy</a>.
+      <a href="/privacy-policy" class="cookie-consent__link" data-i18n="blog.pages.cookiePrivacyLink">Privacy Policy</a>.
     </p>
 
     <div class="cookie-consent__actions">
@@ -60,16 +60,20 @@
         id="cookie-accept-btn"
         class="cookie-consent__btn cookie-consent__btn--accept"
         aria-label="Accept all cookies"
+        data-i18n-title="blog.pages.cookieAcceptAria"
+        data-i18n-aria-label="blog.pages.cookieAcceptAria"
       >
-        Accept All
+        <span data-i18n="blog.pages.cookieAccept">Accept All</span>
       </button>
       <button
         type="button"
         id="cookie-reject-btn"
         class="cookie-consent__btn cookie-consent__btn--reject"
         aria-label="Reject non-essential cookies"
+        data-i18n-title="blog.pages.cookieRejectAria"
+        data-i18n-aria-label="blog.pages.cookieRejectAria"
       >
-        Reject Non-Essential
+        <span data-i18n="blog.pages.cookieReject">Reject Non-Essential</span>
       </button>
     </div>
   </div>
