@@ -264,6 +264,11 @@ export type Messages = {
         ofdReader: string;
         ofdToLongImage: string;
       };
+      converter: string;
+      privacyPolicy: string;
+      terms: string;
+      cookiePolicy: string;
+      contact: string;
     };
     notFound: { title: string; message: string; goHome: string };
     a11y: {

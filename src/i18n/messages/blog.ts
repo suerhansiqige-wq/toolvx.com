@@ -106,6 +106,11 @@ export const blogEn: Messages["blog"] = {
       ofdReader: "OFD Reader",
       ofdToLongImage: "OFD to Long Image",
     },
+    converter: "Converter",
+    privacyPolicy: "Privacy Policy",
+    terms: "Terms of Service",
+    cookiePolicy: "Cookie Policy",
+    contact: "Contact",
   },
   notFound: {
     title: "404 Not Found",
@@ -271,6 +276,11 @@ export const blogZh: Messages["blog"] = {
       ofdReader: "OFD 阅读器",
       ofdToLongImage: "OFD 转长图",
     },
+    converter: "格式转换",
+    privacyPolicy: "隐私政策",
+    terms: "服务条款",
+    cookiePolicy: "Cookie 政策",
+    contact: "联系我们",
   },
   notFound: {
     title: "404 未找到",

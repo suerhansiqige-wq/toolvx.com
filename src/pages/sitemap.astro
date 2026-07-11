@@ -53,6 +53,11 @@ const mainPages = [
       ]
     : []),
   { href: getRelativeLocaleUrl(locale, "search"), label: t.nav.search, i18n: "site.nav.search" },
+  { href: getRelativeLocaleUrl(locale, "converter"), label: sm.converter, i18n: "blog.sitemap.converter" },
+  { href: getRelativeLocaleUrl(locale, "privacy-policy"), label: sm.privacyPolicy, i18n: "blog.sitemap.privacyPolicy" },
+  { href: getRelativeLocaleUrl(locale, "terms"), label: sm.terms, i18n: "blog.sitemap.terms" },
+  { href: getRelativeLocaleUrl(locale, "cookie-policy"), label: sm.cookiePolicy, i18n: "blog.sitemap.cookiePolicy" },
+  { href: getRelativeLocaleUrl(locale, "contact"), label: sm.contact, i18n: "blog.sitemap.contact" },
 ];
 
 const toolGroups = menuColumnOrder.map(column => ({
