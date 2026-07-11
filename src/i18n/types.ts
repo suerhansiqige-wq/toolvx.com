@@ -100,6 +100,14 @@ export type UIStrings = {
     searchDesc: string;
     sitemapTitle: string;
     sitemapDesc: string;
+    aboutTitle: string;
+    aboutDesc: string;
+    contactTitle: string;
+    contactDesc: string;
+    termsTitle: string;
+    termsDesc: string;
+    privacyTitle: string;
+    privacyDesc: string;
   };
   a11y: {
     skipToContent: string;
@@ -210,6 +218,14 @@ export type Messages = {
       tagPageDesc: string;
       sitemapTitle: string;
       sitemapDesc: string;
+      aboutTitle: string;
+      aboutDesc: string;
+      contactTitle: string;
+      contactDesc: string;
+      termsTitle: string;
+      termsDesc: string;
+      privacyTitle: string;
+      privacyDesc: string;
     };
     sitemap: {
       mainPages: string;

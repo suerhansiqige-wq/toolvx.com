@@ -28,7 +28,7 @@ const { Content } = await render(about);
 
   <Breadcrumb />
 
-  <Main pageTitle={about.data.title} class="app-prose">
+  <Main pageTitle={about.data.title} pageTitleI18n="blog.pages.aboutTitle" pageDesc={about.data.description} pageDescI18n="blog.pages.aboutDesc" class="app-prose">
     <Content />
   </Main>
 
