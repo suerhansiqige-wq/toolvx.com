@@ -65,6 +65,10 @@
       "howToRedactImageOnline": {
         "title": "How to Redact Image Online Safely: The Best Free, No-Registration Tools",
         "description": "Need to hide sensitive data in a photo quickly? Learn how to redact image online files permanently with 100% private, browser-based client-side tools."
+      },
+      "ultimateGuideToFaceRedaction": {
+        "title": "The Ultimate Guide to Face Redaction: Protecting Identity in Images and Documents",
+        "description": "Discover how to implement irreversible face redaction to comply with global biometric privacy laws. Learn the technical requirements for permanent facial data masking."
       }
     }
   }
