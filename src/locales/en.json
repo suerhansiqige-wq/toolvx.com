@@ -49,6 +49,10 @@
       "redactedFaceGuide": {
         "title": "How to Correctly Create a Redacted Face in Images and PDFs: The Ultimate Privacy Guide",
         "description": "Learn why drawing over a face is not enough. Discover how true pixel-level redaction permanently destroys sensitive data in photos and PDFs — 100% in your browser."
+      },
+      "canvasRedactionTutorial": {
+        "title": "Building a Client-Side Redacted Face Tool: Secure Image & PDF De-identification via HTML5 Canvas",
+        "description": "A deep-dive tutorial on implementing pixel-level face redaction in the browser using Canvas API and PDF.js — no server, no uploads, zero data leakage."
       }
     }
   }

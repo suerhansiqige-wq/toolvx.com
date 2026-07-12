@@ -49,6 +49,10 @@
       "redactedFaceGuide": {
         "title": "如何正确脱敏图片与 PDF 中的人脸：终极隐私指南",
         "description": "了解为什么简单涂抹不够。探索真正的像素级脱敏如何永久销毁照片和 PDF 中的敏感数据 — 100% 在浏览器中完成。"
+      },
+      "canvasRedactionTutorial": {
+        "title": "构建客户端人脸脱敏工具：基于 HTML5 Canvas 的安全图像与 PDF 去标识化",
+        "description": "深入教程：使用 Canvas API 和 PDF.js 在浏览器中实现像素级人脸脱敏 — 无需服务器、无需上传、零数据泄露。"
       }
     }
   }
