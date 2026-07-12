@@ -69,6 +69,10 @@
       "ultimateGuideToFaceRedaction": {
         "title": "The Ultimate Guide to Face Redaction: Protecting Identity in Images and Documents",
         "description": "Discover how to implement irreversible face redaction to comply with global biometric privacy laws. Learn the technical requirements for permanent facial data masking."
+      },
+      "bestImageRedactionSoftware": {
+        "title": "Best Image Redaction Software in 2026: Secure Ways to Mask Sensitive Data",
+        "description": "Looking for the right image redaction software to protect sensitive corporate or personal data? Compare desktop apps with secure, free, browser-based alternatives."
       }
     }
   }
