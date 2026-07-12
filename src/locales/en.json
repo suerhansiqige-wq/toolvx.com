@@ -85,6 +85,10 @@
       "definitiveGuideToFacialRedaction": {
         "title": "The Definitive Guide to Facial Redaction: Protecting Biometric Privacy in Digital Assets",
         "description": "Learn the technical and regulatory standards for secure facial redaction. Discover why client-side pixel erasure is mandatory to comply with global biometric laws."
+      },
+      "redactFacesLocally": {
+        "title": "How to Redact Faces in Photos Locally: 3 Best Methods for Privacy Protection",
+        "description": "Master the art of face redaction with secure, local techniques that keep your data private. Compare pixelation, blackout, and browser-based methods."
       }
     }
   }

@@ -85,6 +85,10 @@
       "definitiveGuideToFacialRedaction": {
         "title": "面部脱敏权威指南：保护数字资产中的生物识别隐私",
         "description": "了解安全面部脱敏的技术和监管标准。发现为何客户端像素擦除是遵守全球生物识别法律的必要条件。"
+      },
+      "redactFacesLocally": {
+        "title": "如何在本地脱敏照片中的人脸：3 种最佳隐私保护方法",
+        "description": "掌握安全本地的人脸脱敏技巧，保护数据隐私。对比像素化、涂黑和浏览器端方法。"
       }
     }
   }
