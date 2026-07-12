@@ -53,6 +53,10 @@
       "canvasRedactionTutorial": {
         "title": "Building a Client-Side Redacted Face Tool: Secure Image & PDF De-identification via HTML5 Canvas",
         "description": "A deep-dive tutorial on implementing pixel-level face redaction in the browser using Canvas API and PDF.js — no server, no uploads, zero data leakage."
+      },
+      "enterpriseComplianceGuide": {
+        "title": "Enterprise Compliance Guide: Implementing Image and PDF Redaction for Secure Data Handling",
+        "description": "A compliance officer's guide to GDPR-ready image and PDF redaction. Learn why homemade masking fails audits and how zero-log browser tools protect your enterprise."
       }
     }
   }

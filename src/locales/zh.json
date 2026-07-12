@@ -53,6 +53,10 @@
       "canvasRedactionTutorial": {
         "title": "构建客户端人脸脱敏工具：基于 HTML5 Canvas 的安全图像与 PDF 去标识化",
         "description": "深入教程：使用 Canvas API 和 PDF.js 在浏览器中实现像素级人脸脱敏 — 无需服务器、无需上传、零数据泄露。"
+      },
+      "enterpriseComplianceGuide": {
+        "title": "企业合规指南：实施图像与 PDF 脱敏以实现安全数据处理",
+        "description": "合规官指南：面向 GDPR 的图像与 PDF 脱敏方案。了解为何自制掩码无法通过审计，以及零日志浏览器工具如何保护企业数据。"
       }
     }
   }
