@@ -8,6 +8,7 @@ import tailwindcss from "@tailwindcss/vite";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import { unified } from "@astrojs/markdown-remark";
+import sitemapTagCounts from "./src/data/sitemap-tag-counts.json";
 import remarkToc from "remark-toc";
 import remarkCollapse from "remark-collapse";
 import rehypeCallouts from "rehype-callouts";
@@ -27,8 +28,13 @@ export default defineConfig({
   integrations: [
     mdx(),
     sitemap({
-      filter: page =>
-        config.features?.showArchives !== false || !page.endsWith("/archives/"),
+      filter: page => {
+        if (config.features?.showArchives === false && page.endsWith("/archives/")) return false;
+        // Exclude single-article tag pages (thin content)
+        const tagMatch = page.match(/\/tags\/([^/]+)\//);
+        if (tagMatch && !(tagMatch[1] in sitemapTagCounts)) return false;
+        return true;
+      },
       changefreq: "weekly",
       priority: 0.7,
       lastmod: new Date(),

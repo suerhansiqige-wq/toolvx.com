@@ -13,13 +13,16 @@ import { getSortedPosts } from "@/utils/getSortedPosts";
 import { slugifyAll } from "@/utils/slugify";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
+import sitemapTagCounts from "@/data/sitemap-tag-counts.json";
 
 export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
   const posts = await getRenderablePosts();
   const postsNoDraft = posts.filter(({ data }) => !data.draft);
   const tags = getUniqueTags(postsNoDraft);
 
-  return tags.flatMap(({ tag, tagName }) => {
+  return tags
+    .filter(({ tag }) => tag in sitemapTagCounts)
+    .flatMap(({ tag, tagName }) => {
     const tagPosts = getSortedPosts(
       postsNoDraft.filter(({ data }) => slugifyAll(data.tags).includes(tag))
     );

@@ -1,0 +1,12 @@
+{
+  "pdf-image-redaction": 18,
+  "privacy": 8,
+  "image-redaction": 6,
+  "data-compliance": 3,
+  "gdpr": 3,
+  "face-redaction": 3,
+  "security": 2,
+  "biometric-privacy": 2,
+  "pdf-security": 2,
+  "compliance": 2
+}
