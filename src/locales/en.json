@@ -61,6 +61,10 @@
       "howToRedactPhoto": {
         "title": "How to Properly Redact a Photo: The Complete Guide to Secure Image Masking",
         "description": "Learn how to redact a photo permanently to protect your personal privacy or corporate data. Discover why phone markup tools fail and how to do it securely online."
+      },
+      "howToRedactImageOnline": {
+        "title": "How to Redact Image Online Safely: The Best Free, No-Registration Tools",
+        "description": "Need to hide sensitive data in a photo quickly? Learn how to redact image online files permanently with 100% private, browser-based client-side tools."
       }
     }
   }
