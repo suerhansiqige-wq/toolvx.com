@@ -15,7 +15,8 @@ const guides = (await getSortedRenderablePosts())
   .filter(post => post.data.tags.includes(REDACT_GUIDE_TAG))
   .sort(
     (a, b) => a.data.pubDatetime.getTime() - b.data.pubDatetime.getTime()
-  );
+  )
+  .slice(0, 12); // max 3 rows × 4 columns
 
 if (!guides.length) return null;
 
