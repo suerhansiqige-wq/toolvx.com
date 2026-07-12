@@ -6,6 +6,7 @@ import Footer from "@/components/Footer.astro";
 import Breadcrumb from "@/components/Breadcrumb.astro";
 import Main from "@/components/Main.astro";
 import { useTranslations } from "@/i18n";
+import { getPostUrl } from "@/utils/getPostPaths";
 import config from "@/config";
 
 const locale = "ja";
@@ -32,7 +33,7 @@ const sortedKeys = [...postsByYearMonth.keys()].sort().reverse();
         <ul class="space-y-2">
           {postsByYearMonth.get(key)!.map(post => (
             <li>
-              <a href={post.slug} class="text-accent hover:underline">{post.data.title}</a>
+              <a href={getPostUrl(post.id, post.filePath, locale)} class="text-accent hover:underline">{post.data.title}</a>
               <span class="text-muted-foreground ml-2 text-sm">{new Date(post.data.pubDatetime).toLocaleDateString(locale)}</span>
             </li>
           ))}

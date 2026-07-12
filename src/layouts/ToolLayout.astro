@@ -8,6 +8,7 @@ import ToolMobileNav from "@/components/tools/ToolMobileNav.astro";
 import { resolveDefaultOgImagePath } from "@/utils/resolveDefaultOgImagePath";
 import config from "@/config";
 import type { FAQItem } from "@/data/toolsSeo";
+import type { Locale } from "@/i18n/config";
 
 type Props = {
   /** Full page title for `<title>` and OG tags (50–60 chars recommended). */
@@ -30,7 +31,7 @@ type Props = {
   titleI18n?: string;
   descriptionI18n?: string;
   /** Page language for <html lang> and i18n routing. */
-  lang?: string;
+  lang?: Locale;
 };
 
 const {

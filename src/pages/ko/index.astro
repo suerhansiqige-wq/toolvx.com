@@ -135,7 +135,8 @@ const organizationStructuredData = {
 
 <script>
   document.addEventListener("astro:page-load", () => {
-    const indexLayout = (document.querySelector("#main-content"))?.dataset;
+    const indexLayout = (document.querySelector("#main-content") as HTMLElement)
+      ?.dataset;
     const baseRoot = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     if (indexLayout?.layout) {
       sessionStorage.setItem("backUrl", indexLayout.homePath ?? baseRoot);
