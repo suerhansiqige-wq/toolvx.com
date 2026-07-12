@@ -1,0 +1,52 @@
+---
+import { getRenderablePosts } from "@/utils/getRenderablePosts";
+import type { GetStaticPathsOptions } from "astro";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Main from "@/components/Main.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Card from "@/components/Card.astro";
+import Footer from "@/components/Footer.astro";
+import Pagination from "@/components/Pagination.astro";
+import { getUniqueTags } from "@/utils/getUniqueTags";
+import { getSortedPosts } from "@/utils/getSortedPosts";
+import { slugifyAll } from "@/utils/slugify";
+import { useTranslations } from "@/i18n";
+import config from "@/config";
+import sitemapTagCounts from "@/data/sitemap-tag-counts.json";
+
+export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
+  const posts = await getRenderablePosts();
+  const postsNoDraft = posts.filter(({ data }) => !data.draft);
+  const tags = getUniqueTags(postsNoDraft);
+
+  return tags
+    .filter(({ tag }) => tag in sitemapTagCounts)
+    .flatMap(({ tag, tagName }) => {
+      const tagPosts = getSortedPosts(
+        postsNoDraft.filter(({ data }) => slugifyAll(data.tags).includes(tag))
+      );
+      return paginate(tagPosts, {
+        params: { tag },
+        props: { tagName },
+        pageSize: config.posts.perPage,
+      });
+    });
+}
+
+const { page, tagName } = Astro.props;
+const locale = "es";
+const t = useTranslations(locale);
+---
+
+<Layout title={`${t.pages.tagTitle}: ${tagName} | ${config.site.title}`} lang="es">
+  <Header />
+  <Breadcrumb />
+  <Main pageTitle={`${t.pages.tagTitle}: ${tagName}`} pageTitleI18n="blog.pages.tagPageTitle" pageTitleVars={{ tag: tagName }} pageDescI18n="blog.pages.tagPageDesc" pageDescVars={{ tag: tagName }}>
+    <ul class="post-grid">
+      {page.data.map(data => <Card {...data} />)}
+    </ul>
+  </Main>
+  <Pagination {page} />
+  <Footer noMarginTop={page.lastPage > 1} />
+</Layout>

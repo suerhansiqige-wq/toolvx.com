@@ -4,6 +4,7 @@ import { getRelativeLocaleUrl } from "astro:i18n";
 import { resolveDefaultOgImagePath } from "@/utils/resolveDefaultOgImagePath";
 import { getAssetPath } from "@/utils/withBase";
 import config from "@/config";
+import { getLocaleFromPath, type Locale } from "@/i18n/config";
 
 type Props = {
   title: string;
@@ -31,6 +32,26 @@ const {
 
 const socialImageURL = new URL(ogImage, Astro.site ?? Astro.url);
 const rssHref = getRelativeLocaleUrl("en", "rss.xml");
+
+// ── Hreflang alternates ──
+const ALL_LOCALES: Locale[] = ["en", "zh", "es", "ja", "de", "fr", "ko", "pt"];
+const OG_LOCALE_MAP: Record<Locale, string> = {
+  en: "en_US", zh: "zh_CN", es: "es_ES", ja: "ja_JP",
+  de: "de_DE", fr: "fr_FR", ko: "ko_KR", pt: "pt_BR",
+};
+
+// Strip locale prefix from pathname to get the base path
+const currentPathname = Astro.url.pathname;
+const basePath = currentPathname.replace(/^\/(zh|es|ja|de|fr|ko|pt)(?=\/|$)/, "") || "/";
+const siteUrl = new URL(Astro.site ?? "https://localhost");
+
+function hreflangUrl(locale: Locale): string {
+  const prefix = locale === "en" ? "" : `/${locale}`;
+  return new URL(`${prefix}${basePath}`, siteUrl).href;
+}
+
+const currentLocale = getLocaleFromPath(currentPathname);
+const currentOgLocale = OG_LOCALE_MAP[currentLocale] ?? "en_US";
 
 const titleI18nAttr = titleI18n ? { "data-i18n": titleI18n } : {};
 const titleContentI18nAttr = titleI18n ? { "data-i18n-content": titleI18n } : {};
@@ -69,8 +90,10 @@ const descriptionI18nAttr = descriptionI18n
 <meta property="og:description" content={description} {...descriptionI18nAttr} />
 <meta property="og:url" content={canonicalURL} />
 <meta property="og:image" content={socialImageURL} />
-<meta property="og:locale" content="en_US" />
-<meta property="og:locale:alternate" content="zh_CN" />
+<meta property="og:locale" content={currentOgLocale} />
+{ALL_LOCALES.filter(l => l !== currentLocale).map(l => (
+  <meta property="og:locale:alternate" content={OG_LOCALE_MAP[l]} />
+))}
 
 <!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image" />
@@ -78,6 +101,12 @@ const descriptionI18nAttr = descriptionI18n
 <meta name="twitter:title" content={title} {...titleContentI18nAttr} />
 <meta name="twitter:description" content={description} {...descriptionI18nAttr} />
 <meta name="twitter:image" content={socialImageURL} />
+
+<!-- Hreflang alternates -->
+{ALL_LOCALES.map(l => (
+  <link rel="alternate" hreflang={l} href={hreflangUrl(l)} />
+))}
+<link rel="alternate" hreflang="x-default" href={new URL(basePath, siteUrl).href} />
 
 <!-- RSS autodiscovery -->
 <link

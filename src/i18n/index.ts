@@ -2,7 +2,18 @@ import type { UIStrings } from "./types";
 import { defaultLocale } from "./config";
 
 export { tplStr } from "./format";
-export { defaultLocale, localeList, locales, type Locale } from "./config";
+export {
+  defaultLocale,
+  localeList,
+  locales,
+  nonDefaultLocales,
+  localePathMap,
+  getLocaleFromPath,
+  matchBrowserLocale,
+  getLocalePrefix,
+  localizedPath,
+  type Locale,
+} from "./config";
 
 const modules = import.meta.glob<{ default: UIStrings }>("./lang/*.ts", {
   eager: true,
@@ -14,7 +25,7 @@ for (const [path, mod] of Object.entries(modules)) {
   translations[locale] = mod.default;
 }
 
-/** Returns UI strings for English (default and only locale). */
+/** Returns UI strings for the given locale, falling back to English. */
 export function useTranslations(locale: string = defaultLocale): UIStrings {
   return translations[locale] ?? translations[defaultLocale];
 }

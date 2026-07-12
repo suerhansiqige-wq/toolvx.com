@@ -6,6 +6,10 @@ import en from "./en.json";
 import zh from "./zh.json";
 import ja from "./ja.json";
 import es from "./es.json";
+import de from "./de.json";
+import fr from "./fr.json";
+import ko from "./ko.json";
+import pt from "./pt.json";
 import {
   getNestedMessage,
   resolveLocale,
@@ -20,6 +24,10 @@ export const localeBundles: Partial<Record<LocaleCode, LocaleBundle>> = {
   zh,
   ja,
   es,
+  de,
+  fr,
+  ko,
+  pt,
 };
 
 const bundleLocales = Object.keys(localeBundles) as LocaleCode[];
@@ -40,4 +48,4 @@ export function getLocaleBundleMessage(
   return getNestedMessage(localeBundles.en, key);
 }
 
-export { en, zh, ja, es };
+export { en, zh, ja, es, de, fr, ko, pt };

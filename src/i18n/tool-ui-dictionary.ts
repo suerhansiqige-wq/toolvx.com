@@ -1,8 +1,8 @@
 /** Flat-key tool UI dictionary — English source keys, browser locale switching. */
 
-export type ToolUiLocale = "en" | "zh" | "es" | "ja";
+export type ToolUiLocale = "en" | "zh" | "es" | "ja" | "de" | "fr" | "ko" | "pt";
 
-export const TOOL_UI_LOCALES: ToolUiLocale[] = ["en", "zh", "es", "ja"];
+export const TOOL_UI_LOCALES: ToolUiLocale[] = ["en", "zh", "es", "ja", "de", "fr", "ko", "pt"];
 
 export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
   en: {
@@ -885,9 +885,12 @@ export const toolUiDictionary: Record<ToolUiLocale, Record<string, string>> = {
     "redact.faq-a-3":
       "いいえ。ぼかしや単色マスクを適用してダウンロードすると、ツールはファイルレイヤーを永久にフラット化します。元のピクセルデータやテキストストリームは完全に削除され、隠された情報を復元することは不可能です。",
   },
+  // de/fr/ko/pt fall back to English via getToolUiMessage
+  de: {},
+  fr: {},
+  ko: {},
+  pt: {},
 };
-
-/** Detect browser language → en | zh | es | ja (fallback en). */
 export function detectToolUiLocale(): ToolUiLocale {
   const raw =
     (typeof navigator !== "undefined" &&

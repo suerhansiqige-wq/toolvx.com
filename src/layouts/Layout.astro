@@ -3,6 +3,7 @@ import { ClientRouter } from "astro:transitions";
 import HeadSEO from "@/components/HeadSEO.astro";
 import CookieConsent from "@/components/CookieConsent.astro";
 import config from "@/config";
+import { getLocaleFromPath, type Locale } from "@/i18n/config";
 import "@/styles/global.css";
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
   titleI18n?: string;
   descriptionI18n?: string;
   robots?: string;
+  lang?: Locale;
 };
 
 const { site } = config;
@@ -27,12 +29,54 @@ const {
   titleI18n,
   descriptionI18n,
   robots,
+  lang = getLocaleFromPath(Astro.url.pathname),
 } = Astro.props;
+
+/** HTML lang attribute value for the current locale. */
+const htmlLangMap: Record<Locale, string> = {
+  en: "en",
+  zh: "zh-CN",
+  es: "es",
+  ja: "ja",
+  de: "de",
+  fr: "fr",
+  ko: "ko",
+  pt: "pt-BR",
+};
+const htmlLang = htmlLangMap[lang] ?? "en";
 ---
 
 <!doctype html>
-<html lang="en" dir="ltr" class="overflow-y-scroll scroll-smooth">
+<html lang={htmlLang} dir="ltr" class="overflow-y-scroll scroll-smooth">
   <head>
+    <!--
+      Browser language auto-redirect: runs BEFORE any other script
+      to prevent FOUC. Only triggers on the homepage (/).
+    -->
+    <script is:inline>
+      (function () {
+        var supported = ["zh","es","ja","de","fr","ko","pt"];
+        var path = window.location.pathname;
+        /* Skip if already on a localized path */
+        for (var i = 0; i < supported.length; i++) {
+          if (path === "/" + supported[i] || path.indexOf("/" + supported[i] + "/") === 0) return;
+        }
+        var stored = null;
+        try { stored = localStorage.getItem("preferred-lang"); } catch(e) {}
+        if (stored && supported.indexOf(stored) !== -1 && (path === "/" || path === "")) {
+          window.location.replace("/" + stored + "/");
+          return;
+        }
+        if (!stored && (path === "/" || path === "")) {
+          var nav = (navigator.language || (navigator.userLanguage) || "en").slice(0, 2).toLowerCase();
+          if (supported.indexOf(nav) !== -1) {
+            try { localStorage.setItem("preferred-lang", nav); } catch(e) {}
+            window.location.replace("/" + nav + "/");
+          }
+        }
+      })();
+    </script>
+
     <!-- Legacy: globalThis before any other script (Win7 / IE11-era embeds). -->
     <script is:inline>
       (function () {

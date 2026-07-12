@@ -29,6 +29,8 @@ type Props = {
   /** i18n keys for client-side head meta switching. */
   titleI18n?: string;
   descriptionI18n?: string;
+  /** Page language for <html lang> and i18n routing. */
+  lang?: string;
 };
 
 const {
@@ -43,6 +45,7 @@ const {
   steps = [],
   titleI18n,
   descriptionI18n,
+  lang,
 } = Astro.props;
 
 const structuredData = {
@@ -101,6 +104,7 @@ const howToStructuredData =
   {canonicalURL}
   {titleI18n}
   {descriptionI18n}
+  lang={lang}
 >
   <Fragment slot="head">
     {keywords && <meta name="keywords" content={keywords} />}

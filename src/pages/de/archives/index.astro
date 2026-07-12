@@ -1,0 +1,44 @@
+---
+import { getSortedRenderablePosts } from "@/utils/getRenderablePosts";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import { useTranslations } from "@/i18n";
+import config from "@/config";
+
+const locale = "de";
+const t = useTranslations(locale);
+const posts = await getSortedRenderablePosts();
+
+const postsByYearMonth = new Map<string, typeof posts>();
+for (const post of posts) {
+  const d = new Date(post.data.pubDatetime);
+  const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  if (!postsByYearMonth.has(key)) postsByYearMonth.set(key, []);
+  postsByYearMonth.get(key)!.push(post);
+}
+const sortedKeys = [...postsByYearMonth.keys()].sort().reverse();
+---
+
+<Layout title={`${t.pages.archivesTitle} | ${config.site.title}`} description={t.pages.archivesDesc} titleI18n="blog.pages.archivesTitle" descriptionI18n="blog.pages.archivesDesc" lang="de">
+  <Header />
+  <Breadcrumb />
+  <Main pageTitle={t.pages.archivesTitle} pageTitleI18n="blog.pages.archivesTitle" pageDesc={t.pages.archivesDesc}>
+    {sortedKeys.map(key => (
+      <section class="mb-8">
+        <h2 class="text-foreground mb-4 text-xl font-bold">{key}</h2>
+        <ul class="space-y-2">
+          {postsByYearMonth.get(key)!.map(post => (
+            <li>
+              <a href={post.slug} class="text-accent hover:underline">{post.data.title}</a>
+              <span class="text-muted-foreground ml-2 text-sm">{new Date(post.data.pubDatetime).toLocaleDateString(locale)}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </Main>
+  <Footer />
+</Layout>

@@ -1,0 +1,28 @@
+---
+import { getSortedRenderablePosts } from "@/utils/getRenderablePosts";
+import { getRelativeLocaleUrl } from "astro:i18n";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import Card from "@/components/Card.astro";
+import Pagination from "@/components/Pagination.astro";
+import { useTranslations } from "@/i18n";
+import config from "@/config";
+
+const locale = "de";
+const t = useTranslations(locale);
+const allPosts = await getSortedRenderablePosts();
+---
+
+<Layout title={`${t.pages.postsTitle} | ${config.site.title}`} description={t.pages.postsDesc} titleI18n="blog.pages.postsTitle" descriptionI18n="blog.pages.postsDesc" lang="de">
+  <Header />
+  <Breadcrumb />
+  <Main pageTitle={t.pages.postsTitle} pageTitleI18n="blog.pages.postsTitle" pageDesc={t.pages.postsDesc}>
+    <ul class="post-grid list-none p-0">
+      {allPosts.map(data => (<Card variant="h3" {...data} />))}
+    </ul>
+  </Main>
+  <Footer />
+</Layout>

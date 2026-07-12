@@ -1,0 +1,144 @@
+---
+import { getSortedRenderablePosts } from "@/utils/getRenderablePosts";
+import { getRelativeLocaleUrl } from "astro:i18n";
+import IconRss from "@/assets/icons/IconRss.svg";
+import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import Socials from "@/components/Socials.astro";
+import Card from "@/components/Card.astro";
+import LinkButton from "@/components/LinkButton.astro";
+import HomeToolTags from "@/components/HomeToolTags.astro";
+import HomeRedactGuides from "@/components/HomeRedactGuides.astro";
+import { postsListingSearchSynonyms } from "@/utils/post-search-synonyms";
+import { homeSearchSynonyms } from "@/utils/tool-search-synonyms";
+import { catalogs, type LocaleCode } from "@/i18n/messages";
+import { useTranslations } from "@/i18n";
+import { getAssetPath } from "@/utils/withBase";
+import config from "@/config";
+
+const { socials, posts: postsConfig, site } = config;
+const locale = "fr";
+const t = useTranslations(locale);
+const catalog = catalogs[locale as LocaleCode] ?? catalogs.en;
+const homeSeo = catalog.blog.home.seo;
+
+const posts = await getSortedRenderablePosts();
+const featuredPosts = posts.filter(({ data }) => data.featured);
+const recentPosts = posts.filter(({ data }) => !data.featured);
+const homePath = getRelativeLocaleUrl(locale, "");
+const homePostSearchSynonyms = postsListingSearchSynonyms(posts);
+const homeToolSearchSynonyms = homeSearchSynonyms();
+
+const siteUrl = new URL(site.url);
+const canonicalURL = new URL(Astro.url.pathname, siteUrl).href;
+const searchUrlTemplate = new URL("search?q={search_term_string}", siteUrl).href;
+const logoUrl = new URL(getAssetPath("logo.png"), siteUrl).href;
+
+const websiteStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: site.title,
+  url: siteUrl.href,
+  description: homeSeo.description,
+  inLanguage: ["en", "zh", "es", "ja", "de", "fr", "ko", "pt"],
+  potentialAction: {
+    "@type": "SearchAction",
+    target: { "@type": "EntryPoint", urlTemplate: searchUrlTemplate },
+    "query-input": "required name=search_term_string",
+  },
+};
+
+const organizationStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: site.title,
+  url: siteUrl.href,
+  logo: logoUrl,
+};
+---
+
+<Layout
+  title={homeSeo.title}
+  description={homeSeo.description}
+  canonicalURL={canonicalURL}
+  titleI18n="blog.home.seo.title"
+  descriptionI18n="blog.home.seo.description"
+  lang="fr"
+>
+  <Fragment slot="head">
+    <meta name="keywords" content={homeSeo.keywords} />
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(websiteStructuredData)} />
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(organizationStructuredData)} />
+  </Fragment>
+
+  <Header />
+  <main id="main-content" data-layout="index" data-home-path={homePath} class="app-layout pb-16 pt-6 sm:pb-24 sm:pt-10">
+    <HomeToolTags locale={locale} />
+    <HomeRedactGuides locale={locale} />
+
+    <section id="hero" class="card-surface shadow-elevated mb-16 p-8 sm:mb-20 sm:p-12 lg:p-16" data-pagefind-body>
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <h1 class="hero-title text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl" data-i18n="blog.hero.title">
+          {catalog.blog.hero.title}
+        </h1>
+        <a target="_blank" href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}rss.xml`} class="interactive hover-lift card-surface inline-flex items-center justify-center rounded-xl p-3" aria-label="RSS Feed" title="RSS Feed" data-i18n-aria-label="blog.hero.rssFeed" data-i18n-title="blog.hero.rssFeed">
+          <IconRss width={20} height={20} class="stroke-accent scale-125 stroke-3 rtl:-rotate-90" />
+          <span class="sr-only" data-i18n="blog.hero.rssFeed">RSS Feed</span>
+        </a>
+      </div>
+      <p class="text-muted-foreground mt-8 max-w-3xl text-base leading-relaxed sm:text-lg" data-i18n="blog.hero.description">
+        {catalog.blog.hero.description}
+      </p>
+      <p class="text-muted-foreground mt-4 max-w-3xl text-base leading-relaxed" data-i18n="blog.hero.intro">
+        {catalog.blog.hero.intro}
+      </p>
+      {socials.length > 0 && (
+        <div class="mt-8 flex max-sm:flex-col sm:items-center sm:gap-3">
+          <div class="text-muted-foreground me-2 mb-2 whitespace-nowrap sm:mb-0" data-i18n="blog.home.socialLinks">{t.home.socialLinks}:</div>
+          <Socials />
+        </div>
+      )}
+    </section>
+
+    {featuredPosts.length > 0 && (
+      <section id="featured" class="mb-16 sm:mb-20">
+        <h2 class="text-foreground mb-8 text-2xl font-bold tracking-tight sm:text-3xl" data-i18n="blog.home.featured">{t.home.featured}</h2>
+        <ul class="post-grid list-none p-0">
+          {featuredPosts.map(data => (<Card variant="h3" {...data} />))}
+        </ul>
+      </section>
+    )}
+
+    {recentPosts.length > 0 && (
+      <section id="recent-posts" class="mb-12">
+        <h2 class="text-foreground mb-8 text-2xl font-bold tracking-tight sm:text-3xl" data-i18n="blog.home.recentPosts">{t.home.recentPosts}</h2>
+        <ul class="post-grid list-none p-0">
+          {recentPosts.slice(0, postsConfig.perIndex).map(data => (<Card variant="h3" {...data} />))}
+        </ul>
+      </section>
+    )}
+
+    <div class="mt-12 text-center">
+      <LinkButton variant="button" href={getRelativeLocaleUrl(locale, "posts")}>
+        <span data-i18n="blog.home.allPosts">{t.home.allPosts}</span>
+        <IconArrowRight class="inline-block rtl:-rotate-180" />
+      </LinkButton>
+    </div>
+
+    {homeToolSearchSynonyms && (<div data-pagefind-body data-pagefind-filter="type:tool" class="sr-only" aria-hidden="true">{homeToolSearchSynonyms}</div>)}
+    {homePostSearchSynonyms && (<div data-pagefind-body data-pagefind-filter="type:post" class="sr-only" aria-hidden="true">{homePostSearchSynonyms}</div>)}
+  </main>
+  <Footer />
+</Layout>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const indexLayout = (document.querySelector("#main-content"))?.dataset;
+    const baseRoot = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+    if (indexLayout?.layout) {
+      sessionStorage.setItem("backUrl", indexLayout.homePath ?? baseRoot);
+    }
+  });
+</script>

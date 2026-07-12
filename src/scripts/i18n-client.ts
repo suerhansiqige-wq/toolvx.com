@@ -111,7 +111,15 @@ export function getLocale(): LocaleCode {
 }
 
 function flatLocale(): ToolUiLocale {
-  if (currentLocale === "zh" || currentLocale === "es" || currentLocale === "ja") {
+  if (
+    currentLocale === "zh" ||
+    currentLocale === "es" ||
+    currentLocale === "ja" ||
+    currentLocale === "de" ||
+    currentLocale === "fr" ||
+    currentLocale === "ko" ||
+    currentLocale === "pt"
+  ) {
     return currentLocale;
   }
   return "en";
@@ -337,24 +345,25 @@ export function showAppPrompt(
 
 const REDACT_BODY_KEY_RE = /^posts\.redact\.([a-zA-Z]+)\.(b\d+)$/;
 
-const redactZhBlockCache = new Map<string, Record<string, string>>();
+const redactPostBlockCache = new Map<string, Record<string, string>>();
 
-async function loadRedactZhBlocks(i18nKey: string): Promise<Record<string, string>> {
-  const cached = redactZhBlockCache.get(i18nKey);
+async function loadRedactPostBlocks(i18nKey: string, locale: string): Promise<Record<string, string>> {
+  const cacheKey = `${locale}:${i18nKey}`;
+  const cached = redactPostBlockCache.get(cacheKey);
   if (cached) return cached;
 
   const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
   try {
-    const res = await fetch(`${base}locales/zh-posts/${i18nKey}.json`);
+    const res = await fetch(`${base}locales/${locale}-posts/${i18nKey}.json`);
     if (!res.ok) {
-      redactZhBlockCache.set(i18nKey, {});
+      redactPostBlockCache.set(cacheKey, {});
       return {};
     }
     const data = (await res.json()) as Record<string, string>;
-    redactZhBlockCache.set(i18nKey, data);
+    redactPostBlockCache.set(cacheKey, data);
     return data;
   } catch {
-    redactZhBlockCache.set(i18nKey, {});
+    redactPostBlockCache.set(cacheKey, {});
     return {};
   }
 }
@@ -387,7 +396,8 @@ async function applyRedactPostBodyI18n(
   root: ParentNode,
   locale: LocaleCode
 ): Promise<void> {
-  if (locale !== "zh") return;
+  // Only apply for non-English locales that have post translations
+  if (locale === "en") return;
 
   const byArticle = new Map<string, { el: HTMLElement; blockKey: string }[]>();
   for (const el of root.querySelectorAll<HTMLElement>("[data-i18n]")) {
@@ -403,10 +413,10 @@ async function applyRedactPostBodyI18n(
 
   await Promise.all(
     [...byArticle.entries()].map(async ([i18nKey, items]) => {
-      const blocks = await loadRedactZhBlocks(i18nKey);
+      const blocks = await loadRedactPostBlocks(i18nKey, locale);
       for (const { el, blockKey } of items) {
-        const zh = blocks[blockKey];
-        if (zh) applyRedactBlockText(el, zh);
+        const text = blocks[blockKey];
+        if (text) applyRedactBlockText(el, text);
       }
     })
   );
@@ -533,6 +543,14 @@ export function applyI18n(root: ParentNode = document): void {
 }
 
 export function initI18n(): void {
+  // 1. Detect locale from URL path (highest priority)
+  const pathLocale = detectLocaleFromPath();
+  if (pathLocale) {
+    setLocale(pathLocale, true);
+    return;
+  }
+
+  // 2. Fall back to stored preference or browser detection
   let stored: string | null = null;
   try {
     stored = localStorage.getItem(STORAGE_KEY);
@@ -542,6 +560,14 @@ export function initI18n(): void {
 
   const detected = stored ? resolveLocale(stored) : detectBrowserLocale();
   setLocale(detected, Boolean(stored));
+}
+
+/** Extract locale code from URL pathname, e.g. "/zh/about/" → "zh". */
+function detectLocaleFromPath(): LocaleCode | null {
+  if (typeof window === "undefined") return null;
+  const path = window.location.pathname;
+  const match = path.match(/^\/(zh|es|ja|de|fr|ko|pt)(?:\/|$)/);
+  return match ? (match[1] as LocaleCode) : null;
 }
 
 export function onI18nReady(init: () => void): void {

@@ -1,0 +1,15 @@
+{
+  "blog": {
+    "home": {
+      "seo": {
+        "title": "Ferramentas PDF online gratuitas & redação de imagens | ToolVX",
+        "description": "Ferramentas PDF gratuitas baseadas no navegador — comprima, mescle, divida, redija e converta arquivos localmente. Sem uploads, sem processamento em nuvem. Guias de redação de imagens e PDF com foco em privacidade incluídos."
+      },
+      "redactGuides": {
+        "title": "Guias de redação de PDF e imagem",
+        "subtitle": "Tutoriais com foco em privacidade para redação local no navegador — sem uploads, sem nuvem.",
+        "viewAll": "Ver todos os guias →"
+      }
+    }
+  }
+}

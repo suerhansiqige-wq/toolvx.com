@@ -1,0 +1,21 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import { useTranslations } from "@/i18n";
+import config from "@/config";
+
+const locale = "ko";
+const t = useTranslations(locale);
+---
+
+<Layout title={`${t.pages.searchTitle} | ${config.site.title}`} description={t.pages.searchDesc} titleI18n="blog.pages.searchTitle" descriptionI18n="blog.pages.searchDesc" lang="ko">
+  <Header />
+  <Breadcrumb />
+  <Main pageTitle={t.pages.searchTitle} pageTitleI18n="blog.pages.searchTitle" pageDesc={t.pages.searchDesc}>
+    <div id="search-container"></div>
+  </Main>
+  <Footer />
+</Layout>

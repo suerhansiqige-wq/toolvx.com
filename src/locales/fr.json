@@ -1,0 +1,15 @@
+{
+  "blog": {
+    "home": {
+      "seo": {
+        "title": "Outils PDF en ligne gratuits & caviardage d'images | ToolVX",
+        "description": "Outils PDF gratuits basés sur le navigateur — compressez, fusionnez, divisez, caviardez et convertissez des fichiers localement. Pas de téléchargement, pas de traitement cloud. Guides de caviardage d'images et PDF respectueux de la vie privée inclus."
+      },
+      "redactGuides": {
+        "title": "Guides de caviardage PDF & image",
+        "subtitle": "Tutoriels respectueux de la vie privée pour le caviardage local dans le navigateur — sans upload, sans cloud.",
+        "viewAll": "Voir tous les guides →"
+      }
+    }
+  }
+}

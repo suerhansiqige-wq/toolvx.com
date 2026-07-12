@@ -1,0 +1,15 @@
+{
+  "blog": {
+    "home": {
+      "seo": {
+        "title": "Kostenlose Online-PDF-Tools & Bild-Schwärzung | ToolVX",
+        "description": "Kostenlose browserbasierte PDF-Tools — Dateien lokal komprimieren, zusammenführen, teilen, schwärzen und konvertieren. Keine Uploads, keine Cloud-Verarbeitung. Datenschutzfreundliche PDF- und Bild-Schwärzungsanleitungen inklusive."
+      },
+      "redactGuides": {
+        "title": "PDF- & Bild-Schwärzungsanleitungen",
+        "subtitle": "Datenschutzfreundliche Anleitungen für browserlokale Schwärzung — keine Uploads, keine Cloud-Verarbeitung.",
+        "viewAll": "Alle Anleitungen anzeigen →"
+      }
+    }
+  }
+}

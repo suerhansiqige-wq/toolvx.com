@@ -1,0 +1,86 @@
+---
+import ToolLayout from "@/layouts/ToolLayout.astro";
+import ToolWorkspace from "@/components/tools/ToolWorkspace.astro";
+import ToolOptions from "@/components/tools/ToolOptions.astro";
+import FileDropZone from "@/components/tools/FileDropZone.astro";
+import ToolActionBar from "@/components/tools/ToolActionBar.astro";
+import TrustBadge from "@/components/tools/TrustBadge.astro";
+import ToolSeoArticle from "@/components/tools/ToolSeoArticle.astro";
+import { toolsRegistry } from "@/data/toolsRegistry";
+import { getToolSeoOrThrow } from "@/data/toolsSeo";
+import { getToolMessages } from "@/i18n/server";
+import { toolSearchSynonyms } from "@/utils/tool-search-synonyms";
+
+export function getStaticPaths() {
+  return toolsRegistry.map(tool => ({
+    params: { slug: tool.slug },
+    props: { tool },
+  }));
+}
+
+const { tool } = Astro.props;
+const seo = getToolSeoOrThrow(tool.slug);
+const messages = getToolMessages(tool.i18nKey, "ko");
+const i18nPrefix = `tools.${tool.i18nKey}`;
+---
+
+<ToolLayout
+  title={seo.title}
+  description={seo.description}
+  titleI18n={`${i18nPrefix}.seoTitle`}
+  descriptionI18n={`${i18nPrefix}.seoDescription`}
+  keywords={seo.keywords.join(", ")}
+  appName={seo.h1}
+  faqs={seo.faqs}
+  steps={seo.steps}
+  lang="ko"
+>
+  <div
+    id="tool-root"
+    data-tool-action={tool.action}
+    data-i18n-key={tool.i18nKey}
+    data-multiple={tool.multiple ? "true" : "false"}
+  >
+    <ToolWorkspace
+      title={seo.h1}
+      tagline={seo.introduction}
+      titleI18n={`${i18nPrefix}.seoRich.h1`}
+      taglineI18n={`${i18nPrefix}.seoRich.introduction`}
+      searchSynonyms={toolSearchSynonyms(tool.i18nKey)}
+    >
+      <FileDropZone
+        accept={tool.accept}
+        hint={messages.uploadHint}
+        subhint={messages.uploadSubhint}
+        multiple={tool.multiple}
+        hintI18n={`${i18nPrefix}.uploadHint`}
+        subhintI18n={`${i18nPrefix}.uploadSubhint`}
+        class="mb-6"
+      />
+
+      <ToolOptions action={tool.action} />
+
+      <ToolActionBar
+        actionLabel={messages.action}
+        actionI18n={`${i18nPrefix}.action`}
+        downloadLabel={messages.download}
+        downloadI18n={`${i18nPrefix}.download`}
+      />
+
+      <p
+        id="tool-error"
+        class="mt-4 hidden text-sm text-rose-600 dark:text-rose-400"
+        role="alert"
+      ></p>
+    </ToolWorkspace>
+
+    <TrustBadge />
+
+    <ToolSeoArticle seo={seo} toolI18nKey={tool.i18nKey} />
+  </div>
+</ToolLayout>
+
+<script>
+  import "@/scripts/legacy-polyfills";
+  import "@/scripts/tool-page.client.ts";
+</script>

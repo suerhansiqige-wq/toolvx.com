@@ -1,0 +1,21 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import { useTranslations } from "@/i18n";
+import config from "@/config";
+
+const locale = "ko";
+const t = useTranslations(locale);
+---
+
+<Layout title={`${t.pages.sitemapTitle} | ${config.site.title}`} description={t.pages.sitemapDesc} titleI18n="blog.pages.sitemapTitle" descriptionI18n="blog.pages.sitemapDesc" lang="ko">
+  <Header />
+  <Breadcrumb />
+  <Main pageTitle={t.pages.sitemapTitle} pageTitleI18n="blog.pages.sitemapTitle" pageDesc={t.pages.sitemapDesc}>
+    <p>{t.pages.sitemapDesc}</p>
+  </Main>
+  <Footer />
+</Layout>
