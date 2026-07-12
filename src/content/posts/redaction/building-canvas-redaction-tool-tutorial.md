@@ -295,6 +295,6 @@ Building a client-side redacted face tool is entirely feasible with modern brows
 
 The security benefits are clear: no uploads, no server copies, no compliance liabilities. The performance benefits are equally compelling: zero network latency, instant feedback, and unlimited file sizes bounded only by the user's device memory.
 
-For developers building privacy-first applications, this architecture is the gold standard. The [ToolVX redaction tool](/redact-preview/) implements this exact pipeline — Solid Color Fill, Mosaic, and Fuzzy Radius effects, all running 100% in the browser.
+For developers building privacy-first applications, this architecture is the gold standard. The [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) implements this exact pipeline — Solid Color Fill, Mosaic, and Fuzzy Radius effects, all running 100% in the browser. For a full comparison of redaction software options, see our [**image redaction software review**](/posts/redaction/best-image-redaction-software/).
 
 > **Quick Answer:** A redacted face tool built with HTML5 Canvas replaces sensitive pixels directly using `getImageData`/`putImageData` — no overlay layers, no server uploads. Combined with PDF.js for document rendering, it provides a complete client-side de-identification pipeline that keeps data on the user's device at all times.

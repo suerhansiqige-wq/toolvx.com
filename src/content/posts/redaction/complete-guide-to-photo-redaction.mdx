@@ -40,7 +40,7 @@ Secure **photo redaction** must permanently alter pixel values at the byte level
 1. **Solid color replacement** — Overwrite the original pixels with an opaque color block. The original data is gone forever.
 2. **Pixel scrambling** — Apply high-density mosaic that destroys facial features and text patterns irreversibly.
 
-Anything less is concealment, not redaction.
+Anything less is concealment, not redaction. For a detailed technical analysis of why reversible masking fails, see our [**investigation into redaction reversibility**](/posts/redaction/remove-redaction-from-image-online-free/).
 
 ## Step-by-Step Tutorial: How to Execute Irreversible Photo Redaction
 
@@ -48,7 +48,7 @@ Follow these four steps to permanently mask sensitive data in any image or PDF.
 
 ### Step 1: Upload Your File
 
-Open a **browser-based photo redaction tool** in your browser. Drop your image or PDF onto the canvas. No upload to any server. No registration. No email required.
+Open the [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) in your browser. Drop your image or PDF onto the canvas. No upload to any server. No registration. No email required.
 
 ### Step 2: Drag to Select Sensitive Areas
 
@@ -96,7 +96,7 @@ A client-side tool performs all computation inside your browser. Your image data
 - **Instant speed** — No waiting for server round-trips. Processing happens in milliseconds.
 - **Full compliance** — Meets GDPR and CCPA requirements for data minimization.
 
-Our tool at [**ToolVX Redaction**](/redact-preview/) uses this exact architecture. All **photo redaction** happens locally in your browser via WebAssembly and Canvas APIs. Zero logs. Zero uploads. Zero risk.
+Our tool, the [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/), uses this exact architecture. All **photo redaction** happens locally in your browser via WebAssembly and Canvas APIs. Zero logs. Zero uploads. Zero risk.
 
 ## Conclusion & FAQ
 
@@ -106,7 +106,7 @@ Proper **photo redaction** is a essential skill for anyone who shares digital fi
 
 **Is photo redaction permanent?**
 
-Yes, when done correctly. Solid color fill and high-density mosaic permanently overwrite the original pixel data. The original information cannot be recovered by any method. Avoid tools that use translucent overlays or reversible layers.
+Yes, when done correctly. Solid color fill and high-density mosaic permanently overwrite the original pixel data. The original information cannot be recovered by any method. Avoid tools that use translucent overlays or reversible layers. Learn more about [**why redaction reversibility matters**](/posts/redaction/remove-redaction-from-image-online-free/).
 
 **Can someone reverse a blurred image?**
 
@@ -114,4 +114,4 @@ It depends on the blur intensity. A low-radius blur can often be reversed by AI 
 
 **What is the best free tool to redact photos online?**
 
-[**ToolVX Redaction**](/redact-preview/) is a free, browser-based tool that requires no registration. It performs all **photo redaction** client-side, meaning your files never upload to a server. It supports images (JPG, PNG, WebP) and PDFs with three mask styles: Solid Fill, Mosaic, and Blur.
+The [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) is a free, browser-based tool that requires no registration. It performs all **photo redaction** client-side, meaning your files never upload to a server. It supports images (JPG, PNG, WebP) and PDFs with three mask styles: Solid Fill, Mosaic, and Blur.

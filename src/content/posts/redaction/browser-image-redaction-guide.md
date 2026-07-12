@@ -15,9 +15,9 @@ tags:
 
 # Complete Browser Image Redaction Guide: JPG, PNG, GIF & WebP
 
-Photographs, screenshots, and scanned receipts carry identifying detail long after you have finished using them. A face in the background, a credit card on a desk, a client logo on a whiteboard—these elements can turn an innocent portfolio sample into a privacy incident. The challenge is masking that detail without sending your source file through an unknown server or signing up for yet another cloud subscription.
+Photographs, screenshots, and scanned receipts carry identifying detail long after you have finished using them. A face in the background, a credit card on a desk, a client logo on a whiteboard鈥攖hese elements can turn an innocent portfolio sample into a privacy incident. The challenge is masking that detail without sending your source file through an unknown server or signing up for yet another cloud subscription.
 
-This guide walks through browser-local image redaction from first principles: supported formats, drag-and-drop workflow, effect selection, and practical scenarios for freelancers and small teams. Every step assumes the same privacy model�?*your files stay on your device**—implemented in the [ToolVX redaction workspace](/redact-preview).
+This guide walks through browser-local image redaction from first principles: supported formats, drag-and-drop workflow, effect selection, and practical scenarios for freelancers and small teams. Every step assumes the same privacy model鈥?*your files stay on your device**鈥攊mplemented in the [ToolVX redaction workspace](/redact-preview).
 
 ![ToolVX upload interface](/assets/blog/redact/toolvx-redact-upload.png)
 
@@ -36,11 +36,11 @@ That architecture makes redaction practical on restricted networks, client-owned
 
 ## Supported Formats: JPG, PNG, GIF, and WebP
 
-Modern redaction tools must handle the formats people actually receive—not only pristine PNG exports from design software, but phone JPEGs, animated GIFs, and WebP assets from the web.
+Modern redaction tools must handle the formats people actually receive鈥攏ot only pristine PNG exports from design software, but phone JPEGs, animated GIFs, and WebP assets from the web.
 
 ### JPEG (JPG)
 
-JPEG is the default output of most cameras and scanners. It uses lossy compression, which means repeated editing and saving can introduce artifacts around masked edges. For redaction, apply masks once on the highest-quality source you possess, then export. JPEG remains the best interchange format when file size matters—email attachments, CMS uploads, and legacy portals almost always accept it.
+JPEG is the default output of most cameras and scanners. It uses lossy compression, which means repeated editing and saving can introduce artifacts around masked edges. For redaction, apply masks once on the highest-quality source you possess, then export. JPEG remains the best interchange format when file size matters鈥攅mail attachments, CMS uploads, and legacy portals almost always accept it.
 
 ### PNG
 
@@ -48,7 +48,7 @@ PNG preserves sharp edges and supports transparency. It is ideal for screenshots
 
 ### GIF
 
-GIF supports animation and limited color palettes. Redacting a GIF requires processing each frame that contains sensitive content, or flattening animation to a static image if motion is not essential. For privacy work, confirm whether the animated sequence reveals temporal information—such as a scrolling notification list—that a single frame would miss.
+GIF supports animation and limited color palettes. Redacting a GIF requires processing each frame that contains sensitive content, or flattening animation to a static image if motion is not essential. For privacy work, confirm whether the animated sequence reveals temporal information鈥攕uch as a scrolling notification list鈥攖hat a single frame would miss.
 
 ### WebP
 
@@ -61,11 +61,11 @@ WebP combines efficient compression with optional transparency. It is increasing
 | GIF | Memes, simple motion | Yes (1-bit) | Yes | Check all frames; consider flattening if motion is unnecessary |
 | WebP | Web assets, mobile | Optional | Optional | Decode fully before masking; choose output format deliberately |
 
-<!-- Google AdSense �?in-article responsive slot -->
+<!-- Google AdSense 鈥?in-article responsive slot -->
 
 ## Getting Started: Drag, Drop, and Open
 
-The fastest path to a redacted image is a zero-install browser workflow. ToolVX opens directly to an upload surface—no desktop agent, no plugin.
+The fastest path to a redacted image is a zero-install browser workflow. ToolVX opens directly to an upload surface鈥攏o desktop agent, no plugin.
 
 ### Opening Your First File
 
@@ -79,7 +79,7 @@ The interface accepts JPG, PNG, GIF, WebP, and PDF in the same workspace. If you
 
 ### What Happens Under the Hood
 
-When a file lands in the browser, the tool reads it as an ArrayBuffer, decodes it with built-in image APIs, and paints it to a canvas element. At no point is the buffer posted to a remote endpoint. Large files may take a moment to decode on low-power hardware, but that delay is local CPU time—not upload bandwidth.
+When a file lands in the browser, the tool reads it as an ArrayBuffer, decodes it with built-in image APIs, and paints it to a canvas element. At no point is the buffer posted to a remote endpoint. Large files may take a moment to decode on low-power hardware, but that delay is local CPU time鈥攏ot upload bandwidth.
 
 If you handle especially large panoramas or 40-megapixel RAW conversions, resize to a reasonable working resolution before redaction. You preserve privacy and improve responsiveness without changing the fundamental local-only guarantee.
 
@@ -95,7 +95,7 @@ Gaussian blur convolves pixels in the masked area with a smooth kernel, producin
 - Background signage that should not be readable but can melt into surroundings
 - Screenshots where you want a subtle indication that content was altered
 
-Blur is not the strongest choice for high-contrast alphanumeric strings in screenshots because determined analysts sometimes apply deblurring heuristics to small regions. For tax IDs and account numbers, prefer mosaic or solid fill.
+Blur is not the strongest choice for high-contrast alphanumeric strings in screenshots because determined analysts sometimes apply deblurring heuristics to small regions. For tax IDs and account numbers, prefer mosaic or solid fill. Learn more about [**why redaction reversibility matters**](/posts/redaction/remove-redaction-from-image-online-free/).
 
 ### Mosaic (Pixelation)
 
@@ -109,7 +109,7 @@ Because spatial frequency is crushed, mosaic resists casual OCR and human readin
 
 ### Solid Fill
 
-Solid fill replaces the region with a uniform color—typically black or neutral gray. It offers the highest assurance that no underlying detail survives in the exported bitmap. Use solid fill for:
+Solid fill replaces the region with a uniform color鈥攖ypically black or neutral gray. It offers the highest assurance that no underlying detail survives in the exported bitmap. Use solid fill for:
 
 - Payment card numbers and CVV fields on invoice photos
 - Signatures on contracts shared as portfolio samples
@@ -117,7 +117,7 @@ Solid fill replaces the region with a uniform color—typically black or neutral
 
 Legal and financial reviewers recognize solid boxes as deliberate redaction, which can speed approval when you document your process.
 
-<!-- Google AdSense �?in-article responsive slot -->
+<!-- Google AdSense 鈥?in-article responsive slot -->
 
 ## Step-by-Step Redaction Workflow
 
@@ -129,7 +129,7 @@ Work from the earliest quality version available. Duplicate the file if your edi
 
 ### Step 2: Load the File in ToolVX
 
-Open the [ToolVX redaction tool](/redact-preview) and drop your JPG, PNG, GIF, or WebP onto the upload surface. Wait for the canvas preview to stabilize. For GIFs, scrub through frames mentally—if multiple frames expose a secret, you will mask each relevant frame or convert to a static export.
+Open the [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) and drop your JPG, PNG, GIF, or WebP onto the upload surface. Wait for the canvas preview to stabilize. For GIFs, scrub through frames mentally鈥攊f multiple frames expose a secret, you will mask each relevant frame or convert to a static export.
 
 ### Step 3: Draw Mask Regions
 
@@ -145,7 +145,7 @@ Use separate masks for disjoint regions rather than one oversized box when you w
 
 ### Step 4: Choose an Effect per Region
 
-Match the effect to sensitivity. Many workflows standardize on solid fill for credentials and mosaic for faces, applying blur only when aesthetics demand softer transitions. ToolVX lets you adjust the effect type before export—experiment on a copy if you are unsure.
+Match the effect to sensitivity. Many workflows standardize on solid fill for credentials and mosaic for faces, applying blur only when aesthetics demand softer transitions. ToolVX lets you adjust the effect type before export鈥攅xperiment on a copy if you are unsure.
 
 ### Step 5: Review at Full Zoom
 
@@ -175,9 +175,9 @@ If only one frame exposes a password notification, mask that frame or flatten th
 
 ### WebP in Design Handoffs
 
-Designers increasingly deliver WebP. Decode locally, redact, and export to the format your publisher requires—often JPEG for photography blogs and PNG for interface documentation.
+Designers increasingly deliver WebP. Decode locally, redact, and export to the format your publisher requires鈥攐ften JPEG for photography blogs and PNG for interface documentation.
 
-<!-- Google AdSense �?in-article responsive slot -->
+<!-- Google AdSense 鈥?in-article responsive slot -->
 
 ## Freelancer Use Cases: Protecting Client Trust
 
@@ -207,9 +207,9 @@ Each scenario shares a requirement: **process locally, verify visually, and keep
 
 ## Combining Image and PDF Redaction
 
-Freelancers often receive PDFs that are effectively flattened scans—no selectable text. The same ToolVX workspace handles those files alongside native images. When a client sends a scanned contract PDF, redact sensitive paragraphs page by page, then export a flattened PDF. When they send a PNG export of a wireframe, stay in the image pipeline. One tool reduces training overhead and keeps privacy properties consistent.
+Freelancers often receive PDFs that are effectively flattened scans鈥攏o selectable text. The same ToolVX workspace handles those files alongside native images. When a client sends a scanned contract PDF, redact sensitive paragraphs page by page, then export a flattened PDF. When they send a PNG export of a wireframe, stay in the image pipeline. One tool reduces training overhead and keeps privacy properties consistent.
 
-Link bookmark: [ToolVX browser redaction](/redact-preview) for both image and PDF workflows.
+Link bookmark: [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) for both image and PDF workflows. For a full software comparison, see our [**image redaction software review**](/posts/redaction/best-image-redaction-software/).
 
 ## Privacy Comparison: Local Browser vs. Cloud Upload Tools
 
@@ -222,7 +222,7 @@ Link bookmark: [ToolVX browser redaction](/redact-preview) for both image and PD
 | Suitable for client NDA material | Risky without review | Aligned with minimization |
 | Effect types | Varies | Gaussian blur, mosaic, solid fill |
 
-Choosing local processing is not paranoia—it is proportionate control when the asset class includes credentials, health information, or unreleased product imagery.
+Choosing local processing is not paranoia鈥攊t is proportionate control when the asset class includes credentials, health information, or unreleased product imagery.
 
 ## Accessibility and Communication
 
@@ -246,12 +246,12 @@ Extremely large images may exceed browser memory limits on older devices. Downsc
 
 ### "I need the same mask on twenty similar screenshots"
 
-Develop a personal checklist of regions—status bar, username, account panel—and apply masks systematically. Consistency reduces missed spots during deadline crunches.
+Develop a personal checklist of regions鈥攕tatus bar, username, account panel鈥攁nd apply masks systematically. Consistency reduces missed spots during deadline crunches.
 
 ## Conclusion: Redact Once, Publish with Confidence
 
 Images leak secrets through faces, metadata, reflections, and frames users forget to check. Browser-local redaction with Gaussian blur, mosaic, and solid fill gives you a practical way to publish work samples, support evidence, and social content without shipping originals to a remote processor.
 
-Load your JPG, PNG, GIF, or WebP into the [ToolVX redaction tool](/redact-preview), mask every sensitive region, choose the effect that matches your threat model, and verify the export before it leaves your machine. That workflow is fast enough for daily freelancer use and rigorous enough to respect client trust.
+Load your JPG, PNG, GIF, or WebP into the [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/), mask every sensitive region, choose the effect that matches your threat model, and verify the export before it leaves your machine. That workflow is fast enough for daily freelancer use and rigorous enough to respect client trust.
 
-Privacy is not a filter you slap on after the fact. It is a deliberate step in how you handle pixels—and with the right local tools, it can be a step you never outsource.
+Privacy is not a filter you slap on after the fact. It is a deliberate step in how you handle pixels鈥攁nd with the right local tools, it can be a step you never outsource.

@@ -15,9 +15,9 @@ i18nKey: localVsCloud
 
 # Local vs. Cloud Redaction: A Privacy Analysis for Sensitive Documents
 
-When you need to hide a Social Security number, a patient name, or a client's bank details before sharing a document, the tool you choose matters as much as the black box you draw. Most "online redaction" services ask you to upload the very file you are trying to protect. That single action creates a copy of your data on someone else's infrastructure—often in another country, under another legal regime, and outside your direct control.
+When you need to hide a Social Security number, a patient name, or a client's bank details before sharing a document, the tool you choose matters as much as the black box you draw. Most "online redaction" services ask you to upload the very file you are trying to protect. That single action creates a copy of your data on someone else's infrastructure鈥攐ften in another country, under another legal regime, and outside your direct control.
 
-Browser-local redaction flips that model. Your PDF or image stays on your device from the moment you open it until you download the finished file. Processing happens in memory inside your web browser, not on a remote server farm. For anyone handling contracts, medical records, financial statements, or identity documents, understanding the difference between local and cloud processing is not academic—it is a practical privacy decision.
+Browser-local redaction flips that model. Your PDF or image stays on your device from the moment you open it until you download the finished file. Processing happens in memory inside your web browser, not on a remote server farm. For anyone handling contracts, medical records, financial statements, or identity documents, understanding the difference between local and cloud processing is not academic鈥攊t is a practical privacy decision.
 
 ![ToolVX upload](/assets/blog/redact/toolvx-redact-upload.png)
 
@@ -32,7 +32,7 @@ Local redaction narrows the problem to a single environment: your computer or ph
 Every cloud redaction workflow follows a similar pattern:
 
 1. You select a file and send it over HTTPS to the provider.
-2. The server stores it—temporarily or not—in object storage or a processing queue.
+2. The server stores it鈥攖emporarily or not鈥攊n object storage or a processing queue.
 3. A backend worker opens the document, applies masks, and renders an output.
 4. You download the result while the vendor's retention policy decides when the original is deleted.
 
@@ -40,9 +40,9 @@ Each step introduces parties and systems that never existed in a purely local wo
 
 ### What "Local" Actually Means in the Browser
 
-True browser-local redaction uses client-side technologies—typically WebAssembly, Canvas, or PDF rendering libraries—to parse and modify files entirely on your machine. Network requests after the initial page load should be limited to static assets, not your document bytes. You can verify this yourself: open your browser's developer tools, switch to the Network tab, upload a test PDF, and confirm that no request carries the file body to a third-party domain.
+True browser-local redaction uses client-side technologies鈥攖ypically WebAssembly, Canvas, or PDF rendering libraries鈥攖o parse and modify files entirely on your machine. Network requests after the initial page load should be limited to static assets, not your document bytes. You can verify this yourself: open your browser's developer tools, switch to the Network tab, upload a test PDF, and confirm that no request carries the file body to a third-party domain.
 
-Tools like the [ToolVX redaction editor](/redact-preview) are designed around this constraint. You drag in a PDF or image, draw redaction regions, choose blur, mosaic, or solid fill, and export—without a server ever receiving the source material.
+Tools like the [ToolVX redaction editor](/redact-preview) are designed around this constraint. You drag in a PDF or image, draw redaction regions, choose blur, mosaic, or solid fill, and export鈥攚ithout a server ever receiving the source material.
 
 ## Comparing Local and Cloud Redaction
 
@@ -60,13 +60,13 @@ The table below summarizes how the two approaches differ across dimensions that 
 
 None of this means every cloud service is negligent. Many invest heavily in encryption, access controls, and compliance certifications. The question is whether you need to accept that residual risk at all when an alternative exists.
 
-<!-- Google AdSense �?in-article responsive slot -->
+<!-- Google AdSense 鈥?in-article responsive slot -->
 
 ## Threat Scenarios Cloud Users Underestimate
 
 ### Insider and Subprocessor Exposure
 
-Cloud providers rely on chains of subprocessors—hosting companies, CDNs, analytics vendors, support tooling. Your uploaded contract may pass through several legal entities. Local processing removes that chain for the redaction step itself.
+Cloud providers rely on chains of subprocessors鈥攈osting companies, CDNs, analytics vendors, support tooling. Your uploaded contract may pass through several legal entities. Local processing removes that chain for the redaction step itself.
 
 ### Metadata and Hidden Layers
 
@@ -88,9 +88,9 @@ Honest analysis requires acknowledging trade-offs. Cloud services sometimes offe
 - **Team collaboration** where multiple reviewers annotate the same hosted file
 - **Integrated e-discovery** tied to enterprise document management
 
-For high-volume, low-sensitivity workflows—marketing PDFs with minor PII—managed cloud processing may be acceptable with a signed data processing agreement. For source documents that are inherently confidential—medical imaging reports, M&A due diligence, whistleblower evidence—local redaction is often the safer default.
+For high-volume, low-sensitivity workflows鈥攎arketing PDFs with minor PII鈥攎anaged cloud processing may be acceptable with a signed data processing agreement. For source documents that are inherently confidential鈥攎edical imaging reports, M&A due diligence, whistleblower evidence鈥攍ocal redaction is often the safer default.
 
-<!-- Google AdSense �?in-article responsive slot -->
+<!-- Google AdSense 鈥?in-article responsive slot -->
 
 ## Building a Local-First Redaction Workflow
 
@@ -122,11 +122,11 @@ Compliance reviewers increasingly ask *how* redaction was performed, not just wh
 
 When evaluating any redaction product, look for concrete signals:
 
-- **Open network tab proof** �?no file POST requests during editing
-- **Offline functionality** �?disconnect Wi-Fi after loading the page; editing should continue
-- **Flattened output** �?exported PDFs should not contain selectable text under masks
-- **No account requirement** �?account systems often imply server-side history
-- **Transparent privacy policy** �?explicit statement that files are not transmitted
+- **Open network tab proof** 鈥?no file POST requests during editing
+- **Offline functionality** 鈥?disconnect Wi-Fi after loading the page; editing should continue
+- **Flattened output** 鈥?exported PDFs should not contain selectable text under masks
+- **No account requirement** 鈥?account systems often imply server-side history
+- **Transparent privacy policy** 鈥?explicit statement that files are not transmitted
 
 If a service cannot clearly affirm local processing, assume uploads occur.
 
@@ -139,7 +139,7 @@ Security and privacy teams can codify local-first redaction without banning clou
 3. **Training**: Teach staff that "online" does not have to mean "uploaded." Browser-based can still be local.
 4. **Periodic audits**: Sample redacted outputs to confirm masks are permanent, not cosmetic.
 
-<!-- Google AdSense �?in-article responsive slot -->
+<!-- Google AdSense 鈥?in-article responsive slot -->
 
 ## The Bottom Line
 
@@ -147,4 +147,4 @@ Cloud redaction trades convenience and enterprise features for an expanded trust
 
 For individuals redacting a tax form before emailing an accountant, for freelancers masking client addresses on portfolio samples, and for compliance teams preparing external-facing versions of internal reports, the privacy analysis points in the same direction: **if the file can stay in your browser, it should.**
 
-Try local redaction now with the free [ToolVX browser editor](/redact-preview)—blur, mosaic, or blackout sensitive areas in PDFs and images with zero server uploads and permanent, flattened output you can share with confidence.
+Try local redaction now with the free [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) — blur, mosaic, or blackout sensitive areas in PDFs and images with zero server uploads and permanent, flattened output you can share with confidence. For a full comparison of redaction software options, see our [**image redaction software review**](/posts/redaction/best-image-redaction-software/). Questions about whether redacted data can be recovered? Our [**PDF redaction FAQ**](/posts/redaction/pdf-redaction-faq-security-myths/) covers the most common myths and security concerns.

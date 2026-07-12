@@ -100,7 +100,7 @@ Review each redacted region at full zoom to ensure complete coverage. Then click
 
 In an increasingly privacy-conscious world, face redaction is no longer optional — it's essential. Whether you're posting on social media, submitting compliance documents, or sharing internal company photos, protecting identities is a legal and ethical obligation.
 
-By choosing local, browser-based redaction tools like [ToolVX](/redact-preview), you eliminate the risk of data leakage entirely. Your photos never leave your device, your processing happens offline, and your privacy remains under your complete control.
+By choosing local, browser-based redaction tools like the [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/), you eliminate the risk of data leakage entirely. Your photos never leave your device, your processing happens offline, and your privacy remains under your complete control. For a full comparison of redaction software options, see our [**image redaction software review**](/posts/redaction/best-image-redaction-software/).
 
 Remember: pixelation for casual sharing, blackout for maximum security, and local processing for the ultimate peace of mind.
 

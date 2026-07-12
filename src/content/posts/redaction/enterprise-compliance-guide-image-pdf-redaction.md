@@ -246,7 +246,7 @@ This is not a convenience feature. It is a **compliance architecture**.
 
 To deploy a browser-based redaction tool across your organization:
 
-1. **Standardize the tool**: Add the [ToolVX redaction tool](/redact-preview/) to your approved software list. No installation required — just a bookmark.
+1. **Standardize the tool**: Add the [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) to your approved software list. No installation required — just a bookmark. For a full evaluation, see our [**image redaction software review**](/posts/redaction/best-image-redaction-software/).
 2. **Document the SOP**: Incorporate the 3-step workflow (Audit, Purge/Mask, Verify) into your data handling policy.
 3. **Train key personnel**: Compliance officers and team leads should understand the difference between visual overlays and pixel-level redaction.
 4. **Audit periodically**: Sample redacted documents quarterly to verify irreversible masking.

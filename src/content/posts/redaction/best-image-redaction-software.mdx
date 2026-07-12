@@ -31,7 +31,7 @@ True redaction destroys the original pixel data. It does not merely cover it up.
 - **Scramble pixel patterns** — High-density mosaic that makes reconstruction mathematically impossible.
 - **Strip metadata** — Remove EXIF data, GPS coordinates, and camera identifiers from the output file.
 
-Any tool that uses translucent overlays or reversible layers fails this test.
+Any tool that uses translucent overlays or reversible layers fails this test. For a technical breakdown of why reversible masking is dangerous, see our [**investigation into redaction reversibility**](/posts/redaction/remove-redaction-from-image-online-free/).
 
 ### 2. Multi-Format Support
 
@@ -50,7 +50,7 @@ This is the most important factor. There are two fundamentally different archite
 | **Server-side** | Files upload to a remote server for processing | High — data stored on third-party infrastructure |
 | **Client-side** | Processing happens in your browser via WebAssembly/Canvas | Zero — files never leave your device |
 
-Always choose client-side **image redaction software** for sensitive corporate or personal data.
+Always choose client-side **image redaction software** for sensitive corporate or personal data. For a step-by-step workflow, read our [**complete guide to photo redaction**](/posts/redaction/complete-guide-to-photo-redaction/).
 
 ## Why Browser-Based Client-Side Tools Are Replacing Desktop Software
 
@@ -90,7 +90,7 @@ This is the interface standard that every **bulk photo redaction tool** should m
 
 ## Meet Our Free, Secure Image Redaction Software
 
-We built [**ToolVX Redaction**](/redact-preview/) to solve the exact problems described above. Here is what sets it apart:
+We built the [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) to solve the exact problems described above. Here is what sets it apart:
 
 ### Enterprise-Grade Security, Zero Cost
 
@@ -125,11 +125,11 @@ The **image redaction software** landscape has evolved. Browser-based, client-si
 
 **Is there a free image redaction software?**
 
-Yes. [**ToolVX Redaction**](/redact-preview/) is completely free with no registration required. It performs all processing client-side, so there are no server costs to pass on to users. No watermarks, no feature limits, no hidden fees.
+Yes. The [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) is completely free with no registration required. It performs all processing client-side, so there are no server costs to pass on to users. No watermarks, no feature limits, no hidden fees.
 
 **Can redacted images be uncovered?**
 
-It depends on the method. Solid color fill and high-density mosaic are irreversible — the original pixels are permanently destroyed. Low-radius blur and translucent overlays can potentially be reversed by AI tools. Always use solid fill or mosaic for sensitive data.
+It depends on the method. Solid color fill and high-density mosaic are irreversible — the original pixels are permanently destroyed. Low-radius blur and translucent overlays can potentially be reversed by AI tools. Always use solid fill or mosaic for sensitive data. Learn more in our [**deep dive on redaction reversibility**](/posts/redaction/remove-redaction-from-image-online-free/).
 
 **Does this software support PDF masking?**
 

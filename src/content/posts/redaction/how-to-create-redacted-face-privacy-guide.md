@@ -133,4 +133,4 @@ In each case, a properly redacted face protects both you and the person in the i
 
 Privacy is not a feature you toggle on. It is a practice you build into your workflow. Creating a properly redacted face takes less than 30 seconds with the right tool, but the protection it provides lasts forever.
 
-Stop relying on drawing brushes and reversible filters. Start using [pixel-level redaction](/redact-preview) that actually destroys sensitive data. Your files, your device, your privacy.
+Stop relying on drawing brushes and reversible filters. Start using the [**Free Client-Side Image and PDF Redaction Tool**](/redact-preview/) that actually destroys sensitive data. Your files, your device, your privacy. For a full comparison of redaction software options, see our [**image redaction software review**](/posts/redaction/best-image-redaction-software/).
