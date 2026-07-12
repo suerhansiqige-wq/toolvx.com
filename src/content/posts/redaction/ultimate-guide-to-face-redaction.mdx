@@ -31,7 +31,7 @@ Facial data is classified as sensitive biometric information under three major l
 
 Organizations that share photos publicly must apply face masking before distribution. Failure to do so can result in severe fines. GDPR penalties alone can reach €20 million or 4% of global annual revenue.
 
-Corporate compliance teams use **image de-identification tools** to automate this process. The goal is simple: remove all personally identifiable facial data before any external sharing occurs.
+Corporate compliance teams use **image de-identification tools** to automate this process. The goal is simple: remove all personally identifiable facial data before any external sharing occurs. For teams evaluating enterprise-grade solutions, our [**image redaction software comparison guide**](/posts/redaction/best-image-redaction-software/) details the key features that separate professional tools from consumer apps.
 
 ## The Technical Pitfalls of Poor Face Masking
 
@@ -51,7 +51,7 @@ Secure **face redaction** must use one of two approaches:
 1. **Irreversible pixel-scrambling algorithms** — Mosaic or pixelation that destroys original data at the byte level.
 2. **Complete solid color replacement** — Full opaque blocks that permanently overwrite facial pixels.
 
-Any method that preserves the underlying pixel data is not true redaction. It is merely concealment.
+Any method that preserves the underlying pixel data is not true redaction. It is merely concealment. For a technical deep-dive into why reversible masking fails, see our [**investigation into removing redaction from images**](/posts/redaction/remove-redaction-from-image-online-free/).
 
 ![Professional Browser-Based Face Redaction Tool Interface](/assets/images/redaction-tool-ui.png)
 
@@ -100,7 +100,7 @@ Use tools that perform **permanent face blur** through irreversible pixel destru
 
 **Can face redaction be reversed by AI?**
 
-Solid fill redaction cannot be reversed. The original pixels are permanently overwritten. Low-radius blur and partial masks may be reversible by advanced AI models. Always use solid fill or high-density mosaic for sensitive data.
+Solid fill redaction cannot be reversed. The original pixels are permanently overwritten. Low-radius blur and partial masks may be reversible by advanced AI models. Always use solid fill or high-density mosaic for sensitive data. Learn more about [**why redaction reversibility matters**](/posts/redaction/remove-redaction-from-image-online-free/).
 
 **Is blurring a face enough for compliance?**
 
