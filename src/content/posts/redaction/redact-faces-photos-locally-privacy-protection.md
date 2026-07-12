@@ -7,6 +7,7 @@ featured: false
 draft: false
 i18nKey: redactFacesLocally
 tags:
+  - pdf-image-redaction
   - image-redaction
   - face-redaction
   - privacy

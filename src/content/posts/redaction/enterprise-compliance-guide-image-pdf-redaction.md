@@ -1,6 +1,6 @@
 ---
 title: "Enterprise Compliance Guide: Implementing Image and PDF Redaction for Secure Data Handling"
-tags: ["Compliance", "GDPR", "Data Security", "Enterprise"]
+tags: ["pdf-image-redaction", "Compliance", "GDPR", "Data Security", "Enterprise"]
 description: "A practical enterprise guide to image and PDF redaction, GDPR data masking, and sensitive information masking for compliance managers, legal teams, and HR directors."
 pubDatetime: 2026-07-12T02:00:00Z
 author: ToolVX

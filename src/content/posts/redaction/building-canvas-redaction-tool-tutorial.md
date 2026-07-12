@@ -7,6 +7,7 @@ featured: false
 draft: false
 i18nKey: canvasRedactionTutorial
 tags:
+  - pdf-image-redaction
   - frontend
   - canvas-api
   - javascript
