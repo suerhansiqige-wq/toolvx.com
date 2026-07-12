@@ -45,6 +45,10 @@
       "redactionFaq": {
         "title": "PDF Redaction FAQ: Data Recovery Myths & Security Questions Answered",
         "description": "Definitive answers about whether redacted text can be recovered, how local tools work, and what \"permanent\" really means."
+      },
+      "redactedFaceGuide": {
+        "title": "How to Correctly Create a Redacted Face in Images and PDFs: The Ultimate Privacy Guide",
+        "description": "Learn why drawing over a face is not enough. Discover how true pixel-level redaction permanently destroys sensitive data in photos and PDFs — 100% in your browser."
       }
     }
   }
