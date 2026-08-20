@@ -1,7 +1,7 @@
 ---
 author: ToolVX
 pubDatetime: 2026-07-10T06:00:00Z
-title: "Freelancer Security: Redacting Invoices, Contracts & Client Data"
+title: "Freelancer Security: Redact Invoices & Client Data"
 description: Protect payment details and signatures before portfolio uploads with solid-fill, blur, and mosaic techniques.
 featured: false
 draft: false

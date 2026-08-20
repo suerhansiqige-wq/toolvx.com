@@ -15,6 +15,20 @@ import { useTranslations } from "@/i18n";
 import config from "@/config";
 import sitemapTagCounts from "@/data/sitemap-tag-counts.json";
 
+/** Per-tag SEO meta descriptions for <meta name="description">. */
+const tagDescriptions: Record<string, string> = {
+  "pdf-image-redaction": "Explore 18 articles on PDF and image redaction techniques, tools, and best practices for secure data handling.",
+  "privacy": "8 articles on privacy protection strategies, anonymization tools, and data security best practices.",
+  "image-redaction": "6 guides on image redaction methods — blur, black out, or mosaic sensitive areas in photos securely.",
+  "data-compliance": "3 articles on data compliance frameworks including GDPR, HIPAA, and CCPA for secure document handling.",
+  "gdpr": "3 articles on GDPR-compliant redaction tools and data privacy regulations for businesses.",
+  "face-redaction": "3 guides on face redaction and anonymization techniques for protecting identity in photos and videos.",
+  "security": "2 articles on document security, redaction best practices, and sensitive data protection.",
+  "biometric-privacy": "2 articles on biometric privacy, facial data protection, and anonymization technologies.",
+  "pdf-security": "2 articles on PDF security, redaction vs. highlighting, and permanent data destruction.",
+  "compliance": "2 articles on compliance requirements for data redaction in enterprise environments.",
+};
+
 export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
   const posts = await getRenderablePosts();
   const postsNoDraft = posts.filter(({ data }) => !data.draft);
@@ -41,7 +55,10 @@ const locale = Astro.currentLocale ?? config.site.lang;
 const t = useTranslations(locale);
 ---
 
-<Layout title={`${t.pages.tagTitle}: ${tagName} | ${config.site.title}`}>
+<Layout
+  title={`${t.pages.tagTitle}: ${tagName} | ${config.site.title}`}
+  description={tagDescriptions[tagName] ?? `Browse all articles tagged "${tagName}" on ToolVX.`}
+>
   <Header />
 
   <Breadcrumb />

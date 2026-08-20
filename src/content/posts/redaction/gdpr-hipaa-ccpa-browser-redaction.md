@@ -1,7 +1,7 @@
 ---
 author: ToolVX
 pubDatetime: 2026-07-10T13:00:00Z
-title: "GDPR, HIPAA & CCPA: Choosing Compliant Browser Redaction Tools"
+title: "GDPR, HIPAA & CCPA: Compliant Browser Redaction Tools"
 description: How local processing supports data-minimization principles and what to document before sharing redacted files.
 featured: false
 draft: false

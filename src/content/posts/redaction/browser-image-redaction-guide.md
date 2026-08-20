@@ -1,5 +1,5 @@
 ---
-title: "Complete Browser Image Redaction Guide: JPG, PNG, GIF & WebP"
+title: "Browser Image Redaction Guide: JPG, PNG, GIF & WebP"
 description: "Step-by-step instructions to blur, mosaic, or mask photos locally without uploading files to any server."
 pubDatetime: 2026-07-10T11:00:00Z
 author: ToolVX

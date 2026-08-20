@@ -94,7 +94,10 @@ const ofdTools = ofdToolEntries.map(tool => ({
 const xmlSitemapUrl = getAssetPath("sitemap-index.xml");
 ---
 
-<Layout title={`${t.pages.sitemapTitle} | ${config.site.title}`}>
+<Layout
+  title={`${t.pages.sitemapTitle} | ${config.site.title}`}
+  robots="noindex, nofollow"
+>
   <Header />
   <Breadcrumb />
 

@@ -1,5 +1,5 @@
 ---
-title: "How to Redact Faces in Photos Locally: 3 Best Methods for Privacy Protection"
+title: "How to Redact Faces Locally: 3 Best Methods for Privacy"
 description: "Master the art of face redaction with secure, local techniques that keep your data private. Compare pixelation, blackout, and browser-based methods."
 pubDatetime: 2026-07-08T10:00:00Z
 author: ToolVX

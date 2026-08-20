@@ -1,7 +1,7 @@
 ---
 author: ToolVX
 pubDatetime: 2026-07-10T12:00:00Z
-title: "Local vs. Cloud Redaction: A Privacy Analysis for Sensitive Documents"
+title: "Local vs. Cloud Redaction: Privacy Analysis for Documents"
 description: Compare on-device redaction with cloud-based tools and understand why files should never leave your browser.
 featured: false
 draft: false

@@ -1,5 +1,5 @@
 ---
-title: "How to Correctly Create a Redacted Face in Images and PDFs: The Ultimate Privacy Guide"
+title: "How to Redact Faces in Images & PDFs: Privacy Guide"
 description: "Learn why drawing over a face is not enough. Discover how true pixel-level redaction permanently destroys sensitive data in photos and PDFs — 100% in your browser."
 pubDatetime: 2026-07-11T08:00:00Z
 author: ToolVX

@@ -1,5 +1,5 @@
 ---
-title: "Building a Client-Side Redacted Face Tool: Secure Image & PDF De-identification via HTML5 Canvas"
+title: "Build a Client-Side Redaction Tool: Secure Image & PDF De-ID"
 description: "A deep-dive tutorial on implementing pixel-level face redaction in the browser using Canvas API and PDF.js — no server, no uploads, zero data leakage."
 pubDatetime: 2026-07-11T08:00:00Z
 author: ToolVX

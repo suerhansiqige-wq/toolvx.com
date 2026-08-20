@@ -26,7 +26,10 @@ const allPosts = await getRenderablePosts();
 const listingSearchSynonyms = postsListingSearchSynonyms(allPosts);
 ---
 
-<Layout title={`${t.pages.postsTitle} | ${config.site.title}`}>
+<Layout
+  title={`${t.pages.postsTitle} | ${config.site.title}`}
+  description="Browse all PDF redaction tutorials, privacy guides, and data compliance articles on ToolVX."
+>
   <Header />
 
   <Breadcrumb />

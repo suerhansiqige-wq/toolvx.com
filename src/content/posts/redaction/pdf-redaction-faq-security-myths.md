@@ -1,5 +1,5 @@
 ---
-title: "PDF Redaction FAQ: Data Recovery Myths & Security Questions Answered"
+title: "PDF Redaction FAQ: Recovery Myths & Security Questions"
 description: "Definitive answers about whether redacted text can be recovered, how local tools work, and what permanent really means."
 pubDatetime: 2026-07-10T08:00:00Z
 author: ToolVX
