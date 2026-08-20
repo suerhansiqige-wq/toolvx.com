@@ -6,6 +6,7 @@ export default {
     posts: "게시물",
     tags: "태그",
     about: "소개",
+    contact: "연락처",
     archives: "아카이브",
     search: "검색",
     tools: "PDF 도구",

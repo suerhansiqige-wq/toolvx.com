@@ -42,6 +42,7 @@ export type UIStrings = {
     posts: string;
     tags: string;
     about: string;
+    contact: string;
     archives: string;
     search: string;
     tools: string;
@@ -141,6 +142,7 @@ export type Messages = {
       posts: string;
       tags: string;
       about: string;
+      contact: string;
       archives: string;
       search: string;
       tools: string;

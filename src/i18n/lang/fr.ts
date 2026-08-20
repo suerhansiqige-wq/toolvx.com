@@ -6,6 +6,7 @@ export default {
     posts: "Articles",
     tags: "Tags",
     about: "À propos",
+    contact: "Contact",
     archives: "Archives",
     search: "Recherche",
     tools: "Outils PDF",

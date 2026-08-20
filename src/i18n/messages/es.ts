@@ -14,6 +14,7 @@ export const es: Messages = {
       posts: "Artículos",
       tags: "Etiquetas",
       about: "Acerca de",
+      contact: "Contacto",
       archives: "Archivos",
       search: "Buscar",
       tools: "Herramientas PDF",

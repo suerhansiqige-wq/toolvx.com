@@ -48,6 +48,7 @@ export const zh: Messages = {
       posts: "文章",
       tags: "标签",
       about: "关于",
+      contact: "联系我们",
       archives: "归档",
       search: "搜索",
       tools: "PDF工具",

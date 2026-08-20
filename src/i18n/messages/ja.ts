@@ -14,6 +14,7 @@ export const ja: Messages = {
       posts: "記事",
       tags: "タグ",
       about: "About",
+      contact: "お問い合わせ",
       archives: "アーカイブ",
       search: "検索",
       tools: "PDF ツール",

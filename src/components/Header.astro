@@ -15,7 +15,7 @@ import config from "@/config";
 
 const { site, features } = config;
 
-const locale = "en";
+const locale = Astro.currentLocale ?? "en";
 const t = useTranslations(locale);
 
 const relativePath = stripBase(Astro.url.pathname);
@@ -48,7 +48,7 @@ const redactHref = getRelativeLocaleUrl(locale, "redact-preview");
   {t.a11y.skipToContent}
 </a>
 
-<header class="sticky top-0 z-40 glass-nav border-b border-border/60">
+<header class="sticky top-0 z-40 glass-nav border-b border-border/60 relative">
   <div class="app-layout py-2.5 sm:py-3">
     <div class="flex w-full items-center gap-3 lg:gap-4">
       <a
@@ -91,7 +91,7 @@ const redactHref = getRelativeLocaleUrl(locale, "redact-preview");
 
         <ul
           id="menu-items"
-          class="hidden items-center gap-1 lg:flex lg:gap-2"
+          class="hidden lg:flex lg:items-center lg:gap-2 lg:bg-transparent"
         >
           <li>
             <a
@@ -142,6 +142,7 @@ const redactHref = getRelativeLocaleUrl(locale, "redact-preview");
             <a
               href={getRelativeLocaleUrl(locale, "contact")}
               class:list={[navLinkClass, { "active-nav": isActive("/contact") }]}
+              data-i18n="site.nav.contact"
             >
               Contact
             </a>
@@ -285,5 +286,31 @@ const redactHref = getRelativeLocaleUrl(locale, "redact-preview");
       display: inline-flex;
       font-size: 1.375rem;
     }
+  }
+
+  /* Mobile nav menu — shown when `grid` class is toggled on */
+  #menu-items.grid {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  #menu-items.grid li {
+    width: 100%;
+  }
+
+  #menu-items.grid li a,
+  #menu-items.grid li button {
+    width: 100%;
+    justify-content: center;
+    padding: 0.625rem 0.75rem;
   }
 </style>
