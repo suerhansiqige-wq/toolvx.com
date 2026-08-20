@@ -286,6 +286,33 @@
   background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
 }
 
+/* ===== Mobile overflow guard — prevents horizontal scroll on tool pages ===== */
+@media (max-width: 768px) {
+  .tool-guide-faq,
+  .tool-seo-article {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  .tool-guide-faq ol,
+  .tool-guide-faq .space-y-8 {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* Ensure tool card buttons stack without overflow */
+  #tool-action-bar .flex-col {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .tool-action-segment {
+    grid-template-columns: 1fr 1fr;
+    max-width: 100%;
+  }
+}
+
 .tool-download-btn.is-ready {
   color: #ffffff;
   border-color: #34d399;

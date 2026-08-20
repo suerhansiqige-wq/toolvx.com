@@ -30,8 +30,9 @@ const { title, tagline, titleI18n, taglineI18n, searchSynonyms, class: className
 </header>
 
 <!-- Interactive tool card — file upload, options, action bar -->
+<!-- Ad Safety Margin: py-8 ensures ≥32px clearance from any auto-placed ads -->
 <section
-  class:list={["card-surface shadow-elevated mb-10 p-6 sm:p-10", className]}
+  class:list={["card-surface shadow-elevated my-8 py-8 p-6 sm:p-10", className]}
   data-pagefind-body
 >
   {searchSynonyms && (
