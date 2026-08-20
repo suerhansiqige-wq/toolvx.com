@@ -33,7 +33,7 @@ export type RedactToolSEO = {
 
 export const redactToolSeo = {
   id: "redact-image-pdf",
-  title: "Free PDF & Image Redaction Tool | Securely Redact PDF - ToolVX",
+  title: "Free PDF & Image Redaction Tool | Secure Redaction",
   description:
     "Securely redact PDF documents and images online for free. Permanently black out sensitive information with our private, browser-based redaction tool.",
   keywords: [

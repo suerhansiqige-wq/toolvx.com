@@ -330,7 +330,7 @@ export const toolsSeoData: Record<string, ToolSEO> = {
   },
   "edit-pdf": {
     id: "edit-pdf",
-    title: "Edit PDF Metadata Online - Update Title, Author & Subject Free",
+    title: "Edit PDF Metadata Online - Update Title, Author & Subject",
     description:
       "Edit PDF document properties online for free. Change title, author, and subject metadata in your browser — no software install required.",
     keywords: [
