@@ -27,6 +27,8 @@ type Props = {
   appName?: string;
   /** How-to steps for HowTo JSON-LD (must match visible steps). */
   steps?: string[];
+  /** Core feature list for WebApplication JSON-LD schema. */
+  features?: string[];
   /** i18n keys for client-side head meta switching. */
   titleI18n?: string;
   descriptionI18n?: string;
@@ -44,6 +46,7 @@ const {
   faqs = [],
   appName,
   steps = [],
+  features = [],
   titleI18n,
   descriptionI18n,
   lang,
@@ -57,7 +60,8 @@ const structuredData = {
   url: canonicalURL,
   applicationCategory: "BusinessApplication",
   operatingSystem: "All",
-  browserRequirements: "Requires JavaScript. Runs entirely in the browser.",
+  browserRequirements: "Requires JavaScript. Requires HTML5.",
+  featureList: features.length > 0 ? features : undefined,
   offers: {
     "@type": "Offer",
     price: "0",

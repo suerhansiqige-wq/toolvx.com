@@ -15,6 +15,8 @@ export interface ToolSEO {
   introduction: string;
   steps: string[];
   faqs: FAQItem[];
+  /** Core feature list for WebApplication JSON-LD schema. */
+  features: string[];
 }
 
 export const toolsSeoData: Record<string, ToolSEO> = {
@@ -37,6 +39,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Select a compression level: Balanced (HD output), Strong (under 2 MB), or Maximum (under 1 MB).",
       "Click Compress PDF — or use separate / merge options when multiple files are uploaded.",
       "Download your smaller PDF instantly. No account or software required.",
+    ],
+    features: [
+      "Multiple compression levels (Balanced, Strong, Maximum)",
+      "Batch PDF processing",
+      "Local browser-based processing — no server upload",
+      "Drag-and-drop file upload",
     ],
     faqs: [
       {
@@ -71,6 +79,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Click Convert to JPG and wait for local processing to finish.",
       "Download individual JPG files or a single ZIP archive, depending on page count.",
     ],
+    features: [
+      "High-DPI page rendering",
+      "Single-file HD image export",
+      "Multi-page ZIP archive download",
+      "Local browser-based processing — no server upload",
+    ],
     faqs: [
       {
         question: "What happens with large PDF files?",
@@ -103,6 +117,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Add more files if needed; they merge in upload order.",
       "Click Create PDF to build your document locally.",
       "Download the generated PDF file to your device.",
+    ],
+    features: [
+      "Support for JPG, PNG, and WebP formats",
+      "Merge multiple images into one PDF",
+      "Automatic page ordering",
+      "Local browser-based processing — no server upload",
     ],
     faqs: [
       {
@@ -137,6 +157,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Click Merge PDF once at least two files are in the queue.",
       "Download your single combined PDF document.",
     ],
+    features: [
+      "Drag-to-reorder file arrangement",
+      "Unlimited file merging",
+      "Preserves original formatting and fonts",
+      "Local browser-based processing — no server upload",
+    ],
     faqs: [
       {
         question: "Will formatting change after merging?",
@@ -169,6 +195,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Choose Every page (ZIP) or enter specific pages to extract (e.g. 1, 2, 3).",
       "Click Split PDF to process the file locally.",
       "Download individual PDFs or a ZIP archive of split files.",
+    ],
+    features: [
+      "Extract specific page ranges",
+      "Split every page into individual PDFs (ZIP)",
+      "Visual page preview before splitting",
+      "Local browser-based processing — no server upload",
     ],
     faqs: [
       {
@@ -203,6 +235,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Click Rotate PDF to apply the change locally.",
       "Download your re-oriented PDF file.",
     ],
+    features: [
+      "Rotate by 90°, 180°, or 270°",
+      "Apply rotation to all pages at once",
+      "Fix scanned document orientation",
+      "Local browser-based processing — no server upload",
+    ],
     faqs: [
       {
         question: "Is the rotation permanent?",
@@ -235,6 +273,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Browse the page preview row and enter pages to remove (e.g. 1,3,5-7).",
       "Click Delete Pages to rebuild the document without those pages.",
       "Download the updated PDF with only the pages you kept.",
+    ],
+    features: [
+      "Delete pages by number or range (e.g. 1,3,5-7)",
+      "Visual page preview before deletion",
+      "Reduces file size by removing unwanted content",
+      "Local browser-based processing — no server upload",
     ],
     faqs: [
       {
@@ -269,6 +313,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Click Save Metadata to write the new properties locally.",
       "Download the updated PDF with revised document information.",
     ],
+    features: [
+      "Edit title, author, and subject metadata",
+      "Preview changes before saving",
+      "No visual content alteration",
+      "Local browser-based processing — no server upload",
+    ],
     faqs: [
       {
         question: "What metadata can I change?",
@@ -301,6 +351,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Click Open PDF to render the document in the viewer.",
       "Use previous/next controls or full-screen mode to browse pages.",
       "Download a copy anytime with the download button if needed.",
+    ],
+    features: [
+      "Full-page PDF rendering in browser",
+      "Previous/next page navigation",
+      "Full-screen reading mode",
+      "Local browser-based processing — no server upload",
     ],
     faqs: [
       {
@@ -335,6 +391,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Review the horizontal page preview row.",
       "Click Add Page Numbers, then download the numbered PDF.",
     ],
+    features: [
+      "Customizable start page and first number",
+      "Bottom-center page number placement",
+      "Horizontal page preview",
+      "Local browser-based processing — no server upload",
+    ],
     faqs: [
       {
         question: "Can I start numbering from a specific page?",
@@ -367,6 +429,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Enter a Crop margin (%) value — start with 5–10 for typical scans.",
       "Click Crop PDF to trim each page locally.",
       "Download the cropped PDF file.",
+    ],
+    features: [
+      "Adjustable crop margin percentage",
+      "Uniform crop applied to every page",
+      "Ideal for scanned documents and slides",
+      "Local browser-based processing — no server upload",
     ],
     faqs: [
       {
@@ -401,6 +469,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Click Add Watermark to apply it to all pages.",
       "Download the watermarked PDF.",
     ],
+    features: [
+      "Text or image watermark support",
+      "Custom watermark text and logo upload",
+      "Applied to every page automatically",
+      "Local browser-based processing — no server upload",
+    ],
     faqs: [
       {
         question: "Can I use my company logo as a watermark?",
@@ -433,6 +507,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Enter your signature text (name or approval line).",
       "Click Sign PDF to apply the signature on every page.",
       "Download the signed PDF document.",
+    ],
+    features: [
+      "Text-based electronic signature",
+      "Support for Latin and CJK characters",
+      "Signature placed on every page",
+      "Local browser-based processing — no server upload",
     ],
     faqs: [
       {
@@ -467,6 +547,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Click Unlock PDF to decrypt locally in your browser.",
       "Download the unlocked PDF file.",
     ],
+    features: [
+      "Remove password from accessible PDFs",
+      "One-click decryption",
+      "Produces unrestricted downloadable copy",
+      "Local browser-based processing — no server upload",
+    ],
     faqs: [
       {
         question: "Can I unlock a PDF without the password?",
@@ -500,6 +586,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
       "Click Protect PDF to encrypt the file locally.",
       "Download your password-protected PDF and store the password safely.",
     ],
+    features: [
+      "Strong password-based encryption",
+      "Password confirmation field",
+      "Compatible with all standard PDF readers",
+      "Local browser-based processing — no server upload",
+    ],
     faqs: [
       {
         question: "What happens if I forget the password?",
@@ -522,6 +614,12 @@ export const toolsSeoData: Record<string, ToolSEO> = {
     introduction: redactToolSeo.introduction,
     steps: redactToolSeo.steps,
     faqs: redactToolFaqsForSchema(),
+    features: [
+      "PDF and image redaction",
+      "Blur, mosaic, and solid blackout modes",
+      "Multi-format support (PDF, JPG, PNG, GIF, WebP)",
+      "Permanent redaction with local browser processing",
+    ],
   },
 };
 
