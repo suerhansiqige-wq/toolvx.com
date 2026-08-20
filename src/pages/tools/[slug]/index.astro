@@ -34,7 +34,7 @@ const i18nPrefix = `tools.${tool.i18nKey}`;
   faqs={seo.faqs}
   steps={seo.steps}
 >
-  <div
+  <article
     id="tool-root"
     data-tool-action={tool.action}
     data-i18n-key={tool.i18nKey}
@@ -76,7 +76,7 @@ const i18nPrefix = `tools.${tool.i18nKey}`;
     <TrustBadge />
 
     <ToolSeoArticle seo={seo} toolI18nKey={tool.i18nKey} />
-  </div>
+  </article>
 </ToolLayout>
 
 <script>

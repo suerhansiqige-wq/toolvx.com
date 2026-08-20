@@ -135,7 +135,7 @@ const faqId = "redact-guide-faq";
             class="text-foreground mb-3 text-lg font-semibold tracking-tight sm:text-xl"
             data-i18n={`redact.${faq.qKey}`}
           >
-            {faq.question}
+            <span aria-hidden="true" class="me-2">💡</span>{faq.question}
           </h3>
           <p
             class="text-muted-foreground border-accent/60 border-s-2 ps-4 text-base leading-relaxed"

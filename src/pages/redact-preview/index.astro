@@ -19,7 +19,7 @@ const seo = getRedactToolSeo();
   steps={seo.steps}
   noIndex={false}
 >
-  <div id="redact-page" class="redact-page mx-auto w-full max-w-[80rem]">
+  <article id="redact-page" class="redact-page mx-auto w-full max-w-[80rem]">
     <header
       id="redact-page-header"
       class="redact-page-header mx-auto mb-4 max-w-3xl sm:mb-5"
@@ -45,9 +45,9 @@ const seo = getRedactToolSeo();
 
     <RedactWorkspace />
 
-    <div id="redact-trust-wrap" class="redact-trust-wrap mx-auto w-full">
+    <section id="redact-trust-wrap" class="redact-trust-wrap mx-auto w-full">
       <RedactTrustBadge />
-    </div>
+    </section>
 
     <div
       id="redact-mid-ad-wrap"
@@ -62,7 +62,7 @@ const seo = getRedactToolSeo();
     <div id="redact-ad-wrap" class="redact-ad-wrap mx-auto mt-8 w-full lg:mt-10" data-pagefind-ignore>
       <AdSlot variant="leaderboard" data-ad-position="redact-bottom-leaderboard" />
     </div>
-  </div>
+  </article>
 </RedactLayout>
 
 <style>
